@@ -1,8 +1,7 @@
 down:
-	docker kill $(docker ps --filter "name=ocean" -q)
-	
+	./start.sh --purge
 start:
-	./start.sh
+	./start.sh 
 
 
 restart:
@@ -19,3 +18,6 @@ build_backend:
 
 app:
 	docker exec -it ocean_backend_1 bash -c "streamlit run algocean/ocean/module.py"
+
+kill_all:
+	docker kill $(docker ps -q)
