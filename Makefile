@@ -1,6 +1,10 @@
 down:
 	./start.sh --purge
+stop:
+	./start.sh --purge
 start:
+	./start.sh 
+up:
 	./start.sh 
 
 

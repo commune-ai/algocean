@@ -6,6 +6,8 @@ import os
 from ipfsspec.asyn import AsyncIPFSFileSystem
 from fsspec import register_implementation
 import asyncio
+import json
+import pickle
 import io
 from transformers import AutoModel, AutoTokenizer
 from datasets import load_dataset, Dataset
@@ -38,14 +40,12 @@ class IPFSModule(AsyncIPFSFileSystem):
 
     @property
     def tmp_root_path(self):
-        return f'/tmp/algocean/{self.__name__}'
+        return f'/tmp/algocean/{self.id}'
     
-    def get_tmp_path(self, path):
+    def get_temp_path(self, path):
         tmp_path = os.path.join(self.tmp_root_path, path)
-        try:
-            self.local.mkdir(tmp_path, create_parents=True)
-        except FileExistsError:
-            pass
+        if not os.path.exists(self.tmp_root_path):
+            self.local.makedirs(os.path.dirname(path), exist_ok=True)
         
         return tmp_path
     
@@ -55,7 +55,7 @@ class IPFSModule(AsyncIPFSFileSystem):
         
         # self.mkdir(path, create_parents=True)
         
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         model.save_pretrained(tmp_path)
         self.mkdirs(path)
         
@@ -69,7 +69,7 @@ class IPFSModule(AsyncIPFSFileSystem):
         
         # self.mkdir(path, create_parents=True)
         
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         tokenizer.save_pretrained(tmp_path)
         self.mkdirs(path)
         
@@ -81,7 +81,7 @@ class IPFSModule(AsyncIPFSFileSystem):
     
 
     def load_tokenizer(self,  path:str):
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         model = AutoTokenizer.from_pretrained(tmp_path)
         self.local.rm(tmp_path,  recursive=True)
@@ -90,7 +90,7 @@ class IPFSModule(AsyncIPFSFileSystem):
 
     
     def load_model(self,  path:str):
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         model = AutoModel.from_pretrained(tmp_path)
         # self.fs.local.rm(tmp_path,  recursive=True)
@@ -98,7 +98,7 @@ class IPFSModule(AsyncIPFSFileSystem):
 
 
     def load_dataset(self, path):
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         dataset = Dataset.load_from_disk(tmp_path)
         # self.fs.local.rm(tmp_path,  recursive=True)
@@ -107,7 +107,7 @@ class IPFSModule(AsyncIPFSFileSystem):
 
     @staticmethod
     def save_dataset(dataset, path:str):
-        tmp_path = self.get_tmp_path(path=path)
+        tmp_path = self.get_temp_path(path=path)
         dataset = dataset.save_to_disk(tmp_path)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
         # self.fs.local.rm(tmp_path,  recursive=True)
@@ -116,6 +116,25 @@ class IPFSModule(AsyncIPFSFileSystem):
 
 
     
+    def put_json(self, data, path='json_placeholder.pkl'):
+        tmp_path = self.get_temp_path(path=path)
+        self.local.put_json(path=tmp_path, data=data)
+        cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
+        self.local.rm(tmp_path)
+        return cid
+
+    def put_pickle(self, data, path='/pickle_placeholder.pkl'):
+        tmp_path = self.get_temp_path(path=path)
+        self.local.put_pickle(path=tmp_path, data=data)
+        cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
+        self.local.rm(tmp_path)
+        return cid
+    def get_pickle(self, path):
+        return pickle.loads(self.cat(path))
+
+    def get_json(self, path):
+        return json.loads(self.cat(path))
+
           
     def force_put(self, lpath, rpath, max_trials=10):
         trial_count = 0
@@ -130,14 +149,35 @@ class IPFSModule(AsyncIPFSFileSystem):
                 
         return cid
 
+    @property
+    def id(self):
+        return type(self).__name__ +':'+ str(hash(self))
+
+    @property
+    def name(self):
+        return self.id
 
 
 if __name__ == '__main__':
     import ipfspy
     import streamlit as st
 
+    
     module = IPFSModule()
-    st.write(module.local.put_object(path='/tmp/test.json', data={'yo':'fam'}))
+    st.write(module.name)
+
+
+    import torch
+
+
+
+    cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
+    st.write(module.get_pickle(cid))
+
+    st.write(module.ls('/bro'))
     # st.write(module.ls('/'))
-    st.write(module.local.get_object('/tmp/test.jsonjw4ij6u'))
+    # st.write(module..get_object('/tmp/test.jsonjw4ij6u'))
+
+
+
 

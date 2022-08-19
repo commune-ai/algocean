@@ -96,13 +96,13 @@ export DB_CLIENT_CERT=""
 CHECK_ELASTIC_VM_COUNT=true
 
 export IPFS_GATEWAY=http://172.15.0.16:5001
-export IPFS_HTTP_GATEWAY=http://172.15.0.16:8080/ipfs/
+export IPFS_HTTP_GATEWAY=http://172.15.0.16:8080
 #Provider
 export PROVIDER_LOG_LEVEL=${PROVIDER_LOG_LEVEL:-INFO}
-export PROVIDER_WORKERS=10
-export PROVIDER_IPFS_GATEWAY=https://ipfs.oceanprotocol.com
+export PROVIDER_WORKERS=4
+# export PROVIDER_IPFS_GATEWAY=https://ipfs.oceanprotocol.com
+export PROVIDER_IPFS_GATEWAY=${IPFS_HTTP_GATEWAY}
 export PROVIDER_PRIVATE_KEY=0xfd5c1ccea015b6d663618850824154a3b3fb2882c46cefb05b9a93fea8c3d215
-export PROVIDER2_PRIVATE_KEY=0xc852b55146fd168ec3d392bbd70988c18463efa460a395dede376453aca1180e
 
 if [ ${IP} = "localhost" ]; then
     export AQUARIUS_URI=http://172.15.0.5:5000
@@ -178,20 +178,47 @@ check_if_owned_by_root
 show_banner
 
 COMPOSE_FILES=""
+
+# deploy from barge
+
 COMPOSE_FILES+=" -f ${BACKEND_DIR}/backend.yml"
+
+
+
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/network_volumes.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
 
 
+# deploy locally from source
+
+# ganahce
+COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
+
+# aquarius
+COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/elasticsearch.yml"
-COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+
+# provider
 COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
+
+
+# run ipfs node for provider and graph
 COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
+
+
+# deploy contracts
+COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
+
+
+
+
+
 
 DOCKER_COMPOSE_EXTRA_OPTS="${DOCKER_COMPOSE_EXTRA_OPTS:-}"
 
@@ -315,3 +342,5 @@ while :; do
     esac
     shift
 done
+
+

@@ -34,19 +34,73 @@ class OceanModule(BaseModule):
         BaseModule.__init__(self, config=config)
 
         self.initialize_state()
-        self.config['ocean'] = self.get_ocean(self.config.get('ocean'))
-        self.ocean = Ocean(self.config['ocean'])
-        self.web3 = self.get_web3(self.ocean)
+        if 'ocean' in self.config:
+            self.set_ocean(ocean_config=self.config.get('ocean'))
+        if 'network' in self.config:
+            self.set_network(network=self.config.get('network'))
+
+        self.load_wallets(self.config.get('wallet'))
+
     
     def initialize_state(self):
         self.data_nfts = {}
         self.data_tokens = {}
         self.data_assets = {}
+
+
+    def load_wallets(self, wallet_config:dict):
+        '''
+        Load Private Key variable into your
+         wallet when pointing to the private 
+         key env.
+
+         wallet:
+            alice: PRIVATE_KEY1
+            bob: PRIVATE_KEY2
+
+
+        or you can put in the keys manually
+         but thats too deep
+        '''
+
+        for k,pk in wallet_config.items():
+            assert isinstance(pk, str)
+            self.add_wallet(wallet_key=k, private_key=pk)
+
+    @property
+    def network(self):
+        return self._network
+    def set_network(self, network:str=None):
+        '''
+        set the network
+        defaults to local fork
+        '''
+        if network == None:
+            network = 'local'
+        self._network = network
+        self.config['ocean'] = self.get_ocean(f'./config/{network}.in', return_ocean=False)
+        self.ocean = Ocean(self.config['ocean'])
+        self.web3 = self.ocean.web3
+
+        
+
+    
+    def set_ocean(self, ocean_config):
+        self.config['ocean'] = self.get_ocean(ocean_config, return_ocean=False)
+        self.ocean = Ocean(self.config['ocean'])
+        self.web3 = self.ocean.web3
+        
+
+
+    
     @staticmethod
     def get_ocean( ocean_config, return_ocean=True):
         if ocean_config == None:
             ocean_config =  ExampleConfig.get_config()
         elif isinstance(ocean_config, str):
+            if ocean_config.startswith('./'):
+            
+                ocean_config = os.path.dirname(__file__) + ocean_config[1:]
             ocean_config = Config(filename=ocean_config)
         
         elif isinstance(ocean_config, Config):
@@ -59,9 +113,6 @@ class OceanModule(BaseModule):
             return Ocean(ocean_config)
         return ocean_config
 
-    @staticmethod
-    def get_web3(ocean):
-        return ocean.web3
 
 
     def get_existing_wallet_key(self, private_key:str=None, address:str=None):
@@ -71,11 +122,14 @@ class OceanModule(BaseModule):
 
         return None
 
-    def add_wallet(self, wallet_key:str='default', private_key:str='TEST_PRIVATE_KEY1'):
+    def add_wallet(self, wallet_key:str='default', private_key:str='TEST_PRIVATE_KEY1', wallet:Wallet=None):
         '''
         wallet_key: what is the key you want to store the wallet in
         private_key: the key itself or an env variable name pointing to that key
         '''
+        if isinstance(wallet,Wallet):
+            self.wallets[wallet_key] = wallet
+            return wallet
         # fetch the name or the key
         private_key = os.getenv(private_key, private_key)
 
@@ -85,7 +139,6 @@ class OceanModule(BaseModule):
             self.wallets[wallet_key] = self.generate_wallet(private_key=private_key)
         else:
             self.wallets[wallet_key] =  self.wallets.pop(existing_wallet_key)
-
         self.ensure_default_wallet()
         return self.wallets[wallet_key]
 
@@ -125,10 +178,6 @@ class OceanModule(BaseModule):
         if self.default_wallet_key not in self.wallets:
             if len(self.wallets) > 0:
                 self.default_wallet_key = list(self.wallets.keys())[0]
-            else:
-                # if there are no more wallets, default  it to the original
-                self.default_wallet_key = 'default'
-
 
     def get_wallet(self, wallet, return_address=False):
         if wallet == None:
@@ -242,6 +291,7 @@ class OceanModule(BaseModule):
 
 
         self.save_state()
+        
 
     def save_state(self):
         for k, v in self.config['save'].items():
@@ -259,7 +309,7 @@ class OceanModule(BaseModule):
         return kwargs
 
 
-    def list_data_tokens(self, data_nft=None, return_keys=False):
+    def data_nft_tokens(self, data_nft=None, return_keys=False):
         
         output_data_tokens = {}
 
@@ -330,6 +380,7 @@ class OceanModule(BaseModule):
 
 
         asset = self.ocean.assets.create(**kwargs)
+        st.write(asset)
         self.data_assets[key] = asset
 
         return asset
@@ -381,25 +432,36 @@ class OceanModule(BaseModule):
 
     def get_datatoken(self, address:str=None, data_nft:str=None, data_token:str=None) -> Datatoken:
         
+
         if isinstance(data_token, Datatoken):
             return data_token
-        elif address != None:
+
+        if data_token in self.data_tokens:
+            return self.data_tokens[data_token]
+
+        if address != None:
             return self.ocean.get_datatoken(address)
 
-        elif data_nft != None or data_token != None:
-            data_tokens_map = self.list_data_tokens(data_nft=data_nft)
+
+        if data_nft != None or data_token != None:
+            data_tokens_map = self.data_nft_tokens(data_nft=data_nft)
             assert data_token in data_tokens_map, f'{data_token} not in {list(data_tokens_map.keys())}'
             return data_tokens_map[data_token]
+        else:
+            return None
+        
 
-        return None
+        assert False, f'BRO {self.data_nfts, self.data_tokens}, {data_token, data_nft}'
 
-    def resolve_account(self, account:Union[Wallet, str], return_address=False):
+    def resolve_account(self, account:Union[Wallet, str], return_address:bool=False):
         '''
         resolves the account to default wallet if account is None
         '''
 
     
         account = self.wallet if account == None else account
+        if account in self.wallets:
+            account = self.wallet[account]
 
         if return_address:
             if isinstance(account, Wallet):
@@ -461,6 +523,8 @@ class OceanModule(BaseModule):
             wallet=wallet,
         )
 
+
+
         order_tx_id = self.ocean.assets.pay_for_access_service(
             **default_kargs, **kwargs
         )     
@@ -488,81 +552,91 @@ class OceanModule(BaseModule):
     def st_test(cls):
         module = cls()
 
-        # module.load()
+        module.load()
+        nft_symbol = 'NFT_IPFS'
+        token_symbol = 'DT3'
 
-        module.add_wallet(wallet_key='alice', private_key=os.getenv('TEST_PRIVATE_KEY1'))
-        module.add_wallet(wallet_key='bob', private_key=os.getenv('TEST_PRIVATE_KEY2'))
-        module.create_data_nft(name='DataNFT1', symbol='NFT1')
-        module.create_datatoken(name='DataToken1', symbol='DT1', data_nft='NFT1')
+        module.create_data_nft(name='DataNFT1', symbol=nft_symbol)
+        module.create_datatoken(name='DataToken1', symbol=token_symbol, data_nft=nft_symbol)
 
         # Specify metadata and services, using the Branin test dataset
         date_created = "2021-12-28T10:55:11Z"
         metadata = {
             "created": date_created,
             "updated": date_created,
-            "description": "Branin dataset",
-            "name": "Branin dataset",
+            "description": "IPFS BRO",
+            "name": "IPFS BRO",
             "type": "dataset",
             "author": "Trent",
             "license": "CC0: PublicDomain",
         }
 
 
+        
 
-        url_file = module.get_file_obj(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
-        # url_file = module.get_file_obj(dict(hash="QmQwhnitZWNrVQQ1G8rL4FRvvZBUvHcxCtUreskfnBzvD8", type='ipfs'))
+        if 'URL' in nft_symbol:
+            url_file = module.get_file_obj(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
+        elif 'IPFS' in nft_symbol:
+            cid = module.client.ipfs.put_json(data={'bro':1}, path='/tmp/fam.json')
+            url_file = module.get_file_obj(dict(hash=f'{cid}', type='ipfs'))
 
+        st.write(url_file.__dict__)
         asset = module.create_asset(
             metadata=metadata,
             files=[url_file],
-            data_nft='NFT1',
-            data_token="DT1"
+            data_nft=nft_symbol,
+            data_token=token_symbol
         )
 
+        # module.save()
+        # module.load()
+
+
         # Initialize Bob's wallet
-        bob_wallet = module.generate_wallet(private_key='TEST_PRIVATE_KEY2')
+        bob_wallet = module.wallets['bob']
         print(f"bob_wallet.address = '{bob_wallet.address}'")
 
         # Alice mints a datatoken into Bob's wallet
         module.mint(
-            data_token='NFT1.DT1',
+            data_token=f'{nft_symbol}.{token_symbol}',
             account=bob_wallet.address, # can pass bobs wallet or address
             value=50
         )
 
-
         # Verify that Bob has ganache ETH
         module.get_balance(account=bob_wallet.address) > 0, "need ganache ETH"
-
         # two options of paying
         get_asset_option = 2
 
         # # Bob downloads. If the connection breaks, Bob can request again by showing order_tx_id.
         if get_asset_option == 1:
             file_path = module.download_asset(
-                asset='NFT1',
+                asset=nft_symbol,
                 wallet=bob_wallet,
                 destination='./')
         elif get_asset_option == 2:
 
             order_tx_id = module.pay_for_access_service(
-                asset='NFT1',
+                asset=nft_symbol,
                 wallet=bob_wallet,
             )
 
             file_path = module.download_asset(
-                asset='NFT1',
+                asset=nft_symbol,
                 wallet=bob_wallet,
-                destination='./',
+                destination='./test_data',
                 order_tx_id=order_tx_id
             )
 
 
-        module.save()
+
 
 
 if __name__ == '__main__':
     import os
     # OceanModule.st_test()
-    ocean = OceanModule.get_ocean(f'{os.environ["PWD"]}/algocean/ocean/config/rinkeby.in', return_ocean=True)
-    st.write(ocean.web3.HTTPProvider.__dict__)
+
+    module = OceanModule()
+    module.st_test()
+    # st.write(module.wallets)
+    # st.write(module.network)

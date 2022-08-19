@@ -1,7 +1,12 @@
 
 bro : fam
 
+wallet:
+  alice: TEST_PRIVATE_KEY1
+  bob: TEST_PRIVATE_KEY2
 
+
+network: local
 
 save:
   data_nfts:
