@@ -101,6 +101,8 @@ export IPFS_HTTP_GATEWAY=http://172.15.0.16:8080/ipfs/
 export PROVIDER_LOG_LEVEL=${PROVIDER_LOG_LEVEL:-INFO}
 export PROVIDER_WORKERS=10
 export PROVIDER_IPFS_GATEWAY=https://ipfs.oceanprotocol.com
+export PROVIDER_PRIVATE_KEY=0xfd5c1ccea015b6d663618850824154a3b3fb2882c46cefb05b9a93fea8c3d215
+export PROVIDER2_PRIVATE_KEY=0xc852b55146fd168ec3d392bbd70988c18463efa460a395dede376453aca1180e
 
 if [ ${IP} = "localhost" ]; then
     export AQUARIUS_URI=http://172.15.0.5:5000
@@ -179,7 +181,7 @@ COMPOSE_FILES=""
 COMPOSE_FILES+=" -f ${BACKEND_DIR}/backend.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/network_volumes.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
@@ -187,12 +189,9 @@ COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
 
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/elasticsearch.yml"
-
-COMPOSE_FILES+=" -f ./provider/docker-compose.yml"
-COMPOSE_FILES+=" -f ./aquarius/docker-compose.yml"
-
-
-
+COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
+COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
 
 DOCKER_COMPOSE_EXTRA_OPTS="${DOCKER_COMPOSE_EXTRA_OPTS:-}"
 
@@ -205,7 +204,6 @@ while :; do
         #################################################
         --no-ansi)
             DOCKER_COMPOSE_EXTRA_OPTS+=" --no-ansi"
-            unset COLOR_R COLOR_G COLOR_Y COLOR_B COLOR_M COLOR_C COLOR_RESET
             ;;
         --force-pull)
             export FORCEPULL="true"
@@ -248,7 +246,7 @@ while :; do
 	        printf $COLOR_Y'Starting without BACKEND...\n\n'$COLOR_RESET
             ;;
         --no-ipfs)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/ipfs.yml/}"
+            COMPOSE_FILES="${COMPOSE_FILES/ -f ${DIR}\/ipfs/ipfs.yml/}"
 	        printf $COLOR_Y'Starting without IPFS...\n\n'$COLOR_RESET
             ;;
         --with-thegraph)
@@ -279,10 +277,24 @@ while :; do
         # Cleaning switches
         #################################################
         --purge)
+            printf "$COMPOSE_FILES"
             printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
-            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" -f "${NODE_COMPOSE_FILE}" down
-            docker network rm ${PROJECT_NAME}_default || true
-            docker network rm ${PROJECT_NAME}_backend || true
+            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
+            docker network rm ${PROJECT_NAME}_default || true;
+            docker network rm ${PROJECT_NAME}_backend || true;
+            shift
+            break
+            ;;
+
+        --restart)
+            printf "$COMPOSE_FILES"
+            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
+            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
+            docker network rm ${PROJECT_NAME}_default || true;
+            docker network rm ${PROJECT_NAME}_backend || true;
+            
+            shift
+            break
             ;;
         --) # End of all options.
             shift
@@ -298,7 +310,7 @@ while :; do
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
             
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
             break
     esac
     shift

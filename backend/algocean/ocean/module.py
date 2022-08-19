@@ -15,6 +15,7 @@ from ocean_lib.services.service import Service
 from typing import *
 # Create Alice's wallet
 
+from ocean_lib.config import Config
 from ocean_lib.models.data_nft import DataNFT
 from ocean_lib.web3_internal.wallet import Wallet
 from ocean_lib.web3_internal.constants import ZERO_ADDRESS
@@ -31,17 +32,37 @@ class OceanModule(BaseModule):
     wallets = {}
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
-        
+
+        self.initialize_state()
+        self.config['ocean'] = self.get_ocean(self.config.get('ocean'))
+        self.ocean = Ocean(self.config['ocean'])
+        self.web3 = self.get_web3(self.ocean)
+    
+    def initialize_state(self):
         self.data_nfts = {}
         self.data_tokens = {}
         self.data_assets = {}
-
-        if self.config.get('ocean') == None:
-            self.config['ocean'] = ExampleConfig.get_config()
+    @staticmethod
+    def get_ocean( ocean_config, return_ocean=True):
+        if ocean_config == None:
+            ocean_config =  ExampleConfig.get_config()
+        elif isinstance(ocean_config, str):
+            ocean_config = Config(filename=ocean_config)
         
-        self.ocean = Ocean(self.config['ocean'])
-        self.web3 = self.ocean.web3
-    
+        elif isinstance(ocean_config, Config):
+            ocean_config = ocean_config
+        else:
+            raise NotImplementedError  
+        
+        assert isinstance(ocean_config, Config), 'ocean_config must be type Config'
+        if return_ocean:
+            return Ocean(ocean_config)
+        return ocean_config
+
+    @staticmethod
+    def get_web3(ocean):
+        return ocean.web3
+
 
     def get_existing_wallet_key(self, private_key:str=None, address:str=None):
         for w_k, w in self.wallets.items():
@@ -463,75 +484,85 @@ class OceanModule(BaseModule):
                                     )
         return file_path
         
-    
-module = OceanModule()
+    @classmethod
+    def st_test(cls):
+        module = cls()
 
-# module.load()
+        # module.load()
 
-module.add_wallet(wallet_key='alice', private_key=os.getenv('TEST_PRIVATE_KEY1'))
-module.add_wallet(wallet_key='bob', private_key=os.getenv('TEST_PRIVATE_KEY2'))
-module.create_data_nft(name='DataNFT1', symbol='NFT1')
-module.create_datatoken(name='DataToken1', symbol='DT1', data_nft='NFT1')
+        module.add_wallet(wallet_key='alice', private_key=os.getenv('TEST_PRIVATE_KEY1'))
+        module.add_wallet(wallet_key='bob', private_key=os.getenv('TEST_PRIVATE_KEY2'))
+        module.create_data_nft(name='DataNFT1', symbol='NFT1')
+        module.create_datatoken(name='DataToken1', symbol='DT1', data_nft='NFT1')
 
-
-# Specify metadata and services, using the Branin test dataset
-date_created = "2021-12-28T10:55:11Z"
-metadata = {
-    "created": date_created,
-    "updated": date_created,
-    "description": "Branin dataset",
-    "name": "Branin dataset",
-    "type": "dataset",
-    "author": "Trent",
-    "license": "CC0: PublicDomain",
-}
-url_file = module.get_file_obj(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
-# url_file = module.get_file_obj(dict(hash="QmQwhnitZWNrVQQ1G8rL4FRvvZBUvHcxCtUreskfnBzvD8", type='ipfs'))
-
-asset = module.create_asset(
-    metadata=metadata,
-    files=[url_file],
-    data_nft='NFT1',
-    data_token="DT1"
-)
-
-# Initialize Bob's wallet
-bob_wallet = module.generate_wallet(private_key='TEST_PRIVATE_KEY2')
-print(f"bob_wallet.address = '{bob_wallet.address}'")
-
-# Alice mints a datatoken into Bob's wallet
-module.mint(
-    data_token='NFT1.DT1',
-    account=bob_wallet.address, # can pass bobs wallet or address
-    value=50
-)
+        # Specify metadata and services, using the Branin test dataset
+        date_created = "2021-12-28T10:55:11Z"
+        metadata = {
+            "created": date_created,
+            "updated": date_created,
+            "description": "Branin dataset",
+            "name": "Branin dataset",
+            "type": "dataset",
+            "author": "Trent",
+            "license": "CC0: PublicDomain",
+        }
 
 
-# Verify that Bob has ganache ETH
-module.get_balance(account=bob_wallet.address) > 0, "need ganache ETH"
 
-# two options of paying
-get_asset_option = 2
+        url_file = module.get_file_obj(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
+        # url_file = module.get_file_obj(dict(hash="QmQwhnitZWNrVQQ1G8rL4FRvvZBUvHcxCtUreskfnBzvD8", type='ipfs'))
 
-# # Bob downloads. If the connection breaks, Bob can request again by showing order_tx_id.
-if get_asset_option == 1:
-    file_path = module.download_asset(
-        asset='NFT1',
-        wallet=bob_wallet,
-        destination='./')
-elif get_asset_option == 2:
+        asset = module.create_asset(
+            metadata=metadata,
+            files=[url_file],
+            data_nft='NFT1',
+            data_token="DT1"
+        )
 
-    order_tx_id = module.pay_for_access_service(
-        asset='NFT1',
-        wallet=bob_wallet,
-    )
+        # Initialize Bob's wallet
+        bob_wallet = module.generate_wallet(private_key='TEST_PRIVATE_KEY2')
+        print(f"bob_wallet.address = '{bob_wallet.address}'")
 
-    file_path = module.download_asset(
-        asset='NFT1',
-        wallet=bob_wallet,
-        destination='./',
-        order_tx_id=order_tx_id
-    )
+        # Alice mints a datatoken into Bob's wallet
+        module.mint(
+            data_token='NFT1.DT1',
+            account=bob_wallet.address, # can pass bobs wallet or address
+            value=50
+        )
 
 
-# module.save()
+        # Verify that Bob has ganache ETH
+        module.get_balance(account=bob_wallet.address) > 0, "need ganache ETH"
+
+        # two options of paying
+        get_asset_option = 2
+
+        # # Bob downloads. If the connection breaks, Bob can request again by showing order_tx_id.
+        if get_asset_option == 1:
+            file_path = module.download_asset(
+                asset='NFT1',
+                wallet=bob_wallet,
+                destination='./')
+        elif get_asset_option == 2:
+
+            order_tx_id = module.pay_for_access_service(
+                asset='NFT1',
+                wallet=bob_wallet,
+            )
+
+            file_path = module.download_asset(
+                asset='NFT1',
+                wallet=bob_wallet,
+                destination='./',
+                order_tx_id=order_tx_id
+            )
+
+
+        module.save()
+
+
+if __name__ == '__main__':
+    import os
+    # OceanModule.st_test()
+    ocean = OceanModule.get_ocean(f'{os.environ["PWD"]}/algocean/ocean/config/rinkeby.in', return_ocean=True)
+    st.write(ocean.web3.HTTPProvider.__dict__)

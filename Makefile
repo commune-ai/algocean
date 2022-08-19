@@ -21,3 +21,6 @@ app:
 
 kill_all:
 	docker kill $(docker ps -q)
+
+logs:
+	docker logs ${arg} --tail=100 --follow
