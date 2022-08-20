@@ -9,20 +9,20 @@ wallet:
 network: local
 
 save:
-  data_nfts:
+  datanfts:
     module: local
     fn: put_object
     params:
       path: 'tmp/algocean/data_nfts.json'
 
 
-  data_tokens:
+  datatokens:
     module: local
     fn: put_object
     params:
       path: 'tmp/algocean/data_tokens.json'
 
-  data_assets:
+  dataassets:
     module: local
     fn: put_object
     params:
@@ -30,7 +30,7 @@ save:
       
     default: {}
 load:
-  data_nfts:
+  datanfts:
     module: local
     fn: get_object
     params:
@@ -38,7 +38,7 @@ load:
 
     default: {}
 
-  data_tokens:
+  datatokens:
     module: local
     fn: get_object
     params:
@@ -46,7 +46,7 @@ load:
       
     default: {}
 
-  data_assets:
+  dataassets:
     module: local
     fn: get_object
     params:
