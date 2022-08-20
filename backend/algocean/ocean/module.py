@@ -4,7 +4,7 @@ import os, sys
 sys.path.append(os.getenv('PWD'))
 
 from algocean.utils import RecursiveNamespace, dict_put, dict_has
-
+import datetime
 from ocean_lib.assets.asset import Asset
 from ocean_lib.example_config import ExampleConfig
 from ocean_lib.web3_internal.contract_base import ContractBase
@@ -12,6 +12,7 @@ from ocean_lib.models.datatoken import Datatoken
 from ocean_lib.ocean.ocean import Ocean
 from ocean_lib.structures.file_objects import IpfsFile, UrlFile
 from ocean_lib.services.service import Service
+from ocean_lib.structures.file_objects import FilesTypeFactory
 from typing import *
 # Create Alice's wallet
 
@@ -43,8 +44,8 @@ class OceanModule(BaseModule):
 
     
     def initialize_state(self):
-        self.data_nfts = {}
-        self.data_tokens = {}
+        self.datanfts = {}
+        self.datatokens = {}
         self.data_assets = {}
 
 
@@ -183,6 +184,10 @@ class OceanModule(BaseModule):
         if wallet == None:
             wallet = self.wallet
         elif isinstance(wallet, str):
+            if self.web3.isAddress(wallet):
+                assert return_address
+                return wallet
+            
             wallet = self.wallets[wallet]
         elif isinstance(wallet,Wallet):
             wallet = wallet
@@ -196,43 +201,50 @@ class OceanModule(BaseModule):
         else: 
             return wallet
 
-    def create_data_nft(self, name:str , symbol:str, wallet:Union[str, Wallet]=None):
+
+    def create_datanft(self, name:str , symbol:str=None, wallet:Union[str, Wallet]=None):
         wallet = self.get_wallet(wallet=wallet)
 
+        if symbol == None:
+            symbol = name
         nft_key =  symbol
-        data_nft = self.data_nfts.get(nft_key)
-        if data_nft == None:
-            data_nft = self.ocean.create_data_nft(name=name, symbol=symbol, from_wallet=wallet)
-            self.data_nfts[nft_key] = data_nft
+        datanft = self.datanfts.get(nft_key)
+        if datanft == None:
+            datanft = self.ocean.create_data_nft(name=name, symbol=symbol, from_wallet=wallet)
+            self.datanfts[nft_key] = datanft
 
-        return data_nft
+        return datanft
 
-    def ensure_data_nft(self, data_nft:Union[str, DataNFT]): 
-        if isinstance(data_nft, str):
-            return self.data_nfts[data_nft]
-        elif isinstance(data_nft, DataNFT):
-            return data_nft
-        else:
-            raise Exception(f'The Data nft {data_nft} is not supported fam')
+    def list_datanfts(self):
+        return list(self.datanfts.keys())
 
-    def list_data_nfts(self):
-        return list(self.data_nfts.keys())
 
-    def create_datatoken(self, name:str, symbol:str, data_nft:Union[str, DataNFT]=None, wallet:Union[str, Wallet]=None):
+    def generate_datatoken_name(self, datanft:Union[str, DataNFT]=None):
+        datanft = self.get_datanft(datanft)
+        index =  0 
+        datatokens =  self.list_datatokens(datanft)
+        while True:
+            token_name = f'DT{index}'
+            if token_name not in datatokens:
+                return token_name
+    def create_datatoken(self, name:str, symbol:str=None, datanft:Union[str, DataNFT]=None, wallet:Union[str, Wallet]=None):
         wallet = self.get_wallet(wallet)
-        data_nft = self.ensure_data_nft(data_nft)
+        datanft = self.get_datanft(datanft)
 
-        nft_symbol = data_nft.symbol()
-        key = '.'.join([nft_symbol, symbol])
 
-        data_token = self.data_tokens.get(key)
+        datanft_symbol= datanft.symbol()
 
-        if data_token == None:
-            datatoken = data_nft.create_datatoken(name=name, symbol=symbol, from_wallet=wallet)
+        symbol = name if symbol is None else symbol
+        key = '.'.join([datanft.symbol(), symbol])
+
+        datatoken = self.datatokens.get(key)
+
+        if datatoken == None:
+            datatoken = datanft.create_datatoken(name=name, symbol=symbol, from_wallet=wallet)
             
-            self.data_tokens[key] = datatoken
+            self.datatokens[key] = datatoken
         
-        return self.data_tokens[key]
+        return self.datatokens[key]
 
 
     def get_contract(self, address:str, contract_class=ContractBase):
@@ -245,10 +257,10 @@ class OceanModule(BaseModule):
     def load(self):
         self.load_state()
         # some loading post processing
-        for k,v in self.data_nfts.items():
-            self.data_nfts[k] = self.get_contract(address=v, contract_class=DataNFT)
-        for k,v in self.data_tokens.items():
-            self.data_tokens[k] = self.get_contract(address=v, contract_class=Datatoken)
+        for k,v in self.datanfts.items():
+            self.datanfts[k] = self.get_contract(address=v, contract_class=DataNFT)
+        for k,v in self.datatokens.items():
+            self.datatokens[k] = self.get_contract(address=v, contract_class=Datatoken)
         for k,v in self.data_assets.items():
             self.data_assets[k] = Asset.from_dict(v)
 
@@ -282,10 +294,10 @@ class OceanModule(BaseModule):
 
     def save(self):
         # some loading post processing
-        for k,v in self.data_nfts.items():
-            self.data_nfts[k] = self.get_address(contract=v)
-        for k,v in self.data_tokens.items():
-            self.data_tokens[k] = self.get_address(contract=v)
+        for k,v in self.datanfts.items():
+            self.datanfts[k] = self.get_address(contract=v)
+        for k,v in self.datatokens.items():
+            self.datatokens[k] = self.get_address(contract=v)
         for k,v in self.data_assets.items():
             self.data_assets[k] = v.as_dictionary()
 
@@ -307,74 +319,132 @@ class OceanModule(BaseModule):
         return kwargs
 
 
-    def data_nft_tokens(self, data_nft=None, return_keys=False):
+    def list_datatokens(self, datanft=None, return_keys=False):
         
-        output_data_tokens = {}
+        output_datatokens = {}
 
         
-        if data_nft == None:
-            output_data_tokens =  self.data_tokens
+        if datanft == None:
+            output_datatokens =  self.datatokens
         else:
 
-            if isinstance(data_nft, DataNFT):
-                target_key = data_nft.symbol()
+            if isinstance(datanft, DataNFT):
+                target_key = datanft.symbol()
             else:
-                target_key = data_nft
-            for k,v in self.data_tokens.items():
+                target_key = datanft
+
+
+            for k,v in self.datatokens.items():
                 k_nft,k_token = k.split('.')
                 if target_key == k_nft:
-                    output_data_tokens[k_token] = v
+                    output_datatokens[k_token] = v
 
         if return_keys:
-            return list(output_data_tokens.keys())
-        return output_data_tokens
+            return list(output_datatokens.keys())
+        return output_datatokens
 
 
-    def get_datanft(self, data_nft):
+    def dispense_tokens(self, 
+                        datatoken:Union[str, Datatoken]=None, 
+                        datanft:Union[str, DataNFT]=None,
+                        amount:int=100,
+                        destination:str=None,
+                        wallet:Union[str,Wallet]=None):
+        wallet = self.get_wallet(wallet)
+        amount = self.ocean.to_wei(amount)
+        datatoken = self.get_datatoken(datatoken=datatoken, datanft=datanft)
+        if destination == None:
+            destination = wallet.address 
+        else:
+            destination = self.get_wallet(destination, return_address=True)
+
+
+        # ContractBase.to_checksum_address(destination)
+
+
+        self.ocean.dispenser.dispense(datatoken=datatoken.address,
+                                     amount=amount, 
+                                    destination= destination,
+                                     from_wallet=wallet)
+
+    def create_dispenser(self,
+                        datatoken:Union[str, Datatoken]=None, 
+                        datanft:Union[str, DataNFT]=None,
+                        max_tokens:int=100, 
+                        max_balance:int=None, 
+                        with_mint=True, 
+                        wallet=None):
+
+        datatoken=  self.get_datatoken(datatoken=datatoken, datanft=datanft)
+        wallet = self.get_wallet(wallet)
+
+        dispenser = self.ocean.dispenser
+
+        max_tokens = self.ocean.to_wei(max_tokens)
+        if max_balance == None:
+            max_balance = max_tokens
+        else:
+            max_balance = self.ocean.to_wei(max_tokens)
+        # Create dispenser
+
+        datatoken.create_dispenser(
+            dispenser_address=dispenser.address,
+            max_balance=max_balance,
+            max_tokens=max_tokens,
+            with_mint=with_mint,
+            allowed_swapper=ZERO_ADDRESS,
+            from_wallet=wallet,
+        )
+
+    def get_datanft(self, datanft):
         '''
-        dataNFT can be address, key in self.data_nfts or a DataNFT
+        dataNFT can be address, key in self.datanfts or a DataNFT
         '''
-        if isinstance(data_nft, str):
-            if data_nft in self.data_nfts :
-                data_nft = self.data_nfts[data_nft]
+        if isinstance(datanft, str):
+            if datanft in self.datanfts :
+                datanft = self.datanfts[datanft]
             else:
-                data_nft = DataNFT(address=data_nft)
+                datanft = DataNFT(address=datanft)
         
-        assert isinstance(data_nft, DataNFT), f'data_nft should be in the formate of DataNFT, not {data_nft}'
+        assert isinstance(datanft, DataNFT), f'datanft should be in the formate of DataNFT, not {datanft}'
         
-        return data_nft
+        return datanft
 
 
-    def add_service(self, data_nft, data_token, files, **kwargs):
-        data_nft = self.get_datanft(data_nft)
-        data_token = self.get_datatoken(data_nft)
+    def add_service(self, datanft, datatoken, files, **kwargs):
+        datanft = self.get_datanft(datanft)
+        datatoken = self.get_datatoken(datanft)
         self.get_files()
 
 
-    def create_asset(self,data_nft, data_token, files:list, wallet=None, **kwargs ):
+    def create_asset(self,datanft, datatoken, files:list, wallet=None, **kwargs ):
 
-        data_nft = self.get_datanft(data_nft=data_nft)
-        data_nft_symbol = data_nft.symbol()
-        data_nft_address = data_nft.address
+        datanft = self.get_datanft(datanft=datanft)
         wallet = self.get_wallet(wallet)
-        metadata = self.create_metadata(data_nft=data_nft, wallet=wallet)
+        metadata = self.create_metadata(datanft=datanft, **kwargs.get('metadata', {}),wallet=wallet)
 
 
-        if data_nft_symbol in self.data_assets:
-            return self.data_assets[data_nft_symbol]
+        if datanft in self.data_assets:
+            return self.data_assets[datanft]
         
-        data_token = self.get_datatoken(data_nft=data_nft_symbol, data_token=data_token)
-        deployed_datatokens = [data_token]
+        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken)
+        deployed_datatokens = [datatoken]
 
+        st.write(files)
+        st.write(deployed_datatokens)
         default_kwargs= dict(
-        data_nft_address = data_nft_address,
+        data_nft_address = datanft.address,
         deployed_datatokens = deployed_datatokens,
         publisher_wallet= wallet,
+        metadata= metadata,
+        files=files
         )
 
         kwargs = self.fill_default_kwargs(kwargs=kwargs, default_kwargs=default_kwargs)
+        
+        st.write(kwargs)
         asset = self.ocean.assets.create(**kwargs)
-        self.data_assets[data_nft_symbol] = asset
+        self.data_assets[datanft.symbol()] = asset
         return asset
 
     def list_data_assets(self, return_did=False):
@@ -395,80 +465,66 @@ class OceanModule(BaseModule):
 
         output_files = []
         for file_object in file_objects:
-            output_files.append(FilesTypeFactory.validate_and_create(file_object))
+            output_files.append(FilesTypeFactory(file_object))
 
         return output_files
 
 
 
-    def dispense(self, data_nft=None, data_token=None, wallet=None):
+    def dispense(self, datanft=None, datatoken=None, wallet=None):
         raise NotImplementedError
 
-    def mint(self, account:Union[str,Wallet], value:int=1,data_nft:str=None, data_token:str=None, token_address:str=None, wallet:Wallet=None , encode_value=True):
+    def mint(self, to:Union[str,Wallet], value:int=1,datanft:str=None, datatoken:str=None, wallet:Wallet=None , encode_value=True):
         wallet = self.get_wallet(wallet=wallet)
-        account_address = self.resolve_account(account=account, return_address=True)
-
+        to_address = self.get_wallet(wallet=to, return_address=True)
+        datatoken = self.get_datatoken(datanft=datanft,datatoken=datatoken)
+        
         if encode_value:
             value = self.ocean.to_wei(str(value))
-
-        datatoken = self.get_datatoken(data_nft=data_nft,data_token=data_token, address=token_address)
         
-        assert datatoken != None, f'data_token is None my guy, args: {dict(data_nft=data_nft, data_token=data_token, token_address=token_address)}'
-        datatoken.mint(account_address=account_address, 
+        assert datatoken != None, f'datatoken is None my guy, args: {dict(datanft=datanft, datatoken=datatoken)}'
+        datatoken.mint(account_address=to_address, 
                         value=value, from_wallet=wallet )
 
 
-    def get_datatoken(self, address:str=None, data_nft:str=None, data_token:str=None) -> Datatoken:
+    def get_datatoken(self, datatoken:str=None, datanft:str=None) -> Datatoken:
         
 
-        if isinstance(data_token, Datatoken):
-            return data_token
+        # if data token
+        if isinstance(datatoken, Datatoken):
+            return datatoken
 
-        if data_token in self.data_tokens:
-            return self.data_tokens[data_token]
+        # if address
+        if isinstance(datatoken, str):
+            try:
+                datatoken_address = datatoken
+                return self.ocean.get_datatoken(datatoken_address)
+            except:
+                pass
+            # if string
+            if datatoken in self.datatokens:
+                return self.datatokens[datatoken]
 
-        if address != None:
-            return self.ocean.get_datatoken(address)
 
-
-        if data_nft != None or data_token != None:
-            data_tokens_map = self.data_nft_tokens(data_nft=data_nft)
-            assert data_token in data_tokens_map, f'{data_token} not in {list(data_tokens_map.keys())}'
-            return data_tokens_map[data_token]
+        if datanft != None or datatoken != None:
+            datatokens_map = self.list_datatokens(datanft=datanft)
+            assert datatoken in datatokens_map, f'{datatoken} not in {list(datatokens_map.keys())}'
+            return datatokens_map[datatoken]
         else:
             return None
         
 
-        assert False, f'BRO {self.data_nfts, self.data_tokens}, {data_token, data_nft}'
-
-    def resolve_account(self, account:Union[Wallet, str], return_address:bool=False):
-        '''
-        resolves the account to default wallet if account is None
-        '''
+        raise Exception(f'BRO {self.datanfts, self.datatokens}, {datatoken, datanft}')
 
     
-        account = self.wallet if account == None else account
-        if account in self.wallets:
-            account = self.wallet[account]
-
-        if return_address:
-            if isinstance(account, Wallet):
-                account = account.address
-            assert isinstance(account, str)
-        else:
-            assert isinstance(account, Wallet)
+    def get_balance(self,wallet:Union[Wallet,str]=None, datanft:str=None, datatoken:str=None):
         
-        return account
-
-    
-    def get_balance(self,account:Union[Wallet,str]=None, data_nft:str=None, data_token:str=None, token_address:str=None):
-        
-        account_address = self.resolve_account(account=account, return_address=True)
-        data_token = self.get_datatoken(data_nft=data_nft, data_token=data_token, address=token_address)
-        if data_token == None:
-            value =  self.web3.eth.get_balance(account_address)
+        wallet_address = self.get_wallet(wallet=wallet, return_address=True)
+        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken )
+        if datatoken == None:
+            value =  self.web3.eth.get_balance(wallet_address)
         else:
-            value =  data_token.balanceOf(account_address)
+            value =  datatoken.balanceOf(wallet_address)
         
         return value
         
@@ -537,26 +593,27 @@ class OceanModule(BaseModule):
                                     )
         return file_path
 
-    @staticmethod
-    def create_metadata(self, data_nft=None, wallet=None, **kwargs ):
+    def create_metadata(self, datanft=None, wallet=None, **kwargs ):
 
-        wallet = self.get_wlalet(wallet)
+        wallet = self.get_wallet(wallet)
 
         metadata = {}
+
         metadata['description'] = kwargs.get('description', 'Insert Description')
         metadata['author'] = kwargs.get('author', wallet.address)
-        metadata['liscense'] = kwargs.get('liscense', "CC0: PublicDomain")
+        metadata['license'] = kwargs.get('license', "CC0: PublicDomain")
         metadata['categories'] = kwargs.get('categories', [])
         metadata['tags'] = kwargs.get('tags', [])
         metadata['additionalInformation'] = kwargs.get('additionalInformation', {})
+        metadata['type'] = kwargs.get('type', 'dataset')
 
         # the name must be a data nft or a custom name
-        data_nft = self.get_datanft(data_nft)
-        metadata['name'] = data_nft.name()
+        datanft = self.get_datanft(datanft)
+        metadata['name'] = datanft.name
 
         created_datetime = datetime.datetime.now().isoformat()
 
-        metadata["created"]=  created_datetime,
+        metadata["created"]=  created_datetime
         metadata["updated"] = created_datetime
 
         return metadata
@@ -566,71 +623,47 @@ class OceanModule(BaseModule):
     def st_test(cls):
         module = cls()
 
-        module.load()
-        nft_symbol = 'NFT_IPFS'
-        token_symbol = 'DT3'
+        nft = 'NFT_IPFS'
+        token = 'DT3'
 
-        module.create_data_nft(name='DataNFT1', symbol=nft_symbol)
-        module.create_datatoken(name='DataToken1', symbol=token_symbol, data_nft=nft_symbol)
+        module.create_datanft(name=nft)
+        module.create_datatoken(name=token, datanft=nft)
 
+        module.create_dispenser(datatoken=token, datanft=nft)
+        module.dispense_tokens(datatoken=token, datanft=nft, wallet='bob', amount=50)
+        
+        
+        st.write(module.get_balance(datatoken=token, datanft=nft,  wallet=module.wallets['bob'].address))
         # Specify metadata and services, using the Branin test dataset
  
 
-        
 
-        if 'URL' in nft_symbol:
-            url_file = module.create_file(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
-        elif 'IPFS' in nft_symbol:
-            cid = module.client.ipfs.put_json(data={'bro':1}, path='/tmp/fam.json')
-            url_file = module.create_file({'hash':f'{cid}', 'type':'ipfs'})
+        # if 'URL' in nft:
+        #     url_files = module.create_files(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
+        # elif 'IPFS' in nft:
+        #     cid = module.client.ipfs.put_json(data={'bro':1}, path='/tmp/fam.json')
+        #     url_files = module.create_files([{'hash':f'{cid}', 'type':'ipfs'}]*1)
 
-        st.write(url_file.__dict__)
-        asset = module.create_asset(
-            metadata=metadata,
-            files=[{'hash':f'{cid}', 'type':'ipfs'}],
-            data_nft=nft_symbol,
-            data_token=token_symbol
-        )
-
-        # module.save()
-        # module.load()
+        # asset = module.create_asset(
+        #     files=url_files,
+        #     datanft=nft,
+        #     datatoken=token
+        # )
 
 
-        # Initialize Bob's wallet
-        bob_wallet = module.wallets['bob']
-        print(f"bob_wallet.address = '{bob_wallet.address}'")
 
-        # Alice mints a datatoken into Bob's wallet
-        module.mint(
-            data_token=f'{nft_symbol}.{token_symbol}',
-            account=bob_wallet.address, # can pass bobs wallet or address
-            value=50
-        )
 
-        # Verify that Bob has ganache ETH
-        module.get_balance(account=bob_wallet.address) > 0, "need ganache ETH"
-        # two options of paying
-        get_asset_option = 2
+        # module.mint(
+        #     datatoken=f'{nft}.{token}',
+        #     to='bob', # can pass bobs wallet or address
+        #     value=1.0
+        # )
 
-        # # Bob downloads. If the connection breaks, Bob can request again by showing order_tx_id.
-        if get_asset_option == 1:
-            file_path = module.download_asset(
-                asset=nft_symbol,
-                wallet=bob_wallet,
-                destination='./')
-        elif get_asset_option == 2:
-
-            order_tx_id = module.pay_for_access_service(
-                asset=nft_symbol,
-                wallet=bob_wallet,
-            )
-
-            file_path = module.download_asset(
-                asset=nft_symbol,
-                wallet=bob_wallet,
-                destination='./test_data',
-                order_tx_id=order_tx_id
-            )
+        # file_path = module.download_asset(
+        #     asset=nft,
+        #     wallet='bob',
+        #     destination='./test_data',
+        # )
 
 
 
@@ -642,5 +675,3 @@ if __name__ == '__main__':
 
     module = OceanModule()
     module.st_test()
-    # st.write(module.wallets)
-    # st.write(module.network)
