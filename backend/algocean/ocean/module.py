@@ -303,9 +303,7 @@ class OceanModule(BaseModule):
     @staticmethod
     def fill_default_kwargs(default_kwargs, kwargs):
         for k,v in default_kwargs.items():
-            if kwargs.get(k) == None:
-                kwargs[k] = default_kwargs[k]
-
+            kwargs[k] =  kwargs.get(k, default_kwargs[k])
         return kwargs
 
 
@@ -346,18 +344,24 @@ class OceanModule(BaseModule):
         
         return data_nft
 
-    def create_asset(self,data_nft, data_token, **kwargs ):
+
+    def add_service(self, data_nft, data_token, files, **kwargs):
+        data_nft = self.get_datanft(data_nft)
+        data_token = self.get_datatoken(data_nft)
+        self.get_files()
+
+
+    def create_asset(self,data_nft, data_token, files:list, wallet=None, **kwargs ):
 
         data_nft = self.get_datanft(data_nft=data_nft)
-
         data_nft_symbol = data_nft.symbol()
         data_nft_address = data_nft.address
+        wallet = self.get_wallet(wallet)
+        metadata = self.create_metadata(data_nft=data_nft, wallet=wallet)
 
 
-        key = data_nft_symbol
-
-        if key in self.data_assets:
-            return self.data_assets[key]
+        if data_nft_symbol in self.data_assets:
+            return self.data_assets[data_nft_symbol]
         
         data_token = self.get_datatoken(data_nft=data_nft_symbol, data_token=data_token)
         deployed_datatokens = [data_token]
@@ -365,24 +369,12 @@ class OceanModule(BaseModule):
         default_kwargs= dict(
         data_nft_address = data_nft_address,
         deployed_datatokens = deployed_datatokens,
-        datatoken_templates=[1],
-        publisher_wallet= self.get_wallet(kwargs.get('publisher_wallet')),
-        datatoken_minters=[self.wallet.address],
-        datatoken_fee_managers=[self.wallet.address],
-        datatoken_publish_market_order_fee_addresses=[ZERO_ADDRESS],
-        datatoken_publish_market_order_fee_amounts=[0],
-        datatoken_publish_market_order_fee_tokens=[self.ocean.OCEAN_address],
-        datatoken_bytess=[[b""]]
+        publisher_wallet= wallet,
         )
 
-        kwargs = self.fill_default_kwargs(kwargs=kwargs,
-                                         default_kwargs=default_kwargs)
-
-
+        kwargs = self.fill_default_kwargs(kwargs=kwargs, default_kwargs=default_kwargs)
         asset = self.ocean.assets.create(**kwargs)
-        st.write(asset)
-        self.data_assets[key] = asset
-
+        self.data_assets[data_nft_symbol] = asset
         return asset
 
     def list_data_assets(self, return_did=False):
@@ -395,34 +387,30 @@ class OceanModule(BaseModule):
             return list(self.data_assets.keys())
     
     @staticmethod
-    def get_file_obj(file_obj:Union[dict,list], file_type:str=None):
+    def create_files(file_objects:Union[list, dict]):
+        if isinstance(file_objects, dict):
+            file_objects = [file_objects]
+        assert isinstance(file_objects, list) 
+        assert isinstance(file_objects[0], dict)
 
-        file_type_options = ['url', 'ipfs'] 
-        file_obj['type'] = file_obj.get('type', file_type)
-        
-        assert file_obj['type']  in file_type_options
+        output_files = []
+        for file_object in file_objects:
+            output_files.append(FilesTypeFactory.validate_and_create(file_object))
 
-        """Factory Method"""
-        if file_obj["type"] == "url":
-            return UrlFile(
-                file_obj["url"],
-                method=file_obj.get("method", "GET"),
-                headers=file_obj.get("headers"),
-            )
-        elif file_obj["type"] == "ipfs":
-            return IpfsFile(file_obj["hash"])
-        else:
-            raise Exception("Unrecognized file type")
+        return output_files
 
+
+
+    def dispense(self, data_nft=None, data_token=None, wallet=None):
+        raise NotImplementedError
 
     def mint(self, account:Union[str,Wallet], value:int=1,data_nft:str=None, data_token:str=None, token_address:str=None, wallet:Wallet=None , encode_value=True):
         wallet = self.get_wallet(wallet=wallet)
-
-        
         account_address = self.resolve_account(account=account, return_address=True)
 
         if encode_value:
             value = self.ocean.to_wei(str(value))
+
         datatoken = self.get_datatoken(data_nft=data_nft,data_token=data_token, address=token_address)
         
         assert datatoken != None, f'data_token is None my guy, args: {dict(data_nft=data_nft, data_token=data_token, token_address=token_address)}'
@@ -471,10 +459,11 @@ class OceanModule(BaseModule):
             assert isinstance(account, Wallet)
         
         return account
+
+    
     def get_balance(self,account:Union[Wallet,str]=None, data_nft:str=None, data_token:str=None, token_address:str=None):
         
         account_address = self.resolve_account(account=account, return_address=True)
-
         data_token = self.get_datatoken(data_nft=data_nft, data_token=data_token, address=token_address)
         if data_token == None:
             value =  self.web3.eth.get_balance(account_address)
@@ -547,6 +536,31 @@ class OceanModule(BaseModule):
                                         order_tx_id=order_tx_id
                                     )
         return file_path
+
+    @staticmethod
+    def create_metadata(self, data_nft=None, wallet=None, **kwargs ):
+
+        wallet = self.get_wlalet(wallet)
+
+        metadata = {}
+        metadata['description'] = kwargs.get('description', 'Insert Description')
+        metadata['author'] = kwargs.get('author', wallet.address)
+        metadata['liscense'] = kwargs.get('liscense', "CC0: PublicDomain")
+        metadata['categories'] = kwargs.get('categories', [])
+        metadata['tags'] = kwargs.get('tags', [])
+        metadata['additionalInformation'] = kwargs.get('additionalInformation', {})
+
+        # the name must be a data nft or a custom name
+        data_nft = self.get_datanft(data_nft)
+        metadata['name'] = data_nft.name()
+
+        created_datetime = datetime.datetime.now().isoformat()
+
+        metadata["created"]=  created_datetime,
+        metadata["updated"] = created_datetime
+
+        return metadata
+
         
     @classmethod
     def st_test(cls):
@@ -560,30 +574,20 @@ class OceanModule(BaseModule):
         module.create_datatoken(name='DataToken1', symbol=token_symbol, data_nft=nft_symbol)
 
         # Specify metadata and services, using the Branin test dataset
-        date_created = "2021-12-28T10:55:11Z"
-        metadata = {
-            "created": date_created,
-            "updated": date_created,
-            "description": "IPFS BRO",
-            "name": "IPFS BRO",
-            "type": "dataset",
-            "author": "Trent",
-            "license": "CC0: PublicDomain",
-        }
-
+ 
 
         
 
         if 'URL' in nft_symbol:
-            url_file = module.get_file_obj(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
+            url_file = module.create_file(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
         elif 'IPFS' in nft_symbol:
             cid = module.client.ipfs.put_json(data={'bro':1}, path='/tmp/fam.json')
-            url_file = module.get_file_obj(dict(hash=f'{cid}', type='ipfs'))
+            url_file = module.create_file({'hash':f'{cid}', 'type':'ipfs'})
 
         st.write(url_file.__dict__)
         asset = module.create_asset(
             metadata=metadata,
-            files=[url_file],
+            files=[{'hash':f'{cid}', 'type':'ipfs'}],
             data_nft=nft_symbol,
             data_token=token_symbol
         )
