@@ -627,6 +627,7 @@ class OceanModule(BaseModule):
 
         return metadata
 
+    
         
     @classmethod
     def st_test(cls):
@@ -642,12 +643,23 @@ class OceanModule(BaseModule):
         module.create_datatoken(name=token, datanft=datanft)
         st.sidebar.write(datanft.contract.functions._functions)
 
-        def get_tokenlist(self, datanft, ):
+        def get_tokens(self, datanft, return_type:str='value'):
             token_address_list = datanft.contract.caller.getTokensList()
-            token_list = list(map(lambda t_addr: Datatoken(web3=self.web3,address=t_addr), token_address_list))
-            return token_list
+            token_list = list(map(lambda t_addr: Datatoken(web3=self.web3,address=t_addr).contract, token_address_list))
+            
 
-        st.write(get_tokenlist(self=module, datanft=datanft))
+            supporrted_return_types = ['map', 'key', 'value']
+
+            assert return_type in supporrted_return_types, f'{return_type} not in {supporrted_return_types}'
+            if return_type in ['map']:
+                return {t.caller.name():t for t in token_list }
+            elif return_type in ['key']:
+                return [t.caller.name() for t in token_list]
+            elif return_type in ['value']:
+                return token_list
+            
+            else:
+                raise NotImplementedError
 
 
         # module.create_dispenser(datatoken=token, datanft=nft)
