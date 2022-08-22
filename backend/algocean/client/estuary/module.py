@@ -273,20 +273,20 @@ class EstuaryModule(BaseModule):
         api_key: str=None # Your Estuary API key
 
     ):
-    "Add content to a specific file system path in an IPFS collection"
-    api_key = self.resolve_api_key(api_key)
+        "Add content to a specific file system path in an IPFS collection"
+        api_key = self.resolve_api_key(api_key)
 
-    headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {api_key}',
-    }
+        headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+        }
 
-    params = {
-        'col': collection_id,
-    }
+        params = {
+            'col': collection_id,
+        }
 
-    response = requests.post(f'https://api.estuary.tech/collections/fs/add?col=UUID&content=LOCAL_ID&path={path}', params=params, headers=headers)
-    return response, parse_response(response)
+        response = requests.post(f'https://api.estuary.tech/collections/fs/add?col=UUID&content=LOCAL_ID&path={path}', params=params, headers=headers)
+        return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 19
     # add client safe upload key
@@ -325,6 +325,7 @@ class EstuaryModule(BaseModule):
         files = {
             'data': open(path_to_file, 'rb'),
         }
+
 
         response = requests.post('https://api.estuary.tech/content/add', headers=headers, files=files)
         return response, parse_response(response)
@@ -452,11 +453,9 @@ class EstuaryModule(BaseModule):
 
     
     def get_deal_status(self,
-        deal_id: str # Deal ID,
+        deal_id: str, # Deal ID,
         api_key: str=None # Your Estuary API key
-
     ):
-
         "Get deal status by id"
 
         api_key = self.resolve_api_key(api_key)
@@ -568,7 +567,7 @@ class EstuaryModule(BaseModule):
         return tmp_path
     
     
-    def save_model(self, model, path:str):
+    def save_model(self, model, path:str=None):
 
         
         # self.mkdir(path, create_parents=True)
@@ -582,7 +581,7 @@ class EstuaryModule(BaseModule):
         
         return cid
 
-    def save_tokenizer(self, tokenizer, path:str):
+    def save_tokenizer(self, tokenizer, path:str=None):
 
         
         # self.mkdir(path, create_parents=True)
@@ -618,7 +617,7 @@ class EstuaryModule(BaseModule):
         
         return dataset
 
-    def save_dataset(self, dataset, path:str):
+    def save_dataset(self, dataset, path:str=None):
         tmp_path = self.get_temp_path(path=path)
         dataset = dataset.save_to_disk(tmp_path)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
@@ -678,8 +677,8 @@ if __name__ == '__main__':
     # import torch
 
 
-    # dataset = load_dataset('glue', 'mnli', split='train')
-    # st.write(module.save_dataset(dataset=dataset,path= '/dog'))
+    dataset = load_dataset('glue', 'mnli', split='train')
+    st.write(module.save_dataset(dataset=dataset))
     # # cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
     # # st.write(module.get_pickle(cid))
 
@@ -688,5 +687,6 @@ if __name__ == '__main__':
     # st.write(module..get_object('/tmp/test.jsonjw4ij6u'))
 
 
-
-
+    # st.write(module.local.ls('/tmp/bro'))
+    # # st.write(module.add_data('/tmp/bro/state.json'))
+    # st.write(module.get_node_stats())

@@ -17,20 +17,18 @@ sys.path.append(os.getenv('PWD'))
 from algocean.client.local import LocalModule
 
 
+
+from fsspec.spec import  AbstractBufferedFile
+import io
+from fsspec.core import get_compression
+
+
+
 # register_implementation(IPFSFileSystem.protocol, IPFSFileSystem)
 # register_implementation(AsyncIPFSFileSystem.protocol, AsyncIPFSFileSystem)
 
 # with fsspec.open("ipfs://QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx", "r") as f:
 #     print(f.read())
-
-class ClientModule:
-    def __init__(self):
-        self.local = fsspec.filesystem("file")
-        self.fs = AsyncIPFSFileSystem()
-    
-register_implementation(AsyncIPFSFileSystem.protocol, AsyncIPFSFileSystem)
-
-    
     
 class IPFSModule(AsyncIPFSFileSystem):
     
@@ -42,7 +40,9 @@ class IPFSModule(AsyncIPFSFileSystem):
     def tmp_root_path(self):
         return f'/tmp/algocean/{self.id}'
     
-    def get_temp_path(self, path):
+    def get_temp_path(self, path=None):
+        if path == None:
+            path = 'temp'
         tmp_path = os.path.join(self.tmp_root_path, path)
         if not os.path.exists(self.tmp_root_path):
             self.local.makedirs(os.path.dirname(path), exist_ok=True)
@@ -50,7 +50,7 @@ class IPFSModule(AsyncIPFSFileSystem):
         return tmp_path
     
     
-    def save_model(self, model, path:str):
+    def save_model(self, model, path:str=None):
 
         
         # self.mkdir(path, create_parents=True)
@@ -64,7 +64,7 @@ class IPFSModule(AsyncIPFSFileSystem):
         
         return cid
 
-    def save_tokenizer(self, tokenizer, path:str):
+    def save_tokenizer(self, tokenizer, path:str=None):
 
         
         # self.mkdir(path, create_parents=True)
@@ -106,7 +106,8 @@ class IPFSModule(AsyncIPFSFileSystem):
         return dataset
 
 
-    def save_dataset(self, dataset, path:str):
+    def save_dataset(self, dataset, path:str=None):
+        
         tmp_path = self.get_temp_path(path=path)
         dataset = dataset.save_to_disk(tmp_path)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
@@ -116,14 +117,14 @@ class IPFSModule(AsyncIPFSFileSystem):
 
 
     
-    def put_json(self, data, path='json_placeholder.pkl'):
+    def put_json(self, data, path:str=None):
         tmp_path = self.get_temp_path(path=path)
         self.local.put_json(path=tmp_path, data=data)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
         self.local.rm(tmp_path)
         return cid
 
-    def put_pickle(self, data, path='/pickle_placeholder.pkl'):
+    def put_pickle(self, data, path:str=None):
         tmp_path = self.get_temp_path(path=path)
         self.local.put_pickle(path=tmp_path, data=data)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
@@ -170,12 +171,25 @@ if __name__ == '__main__':
     import torch
 
 
-    dataset = load_dataset('glue', 'mnli', split='train')
-    st.write(module.save_dataset(dataset=dataset,path= '/dog'))
+    dataset = load_dataset('wikitext', 'wikitext-103-v1', split='train')
+    cid = module.save_dataset(dataset=dataset.shard(10, 2))
+
+
+    st.write(module.local.ls('/tmp'))
+
+    dataset = module.load_dataset(cid)
+    st.write(dataset, cid)
+
+    st.write(cid)
     # cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
     # st.write(module.get_pickle(cid))
 
-    st.write(module.ls('/dog'))
+    # st.sidebar.write(dir(module))
+    # st.write(module.is_pinned(cid))
+    # module.rm_pin(cid)
+    # st.write(module.ls(cid))
+    # st.write(module.is_pinned(cid))
+    # st.write(module.ls('/'))
     # st.write(module.ls('/'))
     # st.write(module..get_object('/tmp/test.jsonjw4ij6u'))
 
