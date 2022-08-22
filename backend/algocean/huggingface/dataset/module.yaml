@@ -1,8 +1,12 @@
 
-module: huggingface.DatasetModule
+module: huggingface.dataset.DatasetModule
 
 
-dataset: 'squad'
+dataset: 
+  path: "glue"
+  name: "mrpc"
+  split: 'train'
+  
 pipeline: 
   - 
     tokenizer: 'bert-base-cased'
@@ -12,5 +16,4 @@ pipeline:
 
 metric: ['squad']
 
-
-client: get_cfg(client.manager)
+client: {}

@@ -4,56 +4,84 @@ sys.path.append(os.environ['PWD'])
 import datasets 
 import transformers
 from copy import deepcopy
-import 
 from typing import Union
-
+from copy import deepcopy
 from algocean import BaseModule
 import torch
 import ray
-from commune.utils.misc import dict_put
+from algocean.utils import dict_put
+from datasets.utils.py_utils import asdict, unique_values
 
-class DatasetModule(BaseModule):
-    default_cfg_path= 'algocean.huggingface.dataset.module'
+import fsspec
+import os
+from ipfsspec.asyn import AsyncIPFSFileSystem
+from fsspec import register_implementation
+import asyncio
+import io
 
-    def __init__(self, cfg=None):
-        BaseProcess.__init__(self, cfg=Module)
-        self.load()
-        self.pipeline
+from transformers import AutoModel, AutoTokenizer
+from datasets import load_dataset, Dataset
 
-    def load(self):
-        # loads the dataset
-        self.dataset = self.load_dataset()
+class DatasetModule(BaseModule, Dataset):
+    default_cfg_path = 'huggingface.dataset.module'
+    default_wallet_key = 'default'
+    wallets = {}
+    def __init__(self, config=None):
+        BaseModule.__init__(self, config=config)
+        self.load_dataset()
 
-        # loads the pipeline
-        self.pipeline = self.load_pipeline()
+    @staticmethod
+    def is_load_dataset_config(kwargs):
+        '''
+        check if dataset config is a valid kwargs for load_dataset
+        '''
+        key_type_tuples = [('path',str)]
+        for k, k_type in key_type_tuples:
+            if not isinstance(kwargs.get(k, k_type)):
+                return False
+        return True
+
+        return  'path' in kwargs
 
 
     def load_dataset(self, *args, **kwargs):
-
         if len(args) + len(kwargs) == 0:
-            args = self.cfg.get('dataset')
-            assert type(args) in [str, dict, list]
+            config_kwargs = self.config.get('dataset') 
+            if isinstance(config_kwargs, list):
+                args = config_kwargs
+            elif isinstance(config_kwargs, dict):
+                kwargs = config_kwargs
 
-            kwargs = {}
-
-            if type(args) == str):
-                args = [args]
-            if type(args) == dict:
-                kwargs = args
-                args = []
-            if type(args) == list:
-                args = args
-                kwargs = {}
-            
-        return datasets.load_dataset(*args, **kwargs)
+        self.dataset = load_dataset(*args, **kwargs)
+        return self.dataset
+    
+    
 
 
+    def get_info(self, to_dict =True):
+
+        def get_info_fn(ds, to_dict=to_dict):
+            ds_info = deepcopy(ds.info)
+            if to_dict:
+                ds_info = asdict(ds_info)
+            return ds_info
         
-        if isinstance(dataset_kwargs, str):
-            dataset_args = []
+        if isinstance(self.dataset, list):
+            ds_info = list(map(get_info_fn, self.dataset))
+        elif isinstance(self.dataset, dict):
+            ds_info = {k:get_info_fn(ds=v) for k,v in self.dataset.items()}
+        elif isinstance(self.dataset, Dataset):
+            ds_info  = get_info_fn(ds=self.dataset)
 
-        if 
-        datasets.load_dataset(**)
+        return ds_info
+
+
+    info = property(get_info)
+
+
+    def save(self):
+        return self.client.ipfs.save_dataset(path='/', dataset=self.dataset)
+
     def load_pipeline(self, *args, **kwargs):
         
         if len(args) + len(kwargs) == 0:
@@ -61,95 +89,32 @@ class DatasetModule(BaseModule):
             assert type(kwargs) != None 
             if type(kwargs)  == str:
                 transformer.AutoTokenizer.from_pretrained(kwargs) 
-            else:
         else:
             raise NotImplementedError
-        if pipeline_kwargs == None
-
-    def save(self,dataset=None, *args, **kwargs):
-
-        if dataset != None:
-            return dataset.save_to_disk(*args, **kwargs)
-
-    def push_to_hub(self,dataset=None, **args, **kwargs):
-        
-        if dataset != None:
-            return dataset.push_to_hub(*args, **kwargs)
-
-    def load_pipeline(self):
-        pipeline_cfg = self.cfg.get('pipeline')
-        assert pipeline_cfg != None
-
-        if isinstance(pipeline_cfg, list):
-            pipeline = range(len(pipeline_cfg))
-        elif isinstance(pipeline_cfg, dict):
-            pipeline = list(pipeline_cfg.keys())
-
-        for process_key in pipeline_keys:
-
-            process = self.pipeline[process_key]
-            process_cfg = pipeline_cfg[process_key]
-
-            process_params = process_cfg.get('params', {})
-            process_input_keys = process_cfg.get('input')
-            process_output_keys = process_cfg.get('output')
-
-            if isinstance(process_input_keys, str):
-                process_input_keys = [process_input_keys]
-            if isinstance(process_output_keys, str):
-                process_output_keys = [process_poutput_keys]
-
-            def process_fn(inputs:dict):
-                input_kwargs, input_args = {}, []
-                
-                inputs_type = type(inputs)
-                input_keys_type = type(input_keys)
-
-                if input_keys_type in [list]:
-                    input_args = [inputs[k] for k in input_keys]
-                elif input_keys_type in [dict]:
-                    input_kwargs = {k:inputs[v] for k,v in input_keys.items()}
-                elif input_keys = None:
-                    input_args = [inputs]
-
-                outputs = process(*input_arg, **input_kwargs, **process_params)
-
-                '''
-                map outputs back to input sample
-                '''
-                outputs_type = type(outputs) 
-                output_keys_type = type(output_keys)
-                
-                assert len(outputs) == len(output_keys)
-
-                if outputs_type in [list, tuple]:
-                    if output_keys_type == dict:
-                        output_keys = list(output_keys.values())
-
-                    for i in range(len(output_keys)):
-                        inputs[output_keys[i]] = outputs[i]
-                    
-                elif outputs_type in [dict]:
-                    if output_keys_type == dict:
-                        outputs = {k:outputs[v] for k,v in output_keys.items()}
-                    elif output_keys_type == list:
-                        outputs = {k: outputs[k] for k in output_keys}
-                
-                    inputs.update(outputs)
-                elif output_keys == None:
-                    return outputs
-
-                return inputs
-        
-            dag.append(process_fn)
-
-        return dag
-
 
 if __name__ == '__main__':
-    with ray.init(address="auto",namespace="commune"):
-        model = DatasetModule.deploy(actor={'refresh': False})
-        sentences = ['ray.get(model.encode.remote(sentences))', 'ray.get(model.encoder.remote(sentences)) # whadup fam']
-        print(ray.get(model.self_similarity.remote(sentences)))
+    import streamlit as st
+    
+    st.write(Dataset.__init__)
+    module = DatasetModule()
+    # dataset, model, tokenizer = {}, {}, {}
+    # module.load_dataset(path="glue", name="mrpc", split=['train', 'validation'])
+    # st.write(module)
+    # dataset2 = load_dataset("wikitext", "wikitext-103-v1", split='train')
+    # model = AutoModel.from_pretrained("bert-base-uncased")
+    # tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    # st.write(asdict(module.dataset.info))
+    # st.write(module)
+
+    # st.write(module.dataset.save_to_disk('/tmp/bro'))
+
+    st.write(module.client.ipfs.save_dataset(module.dataset.shard(num_shards=20, index=0), path='/'))
+    # st.write(module.save())
+
+    pass
+    # with ray.init(address="auto",namespace="commune"):
+    #     model = DatasetModule.deploy(actor={'refresh': False})
+    #     sentences = ['ray.get(model.encode.remote(sentences))', 'ray.get(model.encoder.remote(sentences)) # whadup fam']
+    #     print(ray.get(model.self_similarity.remote(sentences)))
 
         

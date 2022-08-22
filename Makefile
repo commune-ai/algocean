@@ -9,7 +9,7 @@ up:
 
 
 restart:
-	docker kill $(docker ps --filter "name=ocean" -q); ./start.sh;
+	./start.sh --purge && ./start.sh;
 
 
 prune_volumes:	

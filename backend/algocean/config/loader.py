@@ -3,6 +3,7 @@ import re
 import sys
 sys.path.append(os.environ['PWD'])
 import yaml
+
 from copy import deepcopy
 # sys.path.append(os.environ['PWD'])
 from algocean.utils import dict_get,dict_put, list2str
@@ -111,7 +112,6 @@ class ConfigLoader:
 
         if isinstance(cfg, str):
             config_path = re.compile('^(get_cfg)\((.+)\)').search(input)
-
             # if there are any matches ()
             if config_path:
                 config_path = config_path.group(2)

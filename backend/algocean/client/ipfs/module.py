@@ -105,8 +105,8 @@ class IPFSModule(AsyncIPFSFileSystem):
         
         return dataset
 
-    @staticmethod
-    def save_dataset(dataset, path:str):
+
+    def save_dataset(self, dataset, path:str):
         tmp_path = self.get_temp_path(path=path)
         dataset = dataset.save_to_disk(tmp_path)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
@@ -170,11 +170,12 @@ if __name__ == '__main__':
     import torch
 
 
+    dataset = load_dataset('glue', 'mnli', split='train')
+    st.write(module.save_dataset(dataset=dataset,path= '/dog'))
+    # cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
+    # st.write(module.get_pickle(cid))
 
-    cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
-    st.write(module.get_pickle(cid))
-
-    st.write(module.ls('/bro'))
+    st.write(module.ls('/dog'))
     # st.write(module.ls('/'))
     # st.write(module..get_object('/tmp/test.jsonjw4ij6u'))
 
