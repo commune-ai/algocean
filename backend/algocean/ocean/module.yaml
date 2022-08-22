@@ -5,7 +5,6 @@ wallet:
   alice: TEST_PRIVATE_KEY1
   bob: TEST_PRIVATE_KEY2
 
-
 network: local
 
 save:
@@ -15,20 +14,6 @@ save:
     params:
       path: 'tmp/algocean/data_nfts.json'
 
-
-  datatokens:
-    module: local
-    fn: put_object
-    params:
-      path: 'tmp/algocean/data_tokens.json'
-
-  dataassets:
-    module: local
-    fn: put_object
-    params:
-      path: 'tmp/algocean/data_assets.json'
-      
-    default: {}
 load:
   datanfts:
     module: local
@@ -36,22 +21,6 @@ load:
     params:
       path: 'tmp/algocean/data_nfts.json'
 
-    default: {}
-
-  datatokens:
-    module: local
-    fn: get_object
-    params:
-      path: 'tmp/algocean/data_tokens.json'
-      
-    default: {}
-
-  dataassets:
-    module: local
-    fn: get_object
-    params:
-      path: 'tmp/algocean/data_assets.json'
-      
     default: {}
 
   

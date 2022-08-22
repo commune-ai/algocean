@@ -19,3 +19,6 @@
 [submodule "contracts"]
 	path = contracts
 	url = https://github.com/commune-ai/contracts.git
+[submodule "subgraph"]
+	path = subgraph
+	url = https://github.com/commune-ai/ocean-subgraph.git
