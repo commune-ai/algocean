@@ -26,14 +26,19 @@ from datasets import load_dataset, Dataset, load_dataset_builder
 
 class DatasetModule(BaseModule, Dataset):
     default_cfg_path = 'huggingface.dataset.module'
-    default_wallet_key = 'default'
-    wallets = {}
+
+    datanft = None
+    default_token_name='token' 
+
+    
     dataset = {}
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
         self.load_dataset_factory()
         self.load_dataset_builder()
         self.load_dataset()
+
+
 
     @staticmethod
     def is_load_dataset_config(kwargs):
@@ -123,7 +128,8 @@ class DatasetModule(BaseModule, Dataset):
         if mode == 'ipfs':
             path_split_map = {}
             for split, dataset in self.dataset.items():
-                path_split_map[split] = self.client.ipfs.save_dataset(dataset)
+                cid = self.client.ipfs.save_dataset(dataset)
+                path_split_map[split] = self.client.ipfs.ls(cid)
             self.config['state_path'] = path_split_map
         else:
             raise NotImplementedError
@@ -174,17 +180,46 @@ class DatasetModule(BaseModule, Dataset):
         return self.config['dataset']['name']
 
     def create_asset(self, datatoken='token', services:list=[] ):
-        self.algocean.create_asset(datanft=self.path, datatoken=datatoken,
+        self.algocean.create_asset(datanft=self.dataset_name, datatoken=datatoken,
                                  services=services )
 
-
     @property
-    def url_files(self):
-        split_path_map = self.save()
-        
-        url_files = self.algocean.create_files([{'hash': p, 'type': 'ipfs'} for p in split_path_map.values()])
+    def url_files_metadata(self):
+        pass
 
-        return url_files
+    def get_url_data(self):
+        split_path_map = self.save()
+
+        file_index = 0
+        url_files = []
+        split_url_files_info = {}
+        cid2index = {}
+        for split, split_file_configs in split_path_map.items():
+            split_url_files_info[split] = []
+      
+            for file_config in split_file_configs:
+                
+                cid = file_config['CID']
+                if cid not in cid2index:
+                    url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
+                    cid2index[cid] = file_index
+                    file_index += 1
+
+                split_url_files_info[split].append(dict(
+                    name=file_config['name'].split('/')[1],
+                    type=file_config['type'],
+                    size = file_config['size'],
+                    file_index=cid2index[cid],
+                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
+                ))
+
+        st.write(split_url_files_info, url_files)
+
+        self.url_files = url_files
+        self.split_url_files_info = split_url_files_info
+        # url_files = 
+
+        return url_files, split_url_files_info
     @property
     def additional_information(self):
 
@@ -194,25 +229,41 @@ class DatasetModule(BaseModule, Dataset):
                         'name': 'datasets',
                         'version': datasets.__version__
                         },
-            'info': self.info    
+            'info': self.info, 
+            'file_info': self.split_url_files_info
         }
         return info_dict
 
+    def dispense_tokens(self,token=None):
+        if token == None:
+            token =self.default_token_name
+        self.algocean.dispense_tokens(datatoken=token,
+                                      datanft=self.datanft)
+
     def create_service(self,
                         name: str= None,
-                        service_type: str= 'download',
+                        service_type: str= 'access',
                         files:list = None,
                         timeout = 180000,
+                        price_mode = 'free',
                         **kwargs):
+
+        self.datanft = self.algocean.get_datanft(self.dataset_name, create_if_null=True)
+        datatoken = self.algocean.create_datatoken(name=kwargs.get('datatoken', self.default_token_name))
+        if price_mode =='free':
+            self.algocean.create_dispenser(datatoken=datatoken,datanft=self.datanft)
+        else:
+            raise NotImplementedError
 
         if name == None:
             name = self.config_name
         if files == None:
-            files = self.url_files
+            files, split_files_metadata = self.get_url_data()
 
         name = '.'.join([name, service_type])
         return self.algocean.create_service(name=name,
                                             timeout=timeout,
+                                            datatoken=datatoken,
                                             service_type=service_type, 
                                             description= self.info['description'],
                                             files=files,
@@ -242,16 +293,58 @@ class DatasetModule(BaseModule, Dataset):
     def split_info(self):
         return self.info['splits']
 
+    @property
+    def asset(self):
+        return self.algocean.get_asset(self.dataset_name)
 
-    def create_asset(self):
-        self.algocean.create_datanft(name=self.dataset_name)
+    @property
+    def services(self):
+        return self.asset.services
+
+    @staticmethod
+    def get_cid_hash(file):
+        cid =  os.path.basename(file).split('.')[0]
+        cid_hash = module.algocean.web3.toHex((module.algocean.web3.keccak(text=cid)))
+        return cid_hash
+
+    def download(self, service=None, destination='bruh/'):
+        if service == None:
+            service = self.services[0]
+
+        module.algocean.download_asset(asset=module.dataset_name, service=service,destination=destination )
+        
+
+        
+        for split,split_files_info in service.additional_information['file_info'].items():
+            for file_info in split_files_info:
+                file_index = file_info['file_index']
+                file_name = file_info['name']
+                st.write(file_info)
+                did = self.asset.did
+
+        # /Users/salvatore/Documents/commune/algocean/backend/bruh/datafile.did:op:6871a1482db7ded64e4c91c8dba2e075384a455db169bf72f796f16dc9c2b780,0
+        # st.write(destination)
+        # og_path = self.client.local.ls(os.path.join(destination, 'datafile.'+did+f',{file_index}'))
+        # new_path = os.path.join(destination, split, file_name )
+        # self.client.local.makedirs(os.path.dirname(new_path), exist_ok=True)
+        # self.client.local.cp(og_path, new_path)
+
+        files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
+        st.write(dict(zip(list(map(self.get_cid_hash, files)), files)))
+                
+            
+    def create_asset(self, price_mode='free', services=None):
+
+        self.datanft = self.algocean.create_datanft(name=self.dataset_name)
+
         metadata = self.metadata
-        services = self.create_service()
+        if services==None:
+            services = self.create_service(price_mode=price_mode)
 
         if not isinstance(services, list):
             services = [services]
-
-        return self.algocean.create_asset(datanft=self.dataset_name, datatoken='token', metadata=metadata, services=services)
+            
+        return self.algocean.create_asset(datanft=self.dataset_name, metadata=metadata, services=services)
 
 if __name__ == '__main__':
     import streamlit as st
@@ -259,8 +352,15 @@ if __name__ == '__main__':
     module = DatasetModule()
     module.algocean.load()
     # module.algocean.create_datanft(name=module.builder_name)
-    # st.write(module.create_service().__dict__)
-    st.write(module.create_asset())
+
+    # st.write(module.create_asset())
+    module.dispense_tokens()
+    # st.write(module.algocean.get_balance(datatoken='token', datanft=module.dataset_name))
+    # st.write(module.asset.services[0].additional_information['file_info'])
+    # st.write(module.get_url_data())
+    module.download( )
+    module.algocean.save()
+    # st.write(module.algocean.save())
     # # module.dataset.info.FSGSFS = 'bro'
     # load_dataset('glue')
     # st.write(module.info)

@@ -289,6 +289,9 @@ class OceanModule(BaseModule):
         '''
         get asset from datanft
         '''
+        if isinstance(datanft, Asset):
+            return datanft
+
         datanft =self.get_datanft(datanft)
         assets = self.search(text=f'nft.address:{datanft.address}', return_type='asset')
         try:
@@ -449,7 +452,7 @@ class OceanModule(BaseModule):
             elif create_if_null:
                 datanft = self.create_datanft(name=datanft)
         else: 
-            raise NotImplementedError
+            raise NotImplementedError(datanft)
 
 
         assert isinstance(datanft, DataNFT), f'datanft should be in the formate of DataNFT, not {datanft}'
@@ -457,41 +460,20 @@ class OceanModule(BaseModule):
 
 
 
-    def create_asset(self,datanft, datatoken, services:list=[{}], metadata:dict=None, wallet=None, **kwargs ):
-
+    def create_asset(self,datanft, services:list, metadata:dict=None, wallet=None, **kwargs ):
+        wallet = self.get_wallet(wallet)
         datanft = self.get_datanft(datanft=datanft, create_if_null=True)
-        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken, create_if_null=True)
-
         asset = self.get_asset(datanft, handle_error=True)
-
         if asset != None:
             assert isinstance(asset, Asset)
             return asset
                
-
-
-        # if isinstance(services, dict):
-        #     services = [services]
-        # elif isinstance(services, list):
-        #     assert len(services) > 0
-        #     assert isinstance(services[0], dict)
-        #     services = services
-
-        # st.write(services)
-        # services = list(map(lambda service: self.create_service( datanft=datanft, datatoken=datatoken, wallet=wallet, **service), services) )
-        
-        wallet = self.get_wallet(wallet)
-
-        if kwargs.get('metadata') == None:
+        if metadata == None:
             metadata = self.create_metadata(datanft=datanft,wallet=wallet, **kwargs.get('metadata', {}))
-        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken)
-
-
-        deployed_datatokens = [datatoken]
-
+        
         default_kwargs= dict(
         data_nft_address = datanft.address,
-        deployed_datatokens = deployed_datatokens,
+        deployed_datatokens = [self.get_datatoken(s.datatoken) for s in services],
         publisher_wallet= wallet,
         metadata= metadata,
         services=services
@@ -527,9 +509,6 @@ class OceanModule(BaseModule):
 
 
 
-    def dispense(self, datanft=None, datatoken=None, wallet=None):
-        raise NotImplementedError
-
     def mint(self, to:Union[str,Wallet], value:int=1,datanft:str=None, datatoken:str=None, wallet:Wallet=None , encode_value=True):
         wallet = self.get_wallet(wallet=wallet)
         to_address = self.get_wallet(wallet=to, return_address=True)
@@ -544,6 +523,7 @@ class OceanModule(BaseModule):
 
 
     def get_datatoken(self, datatoken:str=None, datanft:str=None, create_if_null:bool=False) -> Datatoken:
+
 
         datanft = self.get_datanft(datanft=datanft, create_if_null=create_if_null)
 
@@ -560,7 +540,7 @@ class OceanModule(BaseModule):
                     # get the addresses
                     datatoken_addresses = [dt.address for dt in datatokens_map.values()]
                     if datatoken in datatoken_addresses:
-                        return self.ocean.get_datatoken(datatoken=datatoken)
+                        return Datatoken(web3=self.web3,address=datatoken)
 
                 if datatoken in datatokens_map:
                     return datatokens_map[datatoken]
@@ -608,7 +588,7 @@ class OceanModule(BaseModule):
 
     def create_service(self,
                         name: str,
-                        service_type:str = 'download',
+                        service_type:str = 'access',
                         files:list = None,
                         datanft:Optional[str]=None,
                         datatoken: Optional[str]=None,
@@ -616,7 +596,7 @@ class OceanModule(BaseModule):
                         wallet=None,**kwargs):
         wallet = self.get_wallet(wallet)
         datanft = self.get_datanft(datanft=datanft)
-        datatoken = datatoken if isinstance(datatoken, str) else name
+        datatoken = datatoken if datatoken != None else name
         datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken, create_if_null=True)
 
         if files == None:
@@ -640,6 +620,8 @@ class OceanModule(BaseModule):
 
 
     def get_service(self, asset=None, service=None):
+        if isinstance(service, Service):
+            return service
         asset = self.get_asset(asset)
         if service == None:
             assert len(asset.services)>0, 'There are no services for the asset'
@@ -657,7 +639,7 @@ class OceanModule(BaseModule):
                               wallet:Union[str, Wallet]=None, **kwargs):
         
         
-        asset = self.get_asset(asset=asset)
+        asset = self.get_asset(asset)
         service= self.get_service(asset=asset, service=service)
         wallet = self.get_wallet(wallet=wallet) 
 
@@ -677,8 +659,9 @@ class OceanModule(BaseModule):
 
         return order_tx_id   
         
-    def download_asset(self, wallet, asset, service=None, destination='./', order_tx_id=None ):
-        asset = self.get_asset(asset=asset)
+
+    def download_asset(self, asset, service=None, destination='./', order_tx_id=None,index=None, wallet=None):
+        asset = self.get_asset(asset)
         service= self.get_service(asset=asset, service=service)
         wallet = self.get_wallet(wallet=wallet) 
 
@@ -690,6 +673,7 @@ class OceanModule(BaseModule):
                                         service=service,
                                         consumer_wallet=wallet,
                                         destination=destination,
+                                        index=index,
                                         order_tx_id=order_tx_id
                                     )
         return file_path
