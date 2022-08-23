@@ -457,7 +457,7 @@ class OceanModule(BaseModule):
 
 
 
-    def create_asset(self,datanft, datatoken, services:list=[{}], wallet=None, **kwargs ):
+    def create_asset(self,datanft, datatoken, services:list=[{}], metadata:dict=None, wallet=None, **kwargs ):
 
         datanft = self.get_datanft(datanft=datanft, create_if_null=True)
         datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken, create_if_null=True)
@@ -470,18 +470,20 @@ class OceanModule(BaseModule):
                
 
 
-        if isinstance(services, dict):
-            services = [services]
-        elif isinstance(services, list):
-            assert len(services) > 0
-            assert isinstance(services[0], dict)
-            services = services
+        # if isinstance(services, dict):
+        #     services = [services]
+        # elif isinstance(services, list):
+        #     assert len(services) > 0
+        #     assert isinstance(services[0], dict)
+        #     services = services
 
-        st.write(services)
-        services = list(map(lambda service: self.create_service( datanft=datanft, datatoken=datatoken, wallet=wallet, **service), services) )
+        # st.write(services)
+        # services = list(map(lambda service: self.create_service( datanft=datanft, datatoken=datatoken, wallet=wallet, **service), services) )
         
         wallet = self.get_wallet(wallet)
-        metadata = self.create_metadata(datanft=datanft,wallet=wallet, **kwargs.get('metadata', {}))
+
+        if kwargs.get('metadata') == None:
+            metadata = self.create_metadata(datanft=datanft,wallet=wallet, **kwargs.get('metadata', {}))
         datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken)
 
 
@@ -507,9 +509,8 @@ class OceanModule(BaseModule):
     
 
     def dummy_files(self, mode='ipfs'):
-        cid = self.client.ipfs.put_json(data={'dummy':True}, path='/tmp/fam.json')
+        cid = self.client.ipfs.put_json(data={'dummy':True})
         return self.create_files([{'hash':f'{cid}', 'type':'ipfs'}]*1)
-
 
     @staticmethod
     def create_files(file_objects:Union[list, dict]=None, handle_null=False):
@@ -606,7 +607,8 @@ class OceanModule(BaseModule):
 
 
     def create_service(self,
-                        name: Optional[str]='download',
+                        name: str,
+                        service_type:str = 'download',
                         files:list = None,
                         datanft:Optional[str]=None,
                         datatoken: Optional[str]=None,
@@ -614,23 +616,20 @@ class OceanModule(BaseModule):
                         wallet=None,**kwargs):
         wallet = self.get_wallet(wallet)
         datanft = self.get_datanft(datanft=datanft)
-
-        if datatoken == None:
-            datatoken = name
+        datatoken = datatoken if isinstance(datatoken, str) else name
         datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken, create_if_null=True)
 
-        st.write(datatoken)
         if files == None:
             files = self.dummy_files()
 
         service_dict = dict(
             name=name,
-            service_type=kwargs.get('type', 'dataset'),
+            service_type=service_type,
             service_id= kwargs.get('id', name),
             files=files,
             service_endpoint=kwargs.get('service_endpoint', self.ocean.config.provider_url),
             datatoken=datatoken.address,
-            timeout=3600,
+            timeout=kwargs.get('timeout', 3600),
             description = 'Insert Description here',
             additional_information= additional_information,
         )
@@ -638,9 +637,6 @@ class OceanModule(BaseModule):
         service_dict = {**service_dict, **kwargs}
 
         return Service(**service_dict)
-
-
-
 
 
     def get_service(self, asset=None, service=None):

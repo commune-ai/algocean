@@ -13,7 +13,6 @@ class LocalModule(LocalFileSystem):
     def __init__(self, config=None):
         LocalFileSystem.__init__(self)
         self.config= self.resolve_config(config)
-        self.config = self.resolve_config(config)
     
     def ensure_path(self, path):
         """
@@ -25,6 +24,8 @@ class LocalModule(LocalFileSystem):
         elif os.path.isdir(path):
             dir_path = path
         elif len(file_extension)>0:
+            dir_path = os.path.dirname(path)
+        else:
             dir_path = os.path.dirname(path)
 
         if not os.path.isdir(dir_path):

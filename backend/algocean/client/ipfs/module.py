@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
     st.write(module.local.ls('/tmp'))
 
-    dataset = module.load_dataset(cid)
+    st.write(module.save())
     st.write(dataset, cid)
 
     st.write(cid)

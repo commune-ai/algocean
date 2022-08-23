@@ -677,7 +677,7 @@ if __name__ == '__main__':
     # import torch
 
 
-    dataset = load_dataset('glue', 'mnli', split='train')
+    dataset = load_dataset('glue', 'mnli', split='trainff')
     st.write(module.save_dataset(dataset=dataset))
     # # cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
     # # st.write(module.get_pickle(cid))

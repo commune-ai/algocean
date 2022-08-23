@@ -1,6 +1,5 @@
 
-bro : fam
-
+module: ocean.OceanModule
 wallet:
   alice: TEST_PRIVATE_KEY1
   bob: TEST_PRIVATE_KEY2

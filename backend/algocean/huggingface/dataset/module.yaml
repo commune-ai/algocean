@@ -5,8 +5,12 @@ module: huggingface.dataset.DatasetModule
 dataset: 
   path: "glue"
   name: "mrpc"
-  split: 'train'
+  split: [train, validation]
   
+
+submodules: 
+  algocean: get_cfg(ocean.module)
+
 pipeline: 
   - 
     tokenizer: 'bert-base-cased'
