@@ -6,7 +6,8 @@ start:
 	./start.sh 
 up:
 	./start.sh 
-
+backend: 
+	./start.sh --backend; docker exec -it ocean_backend_1;
 
 restart:
 	./start.sh --purge && ./start.sh;
@@ -21,10 +22,14 @@ build_backend:
 	docker-compose -f "backend/backend.yml" build;
 
 app:
-	docker exec -it ocean_backend_1 bash -c "streamlit run algocean/ocean/module.py"
+	docker exec -it ocean_backend_1 bash -c "streamlit run ${arg}"
 
 kill_all:
 	docker kill $(docker ps -q)
 
 logs:
 	docker logs ${arg} --tail=100 --follow
+
+
+enter_backend:
+	docker exec -it ocean_backend_1 bash

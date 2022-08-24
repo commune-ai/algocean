@@ -6,8 +6,23 @@ sys.path.append(os.environ['PWD'])
 import gradio
 from algocean import BaseModule
 from inspect import getfile
+import inspect
 import socket
 from algocean.utils import SimpleNamespace
+
+
+class bcolor:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    
+
 
 class GradioModule(BaseModule):
     default_cfg_path =  'gradio.module'
@@ -44,8 +59,7 @@ class GradioModule(BaseModule):
         # self.module2port[module]
         return True
 
-    def rm_module(self, port):
-        print(current)
+    def rm_module(self, port:str=10, output_example=['bro']):
         visable.remove(current)
         return jsonify({"executed" : True,
                         "ports" : current['port']})
@@ -85,7 +99,7 @@ class GradioModule(BaseModule):
 
 
 
-    def list_modules(self, mode='config'):
+    def list_modules(self, mode='config', output_example=['bro']):
 
         assert mode in ['config', 'module']
 
@@ -114,7 +128,7 @@ class GradioModule(BaseModule):
         return module_list
 
 
-    def active_port(self, port):
+    def active_port(self, port:int=1):
         is_active = port in self.port2module
         return is_active
 
@@ -165,8 +179,6 @@ class GradioModule(BaseModule):
 
         print("\nHappy Visualizing... 🚀")
         return gradio.TabbedInterface(demos, names)
-    
-
 
     @staticmethod
     def register(inputs, outputs):
@@ -190,86 +202,100 @@ class GradioModule(BaseModule):
 
 
 
+import socket
+import argparse
+from fastapi import FastAPI
+import uvicorn
+
+app = FastAPI()
 
 
-class bcolor:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+module = None
+
+
+def get_module(config = {}):
+    global module
+    if module == None:
+        module = GradioModule(config=config)
     
+    return module
 
 
-class GradioClient:
-    api = GradioModule()
 
-    find_registered_functions = GradioModule.find_registered_functions
-    compile = GradioModule.compile
-    register = GradioModule.register
-
-    @staticmethod
-    def run(self,host=None, port=7868, live=False, replace=True, **kwargs):
-
-        port = port if port else GradioClient.api.suggest_port()
-        host = host if host else GradioClient.api.host
-        url = SimpleNamespace(**{ 'api': f'{host}:{GradioClient.api.port}',
-                              'gradio' : f'{host}:{port}'})
-        
-        print('url', url.__dict__)
-
-        allow_flagging = kwargs.get('flagging', 'never')
-
-        gradio_metadata = { 
-                           "host" : host, 
-                           'url': url.gradio,
-                           "live": live,
-                           "port": port,
-                        #    "module" : getfile(self.__class__), 
-                        #    "name" : self.__class__.__name__,
-                            **kwargs
-                            }
-
-        GradioClient.api.add_module(port=port, metadata=gradio_metadata)
-
-        GradioClient.compile(self, live=live, allow_flagging=allow_flagging).launch(server_name= host ,server_port=port) 
+@app.get("/")
+async def root():
+    module = get_module()
+    print(module)
+    return {"message": "Hello World"}
 
 
-class TestModule(BaseModule):
-    config = dict(module='gradio.module.TestModule')
+@app.get("/append/port")
+def append_port(port:int=10):
+    module = get_module()
+    current = request.json
+    visable.append(port)
+    return jsonify({"executed" : True})
 
-    def __init__(self, config=config):
-        pass
-    # @GradioClient.register(inputs=["text", "text", gradio.Radio(["morning", "evening", "night"])], outputs="text")
-    def Hello(self, Lname : str, Fname : str, day : 'list[any]'=["morning", "evening", "night"]) -> str:
-        return "Hello, {} {}".format(Fname, Lname)  
 
-    # @GradioClient.register(inputs=["text", "text"], outputs="text")
-    def goodbye(self, Fname : str, Lname : str) -> str:
-        return "Goodbye, {} {}".format(Fname, Lname)  
-    # @GradioClient.register(inputs=["text", gradio.Checkbox() , gradio.Slider(0, 60)], outputs=["text", "number"])
-    import torch
-    def greet(self, fam, name:str='billy', is_morning=False, temperature=10, bro=None):
-        salutation = "Good morning" if is_morning else "Good evening"
-        greeting = "%s %s. It is %s degrees today" % (salutation, name, temperature)
-        celsius = (temperature - 32) * 5 / 9
-        return (greeting, round(celsius, 2))
+@app.get("/append/fam")
+def append_port(port:int=10):
+    module = get_module()
+    current = request.json
+    visable.append(port)
+    return jsonify({"executed" : True})
 
-if __name__== '__main__':
+
+@app.put("/remove/port")
+def remove_port(port:int=10, output_example:dict={'bro': {'bro':1}}):
+    module = get_module()
+    current = request.json
+    print(current)
+    visable.remove(current)
+    return jsonify({"executed" : True,
+                    "ports" : current['port']})
+
+@app.get("/open/ports")
+
+
+
+def open_ports():
+    module = get_module()
+
+    return jsonify(visable)
+
+
+
+import inspect
+
+def get_parents(cls):
+    return list(cls.__mro__[1:-1])
+
+def get_parent_functions(cls):
+    parent_classes = get_parents(cls)
+    function_list = []
+    for parent in parent_classes:
+        function_list += get_functions(parent)
+
+    return list(set(function_list))
+
+
+
+
+from algocean.utils import *
+
+
+
+
+if __name__ == "__main__":
     import streamlit as st
-    # st.write(dir(TestModule))
-    st.write('WHDU')  
-    import ray
 
-    ray.shutdown()
-    with ray.init(address='auto', namespace='commune'):
-        num_apps = 2
-        # st.write(GradioClient.run(test_instance))
-        # st.write(ray.get([test_instance.run.remote(port=7868+i) for i,test_instance in enumerate(test_instance_list) ]))
+    module = GradioModule()
+    # st.write(type(GradioModule.active_port))
+    import json
 
-        instance = TestModule()
-        st.write(TestModule.get_fn_schema(TestModule.greet))
+
+    st.write(get_module_function_schema(module, True))
+
+
+
+    # uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

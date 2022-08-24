@@ -1,12 +1,12 @@
 
 from algocean.utils import get_object
 from algocean.config.loader import ConfigLoader
-
-class BaseModule:
+from algocean.ray.actor import ActorModule
+class BaseModule(ActorModule):
     client = None
     default_cfg_path = None
-
     def __init__(self, config=None):
+        ActorModule.__init__(self,config=config)
         self.config_loader = ConfigLoader()
         self.config = self.get_config(config=config)
 
