@@ -1,7 +1,7 @@
 import ray
 from algocean.config import ConfigLoader
 from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr
-from algocean.utils import dict_put, get_object, dict_get, get_module_file
+from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class 
 import os
 import datetime
 import inspect
@@ -55,10 +55,13 @@ class ActorModule:
         config: path to config or actual config
         client: client dictionary to avoid child processes from creating new clients
         """
-        if isinstance(config,type):
-            return config
-
         module_class = None
+        # if this is a class return the class
+        if is_class(config):
+            module_class = config
+            return module_class
+
+
         if isinstance(config, str):
             # check if object is a path to module, return None if it does not exist
             module_class = ActorModule.get_object(key=config, handle_failure=True)
@@ -85,22 +88,17 @@ class ActorModule:
 
     @staticmethod
     def get_object(key, prefix = 'algocean', handle_failure= False):
-
         return get_object(path=key, prefix=prefix, handle_failure=handle_failure)
-
 
     @staticmethod
     def import_module(key):
         return import_module(key)
-
-
 
     @classmethod
     def deploy(cls, config=None, actor=False , override={}, local_var_dict={}):
         """
         deploys process as an actor or as a class given the config (config)
         """
-
         config = ActorModule.resolve_config(cls, config=config, local_var_dict=local_var_dict, override=override)
 
         if actor:
@@ -111,6 +109,7 @@ class ActorModule:
                 pass
             else:
                 raise Exception('Only pass in dict (actor args), or bool (uses config["actor"] as kwargs)')  
+            
             return cls.deploy_actor(config=config, **config['actor'])
         else:
             return cls(config=config)
@@ -148,6 +147,7 @@ class ActorModule:
     @staticmethod
     def kill_actor(actor):
         kill_actor(actor)
+        return f'{actor} killed'
     
     @staticmethod
     def actor_exists(actor):
@@ -182,6 +182,9 @@ class ActorModule:
         return self.config.get('name', self.module)
 
     def mapattr(self, from_to_attr_dict={}):
+        '''
+        from_to_attr_dict: dict(from_key:str->to_key:str)
+        '''
         for from_key, to_key in from_to_attr_dict.items():
             self.copyattr(from_key=from_key, to_key=to_key)
 
@@ -201,6 +204,9 @@ class ActorModule:
             raise NotImplemented(f'{fn}')
 
 
+    @staticmethod
+    def get_functions(object):
+        obect = get_functions(object)
 
     @classmethod
     def functions(cls, include_hidden=False):
@@ -237,65 +243,6 @@ class ActorModule:
         assert os.path.isfile(path), f'{path} is not a dictionary'
         return path
 
-
-    @staticmethod
-    def get_fn_defaults(fn, include_null = False, mode=['input','output'],output_example_key='output_example'):
-        param_dict = dict(inspect.signature(fn)._parameters)
-        function_defaults = {}
-        assert isinstance(mode, list)
-
-        if ( 'output' in mode): 
-            function_defaults['output'] = {}
-
-            output_example = param_dict.pop(output_example_key, {})
-
-            if isinstance(output_example,inspect.Parameter):
-                output_example = output_example._default
-
-                if isinstance(output_example, dict):
-                    for k,v in output_example.items():
-                        function_defaults['output'][k] = v
-                elif type(output_example) in  [set,list, tuple]:
-                    function_defaults['output'] =  list(output_example)
-
-        if ( 'input' in mode): 
-            function_defaults['input'] = {}
-            for k,v in param_dict.items():
-                if v._default != inspect._empty:
-                    if include_null or  v._default != None:
-                        function_defaults['input'][k] = v._default
-
-        return function_defaults
-            
-    @staticmethod
-    def get_fn_schema(fn, include_null = False, mode=['input','output'],output_example_key='output_example'):
-        param_dict = dict(inspect.signature(fn)._parameters)
-        function_defaults = {}
-        assert isinstance(mode, list)
-
-        if ( 'output' in mode): 
-            function_defaults['output'] = {}
-
-            output_example = param_dict.pop(output_example_key, {})
-
-            if isinstance(output_example,inspect.Parameter):
-                output_example = output_example._default
-
-                if isinstance(output_example, dict):
-                    for k,v in output_example.items():
-                        function_defaults['output'][k] = type(v).__name__
-                elif type(output_example) in  [set,list, tuple]:
-                    function_defaults['output'] =  list(map(lambda x: type(x).__name__, list(output_example)))
-
-        if ( 'input' in mode): 
-            function_defaults['input'] = {}
-            for k,v in param_dict.items():
-                if v._default != inspect._empty:
-                    if include_null or  v._default != None:
-                        function_defaults['input'][k] = type(v._default).__name__
-
-        return function_defaults
-       
     @classmethod
     def parents(cls):
-        return list(cls.__mro__[1:-1])
+        return get_parents(cls)
