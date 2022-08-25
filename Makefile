@@ -3,9 +3,9 @@ down:
 stop:
 	./start.sh --purge
 start:
-	./start.sh 
+	./start.sh --force-pull
 up:
-	./start.sh 
+	./start.sh --force-pull
 backend: 
 	./start.sh --backend; docker exec -it ocean_backend_1;
 
@@ -33,3 +33,6 @@ logs:
 
 enter_backend:
 	docker exec -it ocean_backend_1 bash
+
+pull:
+	git submodule update --init --recursive

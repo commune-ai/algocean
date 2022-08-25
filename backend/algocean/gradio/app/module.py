@@ -283,7 +283,66 @@ def get_parent_functions(cls):
 
 from algocean.utils import *
 
+def get_function_defaults(fn, include_null = False, mode=['input','output'],output_example_key='output_example'):
+    param_dict = dict(inspect.signature(fn)._parameters)
+    function_defaults = {}
+    assert isinstance(mode, list)
 
+    if ( 'output' in mode): 
+        function_defaults['output'] = {}
+
+        output_example = param_dict.pop(output_example_key, {})
+
+        if isinstance(output_example,inspect.Parameter):
+            output_example = output_example._default
+
+            if isinstance(output_example, dict):
+                for k,v in output_example.items():
+                    function_defaults['output'][k] = v
+            elif type(output_example) in  [set,list, tuple]:
+                function_defaults['output'] =  list(output_example)
+            
+    if ( 'input' in mode): 
+        function_defaults['input'] = {}
+        for k,v in param_dict.items():
+            if v._default != inspect._empty and  v._default != None:
+                function_defaults['input'][k] = v._default
+            else:
+                function_defaults['input'][k] = None
+
+    assert isinstance(function_defaults, dict)
+    assert 'output' in function_defaults
+    assert 'input' in function_defaults
+
+    return function_defaults
+
+
+
+def get_function_schema(fn, include_self=True,**kwargs):
+
+    st.write(dir(fn))
+
+    defaults_dict = get_function_defaults(fn=fn, **kwargs)
+    function_schema = {}   
+
+
+    for mode_key, defaults in defaults_dict.items(): 
+        function_schema[mode_key] = {}  
+        if isinstance(defaults, dict):
+            index_keys = list(defaults.keys())
+        elif type(defaults) in  [set,list, tuple]:
+            index_keys = list(range(len(defaults)))
+
+        for k in index_keys:
+            v = defaults[k]
+            function_schema[mode_key][k] = type(v).__name__ \
+                                                if v != None else None
+
+    if not include_self:
+        function_schema['input'].pop('self')
+    return function_schema
+    
+    
 
 
 if __name__ == "__main__":

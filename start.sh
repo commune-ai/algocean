@@ -116,13 +116,6 @@ export OPERATOR_SERVICE_URL=${OPERATOR_SERVICE_URL:-"http://172.15.0.13:31000/"}
 # Add aquarius to /etc/hosts
 # Workaround mainly for macOS
 
-if [ ${IP} = "localhost" ]; then
-	if grep -q "aquarius" /etc/hosts; then
-    		echo "aquarius exists"
-	else
-    		echo "127.0.0.1 aquarius" | sudo tee -a /etc/hosts
-	fi
-fi
 
 # colors
 COLOR_R="\033[0;31m"    # red
