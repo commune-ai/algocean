@@ -52,14 +52,14 @@ def get_function_defaults(fn, include_null = False, mode=['input','output'],outp
                     function_defaults['output'][k] = v
             elif type(output_example) in  [set,list, tuple]:
                 function_defaults['output'] =  list(output_example)
-
+            
     if ( 'input' in mode): 
         function_defaults['input'] = {}
         for k,v in param_dict.items():
-            if v._default != inspect._empty:
-                if include_null or  v._default != None:
-                    function_defaults['input'][k] = v._default
-
+            if v._default != inspect._empty and  v._default != None:
+                function_defaults['input'][k] = v._default
+            else:
+                function_defaults['input'][k] = None
 
     assert isinstance(function_defaults, dict)
     assert 'output' in function_defaults
@@ -67,7 +67,11 @@ def get_function_defaults(fn, include_null = False, mode=['input','output'],outp
 
     return function_defaults
 
-def get_function_schema(fn,**kwargs):
+
+
+def get_function_schema(fn, include_self=True,**kwargs):
+
+
     defaults_dict = get_function_defaults(fn=fn, **kwargs)
     function_schema = {}   
 
@@ -75,14 +79,21 @@ def get_function_schema(fn,**kwargs):
     for mode_key, defaults in defaults_dict.items(): 
         function_schema[mode_key] = {}  
         if isinstance(defaults, dict):
-            for k,v in defaults.items():
-                function_schema[mode_key][k] = type(v).__name__
+            index_keys = list(defaults.keys())
         elif type(defaults) in  [set,list, tuple]:
-            function_schema[mode_key] =  list(map(lambda x: type(x).__name__, list(defaults)))
+            index_keys = list(range(len(defaults)))
 
+        for k in index_keys:
+            v = defaults[k]
+            function_schema[mode_key][k] = type(v).__name__ \
+                                                if v != None else None
+
+    if not include_self:
+        function_schema['input'].pop('self')
     return function_schema
     
     
+
 def is_class(cls):
     '''
     is the object a class

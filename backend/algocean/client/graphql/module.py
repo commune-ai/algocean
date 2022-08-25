@@ -1,19 +1,14 @@
 import os
 from .utils import graphql_query
-from commune.ray import ActorBase
+from algocean import BaseModule
 import ray
 
-class GraphQLManager(ActorBase):
-    default_cfg_path = f"{os.environ['PWD']}/commune/config/client/block/graphql.yaml"
+class GraphQLModule(BaseModule):
+    default_cfg_path = "client.graphql.module"
 
-    def __init__(
-        self,
-        cfg,
-        # host= 'endpoints',
-        # port= 8000
-    ):
-        self.url = f"http://{cfg['host']}:{cfg['port']}"
-
+    def __init__(self,config,):
+        BaseModule.__init__(self, config)
+        self.url = f"http://{config['host']}:{config['port']}"
 
     def query(self,query, url=None, return_one=False):
         if url != None:

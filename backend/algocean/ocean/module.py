@@ -1,3 +1,4 @@
+
 # Create Ocean instance
 import streamlit as st
 import os, sys
@@ -50,9 +51,10 @@ class OceanModule(BaseModule):
 
     
     def initialize_state(self):
-        self.datanfts = {}
-        self.datatokens = {}
-        self.dataassets = {}
+        # self.datanfts = {}
+        # self.datatokens = {}
+        # self.dataassets = {}
+        pass
 
 
     def load_wallets(self, wallet_config:dict):
@@ -213,10 +215,9 @@ class OceanModule(BaseModule):
         if symbol == None:
             symbol = name
         nft_key =  symbol
-        datanft = self.datanfts.get(nft_key)
+        datanft = self.get_datanft(datanft=nft_key, handle_error=True)
         if datanft == None:
             datanft = self.ocean.create_data_nft(name=name, symbol=symbol, from_wallet=wallet)
-            self.datanfts[nft_key] = datanft
 
         return datanft
 
@@ -246,6 +247,7 @@ class OceanModule(BaseModule):
         return datatoken
 
 
+
     def get_contract(self, address:str, contract_class=ContractBase):
         return contract_class(web3=self.web3, address=address)
     
@@ -253,58 +255,49 @@ class OceanModule(BaseModule):
         return contract.address
 
 
-    def load(self):
-        self.load_state()
-        # some loading post processing
-        for k,v in self.datanfts.items():
-            self.datanfts[k] = self.get_contract(address=v, contract_class=DataNFT)
-        # for k,v in self.datatokens.items():
-        #     self.datatokens[k] = self.get_contract(address=v, contract_class=Datatoken)
-        for k,v in self.dataassets.items():
-            self.dataassets[k] = Asset.from_dict(v)
-
-
-    def load_state(self):
-        for k, v in self.config['load'].items():
-            load_fn = getattr(getattr(self.client, v['module']), v['fn'])
-            data = load_fn(**v['params'])
-            if data == None:
-                data = v.get('default', data)
-            self.__dict__[k] = data
-
     # @staticmethod
     # def get_asset_did(asset:Asset):
     #     return asset.did
 
-    def get_assets(self, wallet:Union[str, Wallet]=None):
+    def get_assets(self, wallet:Union[str, Wallet]=None, return_type='dict'):
         '''
         get assets from wallet
         '''
         
-        wallet_address = self.get_wallet(wallet, return_address=True)
-        assets = self.search(text=f'metadata.author:{wallet_address}', return_type='asset')
+        wallet = self.get_wallet(wallet)
+        text_query = f'metadata.author:{wallet.address}' 
+        # current_time_iso = datetime.datetime.now().isoformat()
+        assets = self.search(text=text_query, return_type='asset')
         return assets
 
-    def get_asset(self, datanft=None, handle_error=False):
+    def get_asset(self, datanft=None, did=None, handle_error=False, timeout=10):
         '''
-        get asset from datanft
+        get asset from datanft using aquarius
         '''
+
         if isinstance(datanft, Asset):
             return datanft
 
         datanft =self.get_datanft(datanft)
-        assets = self.search(text=f'nft.address:{datanft.address}', return_type='asset')
-        try:
-            assert len(assets)==1, f'This asset from datanft:{datanft.address} does not exist'
-            assert isinstance(assets[0], Asset), f'The asset is suppose to be an Asset My guy'
+        query_text = f'nft.address:{datanft.address}'
+            
+        timer = Timer(start=True)
 
-        except Exception as e:
-            if handle_error:
-                return None
-            else:
-                raise(e)
+        while timer.elapsed_time() < timeout:
+            try:
+                time.sleep(0.1)
+                st.write(timer.elapsed_time())
+                assets = self.search(text=query_text, return_type='asset')
+                assert len(assets)==1, f'This asset from datanft: {datanft.address} does not exist'
+                assert isinstance(assets[0], Asset), f'The asset is suppose to be an Asset My guy'
+                return assets[0]
+            except Exception as e:
+                if handle_error:
+                    return None
+                else:
+                    raise(e)
         
-        return assets[0]
+
 
 
     def get_wallet_datanfts(self, wallet:Union[str, Wallet]=None):
@@ -313,29 +306,10 @@ class OceanModule(BaseModule):
         
 
 
-    # def get_assets(self, datanft, wallet):
+    # def assets(self, datanft, wallet):
 
 
-    def save(self):
-        # some loading post processing
-        for k,v in self.datanfts.items():
-            self.datanfts[k] = self.get_address(contract=v)
-        # for k,v in self.datatokens.items():
-        #     self.datatokens[k] = self.get_address(contract=v)
-        for k,v in self.dataassets.items():
-            self.dataassets[k] = v.as_dictionary()
-
-
-        self.save_state()
-        
-
-    def save_state(self):
-        for k, v in self.config['save'].items():
-
-            data = self.__dict__[k]
-            save_fn = getattr(getattr(self.client, v['module']), v['fn'])
-            save_fn(**v['params'], data=data)
-
+    
     @staticmethod
     def fill_default_kwargs(default_kwargs, kwargs):
         return {**default_kwargs, **kwargs}
@@ -405,7 +379,8 @@ class OceanModule(BaseModule):
                         max_tokens:int=100, 
                         max_balance:int=None, 
                         with_mint=True, 
-                        wallet=None):
+                        wallet=None,
+                        **kwargs):
 
         datatoken=  self.get_datatoken(datatoken=datatoken, datanft=datanft)
         wallet = self.get_wallet(wallet)
@@ -428,41 +403,39 @@ class OceanModule(BaseModule):
             from_wallet=wallet,
         )
 
-    def get_datanft(self, datanft:Union[str, DataNFT]=None, create_if_null:bool= False):
+    
+
+    def get_datanft(self, datanft:Union[str, DataNFT]=None, handle_error:bool= False):
         '''
         dataNFT can be address, key in self.datanfts or a DataNFT
         '''
-        if isinstance(datanft, DataNFT):
+
+        try:
+
+            if isinstance(datanft, DataNFT):
+                datanft =  datanft
+
+            elif isinstance(datanft, str):
+                if self.web3.isAddress(datanft):
+                    datanft = DataNFT(address=datanft)
+                elif datanft in self.datanfts :
+                    datanft = self.datanfts[datanft]
+                else:
+                    raise NotImplementedError(f'{datanft} is not found')
+            
+            assert isinstance(datanft, DataNFT), f'datanft should be in the formate of DataNFT, not {datanft}'
             return datanft
-        
-        elif datanft == None:
-            if len(self.datanfts)>0:
-                datanft = next(iter(self.datanfts.values()))
-            elif create_if_null:
-                datanft = 'nft'
-                datanft =  self.create_datanft(name=datanft)
+        except Exception as e:
+            if handle_error:
+                return None
             else:
-                raise Exception(f'{datanft} not found as a datanft')
-
-        elif isinstance(datanft, str):
-            if datanft in self.datanfts :
-                datanft = self.datanfts[datanft]
-            elif self.web3.isAddress(datanft):
-                datanft = DataNFT(address=datanft)
-            elif create_if_null:
-                datanft = self.create_datanft(name=datanft)
-        else: 
-            raise NotImplementedError(datanft)
-
-
-        assert isinstance(datanft, DataNFT), f'datanft should be in the formate of DataNFT, not {datanft}'
-        return datanft
+                raise(e)
 
 
 
     def create_asset(self,datanft, services:list, metadata:dict=None, wallet=None, **kwargs ):
         wallet = self.get_wallet(wallet)
-        datanft = self.get_datanft(datanft=datanft, create_if_null=True)
+        datanft = self.get_datanft(datanft=datanft)
         asset = self.get_asset(datanft, handle_error=True)
         if asset != None:
             assert isinstance(asset, Asset)
@@ -522,48 +495,21 @@ class OceanModule(BaseModule):
                         value=value, from_wallet=wallet )
 
 
-    def get_datatoken(self, datatoken:str=None, datanft:str=None, create_if_null:bool=False) -> Datatoken:
+    def get_datatoken(self, datatoken:str=None, datanft:str=None) -> Datatoken:
 
-
-        datanft = self.get_datanft(datanft=datanft, create_if_null=create_if_null)
-
-        # if data token
         if isinstance(datatoken, Datatoken):
             return datatoken
-        # if address
-        elif isinstance(datatoken, str):
-            datatokens_map = self.get_datatokens(datanft=datanft, return_type='map')
 
+        if isinstance(datatoken, str):
+            if self.web3.isAddress(datatoken): 
+                return Datatoken(web3=self.web3,address=datatoken)
 
-            if len(datatokens_map) > 0:
-                if self.web3.isAddress(datatoken): 
-                    # get the addresses
-                    datatoken_addresses = [dt.address for dt in datatokens_map.values()]
-                    if datatoken in datatoken_addresses:
-                        return Datatoken(web3=self.web3,address=datatoken)
-
-                if datatoken in datatokens_map:
-                    return datatokens_map[datatoken]
-            else:
-                if create_if_null:
-                    return self.create_datatoken(datanft=datanft, name=datatoken)
-                else:
-                    raise Exception(f'{datatoken} is not found in {datanft}, try creating one')
-        elif datatoken == None:
 
             datatokens_map = self.get_datatokens(datanft=datanft, return_type='map')
-            
-            if len(datatokens_map)>0:
-                # get the next one
-                return next(iter(datatokens_map.values()))
-            else:
-                if create_if_null:
-                    return self.create_datatoken(datanft=datanft, name='token')
-                else:
-                    raise Exception(f'{datatoken} is not found in {datanft}, try creating one')
-
+            if datatoken in datatokens_map:
+                return datatokens_map[datatoken]
         else:
-            raise Exception(f'BRO {self.datanfts, self.datatokens}, {datatoken, datanft}')
+            raise Exception(f'BRO {datanft} is not define')
 
     
     # @property
@@ -580,10 +526,45 @@ class OceanModule(BaseModule):
             value =  datatoken.balanceOf(wallet_address)
         
         return value
-        
-    def get_services(self, asset):
+   
+    @property
+    def assets(self):
+        return self.get_assets()
+
+    @property
+    def datatokens(self):
+        dt_list = []
+        for asset in self.assets:
+            dt_list += self.get_datatokens(asset=asset)
+        return [dt for dt in dt_list]
+
+    @property
+    def services(self):
+        services = []
+        for asset in self.get_assets():
+            services += asset.services
+
+        return services
+    
+    @property
+    def datanfts(self):
+        datanfts = []
+        for asset in self.get_assets():
+            datanfts += [DataNFT(web3=self.web3, address=asset.nft['address'])]
+
+        return datanfts
+
+    def get_services(self, asset, return_type = 'service'):
+
         asset = self.get_asset(asset)
-        return asset.services
+
+        supported_types = ['service', 'dict']
+        assert return_type in supported_types
+        
+        if return_type== 'service':
+            return asset.services
+        elif return_type == 'dict':
+            return [s for s in asset.services.__dict__]
 
 
     def create_service(self,
@@ -597,7 +578,7 @@ class OceanModule(BaseModule):
         wallet = self.get_wallet(wallet)
         datanft = self.get_datanft(datanft=datanft)
         datatoken = datatoken if datatoken != None else name
-        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken, create_if_null=True)
+        datatoken = self.get_datatoken(datanft=datanft, datatoken=datatoken)
 
         if files == None:
             files = self.dummy_files()
@@ -619,20 +600,44 @@ class OceanModule(BaseModule):
         return Service(**service_dict)
 
 
-    def get_service(self, asset=None, service=None):
-        if isinstance(service, Service):
-            return service
-        asset = self.get_asset(asset)
-        if service == None:
-            assert len(asset.services)>0, 'There are no services for the asset'
-            return asset.services[0]
-        elif isinstance(service, int):
-            return asset.services[service]
-        elif isinstance(service, str):
-            raise NotImplementedError
+
+
+    def get_services(self, asset=None, datanft=None, return_type='service'):
+        if asset != None:
+            asset = self.get_asset(asset)
+        elif datanft != None:
+            asset = self.get_asset(datanft)
         else:
             raise NotImplementedError
         
+
+        services = asset.services
+        if return_type == 'dict':
+            services = [ s.__dict__ for s in services]
+        elif return_type == 'service':
+            services = services
+        else:
+            raise NotImplementedError
+        
+        return services
+
+
+
+
+
+    def get_service(self, asset=None, service=None):
+        if isinstance(service, Service):
+            return service
+        else:
+            asset = self.get_asset(asset)
+            if service == None:
+                assert len(asset.services)>0, 'There are no services for the asset'
+                return asset.services[0]
+            elif isinstance(service, int):
+                return asset.services[service]
+            else:
+                raise NotImplementedError
+            
     def pay_for_access_service(self,
                               asset:Union[str,Asset],
                               service:Union[str,Service]=None,
@@ -730,77 +735,37 @@ class OceanModule(BaseModule):
             return instance.contract.functions._functions
         else:
             raise NotImplementedError(f'Can only describe {ContractBase}')
-    
 
-    def get_datatokens(self, datanft:ContractBase, return_type:str='value'):
+    def get_datatokens(self, datanft:Union[ContractBase]=None, asset=None, return_type:str='value'):
+
+
+        datatokens = []
+        if asset != None:
+            asset =  self.get_asset(asset)
+            datatoken_obj_list =  asset.datatokens
+            for datatoken_obj in datatoken_obj_list:
+                dt_address = datatoken_obj.get('address')
+                datatokens += [Datatoken(web3=self.web3, address=dt_address)]
+            
+        elif datanft != None:
+            datanft = self.get_datanft(datanft)   
+            dt_address_list = datanft.contract.caller.getTokensList()
+            datatokens = [Datatoken(web3=self.web3,address=dt_addr) for dt_addr in dt_address_list]
         
-        datanft = self.get_datanft(datanft)   
-        token_address_list = datanft.contract.caller.getTokensList()
-        token_list = list(map(lambda t_addr: Datatoken(web3=self.web3,address=t_addr), token_address_list))
+        else:
+            raise NotImplementedError(f'datanft: {datanft}')
+
         supporrted_return_types = ['map', 'key', 'value']
 
         assert return_type in supporrted_return_types, f'{return_type} not in {supporrted_return_types}'
         if return_type in ['map']:
-            return {t.contract.caller.name():t for t in token_list }
+            return {t.symbol():t for t in datatokens }
         elif return_type in ['key']:
-            return [t.contract.caller.name() for t in token_list]
+            return [t.symbol() for t in datatokens]
         elif return_type in ['value']:
-            return token_list
+            return datatokens
         else:
             raise NotImplementedError
-
-    
-
-    @classmethod
-    def st_test(cls):
-        module = cls()
-        module.load()
-
-        datanft = 'NFT_IPFS_WTr'
-        datatoken = 'DT3'
-        # module.create_datanft(name=nft)
-        # datanft = module.get_datanft(nft)
-        # module.create_datatoken(name=token, datanft=datanft)
-        # st.sidebar.write(module.describe(datanft))
-
-        # st.write(module.ocean.assets.search(nft))
-
-        # st.sidebar.write(dir(module.ocean.get_nft_factory().events.NFTCreated))
-        text = 'bro'
-        # st.write(module.search(text='datatokens.name:(DT3)', return_type='dict')[0])
-        
-        # st.write(module.get_assets(wallet=None))
-        # st.write(module.search(text='*', return_type='dict')[0])
-        # module.create_dispenser(datatoken=token, datanft=nft)
-        # module.dispense_tokens(datatoken=token, datanft=nft, wallet='bob', amount=50)
-        
-        
-        # st.write(module.get_balance(datatoken=token, datanft=nft,  wallet=module.wallets['bob'].address))
-        # # Specify metadata and services, using the Branin test dataset
- 
-
-        # if 'URL' in nft:
-        #     url_files = module.create_files(dict(url="https://raw.githubusercontent.com/trentmc/branin/main/branin.arff", type='url'))
-        # elif 'IPFS' in nft:
-        
-        asset = module.create_asset(
-            files=None,
-
-            datanft=None,
-            datatoken=None,
-            services={'additional_information': {'model_type':'bro'}},
-            metadata={}
-        )
-
-        st.write(asset)
-
-
-
-        module.save()
-
-
-
-
 
 
 if __name__ == '__main__':

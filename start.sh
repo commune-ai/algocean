@@ -208,6 +208,8 @@ COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
 COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
 
+COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
+
 
 
 
@@ -237,10 +239,6 @@ while :; do
             COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/redis.yml/}"
             
             printf $COLOR_Y'Starting without Provider...\n\n'$COLOR_RESET
-            ;;
-	    --with-provider2)
-	        COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider2.yml"
-            printf $COLOR_Y'Starting with a 2nd Provider...\n\n'$COLOR_RESET
             ;;
         --with-registry)
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"

@@ -24,12 +24,12 @@ git submodule update --init --recursive
 
 2. Spinnup Docker Compose which starts barge and backend
 ```
-make start
+make up
 ```
 
-3. Run the Streamlit app
+3. Run the Streamlit app with huggingface dataset
 ```
-make app
+make streamlit arg=algocean/huggingface/dataset/module.py
 ```
 
 
@@ -49,13 +49,7 @@ make app
 
 - Run Streamlit Server
     
-     ``` make app ```
-
-
-
-
-
-
+     ``` make app arg=${path to streamlit in backend with respect to algocean}```
 
 **Base Modules**
 - ClientModule

@@ -22,7 +22,6 @@ class ActorModule:
             assert isinstance(self.default_cfg_path, str)
             config = self.default_cfg_path
 
-
         config = self.load_config(config=config, 
                              override=override, 
                             local_var_dict=local_var_dict,
@@ -41,6 +40,7 @@ class ActorModule:
                                     local_var_dict=local_var_dict, 
                                      override=override,
                                      recursive=True)
+
 
     @classmethod
     def default_cfg(cls, override={}, local_var_dict={}):
@@ -184,6 +184,7 @@ class ActorModule:
     def mapattr(self, from_to_attr_dict={}):
         '''
         from_to_attr_dict: dict(from_key:str->to_key:str)
+
         '''
         for from_key, to_key in from_to_attr_dict.items():
             self.copyattr(from_key=from_key, to_key=to_key)

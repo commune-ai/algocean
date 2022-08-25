@@ -38,5 +38,6 @@ class BaseModule(ActorModule):
                 submodule_class = self.get_object(submodule_config['module'])
                 submodule_instance = submodule_class(config=submodule_config)
                 setattr(self, submodule_name, submodule_instance)
-        
+    
+    
 
