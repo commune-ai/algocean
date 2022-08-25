@@ -8,8 +8,8 @@ dataset:
   split: [train, validation]
   
 
-submodules: 
-  algocean: get_cfg(ocean.module)
+# submodules: 
+#   algocean: get_cfg(ocean.module)
 
 pipeline: 
   - 
