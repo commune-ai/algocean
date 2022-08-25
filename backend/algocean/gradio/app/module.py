@@ -294,7 +294,7 @@ if __name__ == "__main__":
     import json
 
 
-    st.write(get_module_function_schema(module, True))
+    st.write(get_function_schema(GradioModule.rm_module))
 
 
 
