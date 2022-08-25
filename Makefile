@@ -31,7 +31,7 @@ logs:
 	docker logs ${arg} --tail=100 --follow
 
 streamlit:
-	docker exec -it ocean_backend_1 streamlit run ${arg}
+	docker exec -it ocean_backend_1 bash -c "streamlit run ${arg}"
 enter_backend:
 	docker exec -it ocean_backend_1 bash
 

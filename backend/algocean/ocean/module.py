@@ -4,7 +4,7 @@ import streamlit as st
 import os, sys
 sys.path.append(os.getenv('PWD'))
 
-from algocean.utils import RecursiveNamespace, dict_put, dict_has
+from algocean.utils import RecursiveNamespace, dict_put, dict_has, Timer
 import datetime
 from ocean_lib.assets.asset import Asset
 from ocean_lib.example_config import ExampleConfig
@@ -417,7 +417,7 @@ class OceanModule(BaseModule):
 
             elif isinstance(datanft, str):
                 if self.web3.isAddress(datanft):
-                    datanft = DataNFT(address=datanft)
+                    datanft = DataNFT(web3=self.web3, address=datanft)
                 elif datanft in self.datanfts :
                     datanft = self.datanfts[datanft]
                 else:
@@ -636,7 +636,8 @@ class OceanModule(BaseModule):
             elif isinstance(service, int):
                 return asset.services[service]
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"asset:{asset} service: {service}")
+        
             
     def pay_for_access_service(self,
                               asset:Union[str,Asset],
