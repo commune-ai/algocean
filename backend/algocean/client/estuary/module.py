@@ -30,6 +30,7 @@ class EstuaryModule(BaseModule):
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
+        st.write(self.config)
         self.api_key = self.get_api_key(api_key = self.config.get('api_key'))
         self.local =  LocalModule()
         self.url = self.config.get('url', 'https://shuttle-4.estuary.tech')
@@ -38,7 +39,7 @@ class EstuaryModule(BaseModule):
     def get_api_key(self, api_key=None):
         if api_key == None:
             api_key = self.config.get('api_key')
-        api_key = os.getenv(api_key)
+        api_key =os.getenv(api_key, api_key)
         if api_key != None:
             # if the api_key is a env variable
             return api_key
@@ -68,7 +69,7 @@ class EstuaryModule(BaseModule):
 
     # %% ../nbs/02_estuaryapi.ipynb 6
     # list pins
-    def list_pins(
+    def list_pins(self,
         api_key: str=None # Your Estuary API key
     ):
         "List all your pins"
@@ -79,7 +80,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/pinning/pins', headers=headers)
+        response = requests.get(f'https://api.estuary.tech/pinning/pins', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 7
@@ -119,7 +120,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/pinning/pins/{pin_id}', headers=headers)
+        response = requests.get(f'https://api.estuary.tech/pinning/pins/{pin_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 9
@@ -410,7 +411,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/content/by-cid/{cid}', headers=headers)
+        response = requests.get(f'https://api.estuary.tech/content/by-cid/{cid}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 25
@@ -551,7 +552,7 @@ class EstuaryModule(BaseModule):
     def tmp_root_path(self):
         return f'/tmp/algocean/{self.id}'
 
-    def get_temp_path(self, path):
+    def get_temp_path(self, path='get_temp_path'):
         tmp_path = os.path.join(self.tmp_root_path, path)
         if not os.path.exists(self.tmp_root_path):
             self.local.makedirs(os.path.dirname(path), exist_ok=True)
@@ -573,7 +574,7 @@ class EstuaryModule(BaseModule):
 
         return cid
 
-    def save_tokenizer(self, tokenizer, path:str=None):
+    def save_tokenizer(self, tokenizer, path:str='tmp'):
 
 
         # self.mkdir(path, create_parents=True)
@@ -587,21 +588,21 @@ class EstuaryModule(BaseModule):
 
         return cid
 
-    def load_tokenizer(self,  path:str):
+    def load_tokenizer(self, path:str='tmp'):
         tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         model = AutoTokenizer.from_pretrained(tmp_path)
         self.local.rm(tmp_path,  recursive=True)
         return model
 
-    def load_model(self,  path:str):
+    def load_model(self,  path:str='tmp'):
         tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         model = AutoModel.from_pretrained(tmp_path)
         # self.fs.local.rm(tmp_path,  recursive=True)
         return model
 
-    def load_dataset(self, path):
+    def load_dataset(self, path='tmp'):
         tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
         dataset = Dataset.load_from_disk(tmp_path)
@@ -609,8 +610,28 @@ class EstuaryModule(BaseModule):
 
         return dataset
 
-    def save_dataset(self, dataset, path:str=None):
-        tmp_path = self.get_temp_path(path=path)
+    supported_dataset_modes = [
+        'huggingface'
+        'activeloop'
+    ]
+
+    def save_dataset(self, dataset=None, mode='🤗', **kwargs):
+        if dataset == None:
+            if mode in ['huggingface', 'hf', '🤗']:
+                load_dataset_kwargs = {}
+                
+                for k in ['path', 'name', 'split']:
+                    v= kwargs.get(k)
+                    assert isinstance(v, str), f'{k} is {v} but should be a string'
+                    load_dataset_kwargs[k] = v
+                dataset = load_dataset(**load_dataset_kwargs)
+
+            elif mode == 'activeloop':
+                raise NotImplementedError
+
+        path = 'tmp'
+
+        tmp_path = self.get_temp_path()
         dataset = dataset.save_to_disk(tmp_path)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
         # self.fs.local.rm(tmp_path,  recursive=True)
@@ -640,7 +661,13 @@ class EstuaryModule(BaseModule):
         cid = None
         while trial_count<max_trials:
             try:
-                cid= self.put(lpath=lpath, rpath=rpath, recursive=True)
+
+                if self.local.isdir(lpath):
+                    files = self.local.ls(lpath)
+                else:
+                    files = [lpath]
+                # for f in self.local.ls(lpath)
+                cid= {f: self.add_data(f) for f in files}
                 break
             except fsspec.exceptions.FSTimeoutError:
                 trial_count += 1
@@ -665,20 +692,7 @@ if __name__ == '__main__':
     st.write(module.name)
 
 
-
-    # import torch
-
-
-    dataset = load_dataset('glue', 'mnli', split='trainff')
-    st.write(module.save_dataset(dataset=dataset))
-    # # cid = module.put_pickle(path='/bro/test.json', data={'yo':'fam'})
-    # # st.write(module.get_pickle(cid))
-
-    # st.write(module.ls('/dog'))
-    # st.write(module.ls('/'))
-    # st.write(module..get_object('/tmp/test.jsonjw4ij6u'))
-
-
-    # st.write(module.local.ls('/tmp/bro'))
-    # # st.write(module.add_data('/tmp/bro/state.json'))
-    # st.write(module.get_node_stats())
+    # st.write(module.save_dataset(path='glue', name='mrpc', split='train',  mode='🤗'))
+    pin = 'bafkreihzlhqysawlelgmwicufctqqpfczashjszbq3gvn64bvlufhmxan4'
+    # st.write(module.view_data_cid(pin))
+    st.write(module.list_pins())

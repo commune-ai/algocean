@@ -31,9 +31,8 @@ logs:
 	docker logs ${arg} --tail=100 --follow
 
 streamlit:
-	docker exec -it ocean_backend_1 bash -c "streamlit run ${arg}"
+	docker exec -it ocean_backend_1 bash -c "streamlit run algocean/${arg}/module.py "
 enter_backend:
 	docker exec -it ocean_backend_1 bash
-
 pull:
 	git submodule update --init --recursive
