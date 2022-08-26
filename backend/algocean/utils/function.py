@@ -130,3 +130,27 @@ def resolve_class(obj):
         return obj.__class__
 
 get_class = resolve_class
+
+
+
+
+def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False)
+    '''
+    params:
+        kwargs: dictionary of key word arguments
+        defualts: list or dictionary of keywords->types
+    '''
+    try:
+        assert isinstance(kwargs, dict)
+        if isinstance(defualts, list):
+            for k in defaults:
+                assert k in defaults
+        elif isinstance(defaults, dict):
+            for k,k_type in defaults.items():
+                assert isinstance(kwargs[k], k_type)
+    except Exception as e:
+        if return_bool:
+            return False
+        
+        else:
+            raise e

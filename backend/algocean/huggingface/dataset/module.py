@@ -5,7 +5,7 @@ import datasets
 import datetime
 import transformers
 from copy import deepcopy
-from typing import Union
+from typing import Union, List
 from copy import deepcopy
 from algocean import BaseModule
 import torch
@@ -38,16 +38,21 @@ class DatasetModule(BaseModule, Dataset):
 
     
     dataset = {}
-    def __init__(self, config=None):
+    def __init__(self, config=None, init_state=False):
         BaseModule.__init__(self, config=config)
-        self.load_dataset_factory()
-        self.load_dataset_builder()
-        self.load_dataset()
         self.algocean = OceanModule()
         self.web3 = self.algocean.web3
         self.ocean = self.algocean.ocean
 
 
+
+        if load_state:
+            
+    
+    def load_state(self, path, ):
+        self.load_dataset_factory(path=path)
+        self.load_dataset_builder()
+        self.load_dataset()
 
     @staticmethod
     def is_load_dataset_config(kwargs):
@@ -62,19 +67,48 @@ class DatasetModule(BaseModule, Dataset):
 
         return  'path' in kwargs
 
+    @staticmethod
+    def load_dataset_builder( path:str):
+        dataset_builder = datasets.load.import_main_class(path)
+        return dataset_builder
+
+    @staticmethod
+    def load_dataset_module_factory( path:str):
+        return datasets.load.dataset_module_factory(path)
+
+    @staticmethod
+    def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False)
+        '''
+        params:
+            kwargs: dictionary of key word arguments
+            defualts: list or dictionary of keywords->types
+        '''
+        try:
+            assert isinstance(kwargs, dict)
+            if isinstance(defualts, list):
+                for k in defaults:
+                    assert k in defaults
+            elif isinstance(defaults, dict):
+                for k,k_type in defaults.items():
+                    assert isinstance(kwargs[k], k_type)
+        except Exception as e:
+            if return_bool:
+                return False
+            
+            else:
+                raise e
+
+        
 
 
-    def load_dataset_factory(self, path=None):
-        if path == None:
-            path = self.config['dataset']['path']
-        self.dataset_factory = datasets.load.dataset_module_factory(path)
 
-    def load_dataset_builder(self):
-        self.dataset_builder = datasets.load.import_main_class(self.dataset_factory.module_path)
-
-
-    def load_dataset(self, *args, **kwargs):
-    
+    def load_dataset(self, **kwargs):
+        '''
+        path: path to the model in the hug
+        name: name of the config / flavor of the dataset
+        split: the split of the model
+        
+        '''
         if len(args) + len(kwargs) == 0:
             config_kwargs = self.config.get('dataset')
             split = config_kwargs.get('split', ['train'])
@@ -82,14 +116,8 @@ class DatasetModule(BaseModule, Dataset):
                 split = [split]
             if isinstance(split, list):
                 split = {s:s for s in split}
-            
-            config_kwargs['split'] = split
-            if isinstance(config_kwargs, list):
-                args = config_kwargs
-            elif isinstance(config_kwargs, dict):
-                kwargs = config_kwargs
+            kwargs = config_kwargs
 
-        st.write(kwargs)
 
         self.dataset = load_dataset(*args, **kwargs )
 
