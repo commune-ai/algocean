@@ -314,6 +314,13 @@ class DatasetModule(BaseModule, Dataset):
     def split_info(self):
         return self.info['splits']
 
+    @property
+    def builder_configs(self):
+        return [c.__dict__ for c in self.dataset_builder.BUILDER_CONFIGS]
+
+    @property
+    def configs(self):
+        return self.builder_configs
 
     @property
     def datatokens(self):
@@ -328,6 +335,22 @@ class DatasetModule(BaseModule, Dataset):
     def services(self):
         return self.asset.services
 
+
+    @property
+    def all_assets(self):
+        assets =  self.algocean.search(text=f'')
+        if len(assets) == 0:
+            return self.create_asset()
+        
+        return assets[0]
+
+    def search_assets(self, seach='metadata'):
+        return self.algocean.search(text=search)
+
+
+    @property
+    def my_assets(self):
+        return self.algocean.search(text=f'metadata.author:{self.wallet.address}')
 
     @property
     def asset(self):
@@ -468,44 +491,8 @@ if __name__ == '__main__':
     import streamlit as st
     from algocean.utils import *
 
-    # st.write(Dataset.__init__)
     module = DatasetModule()
+    st.write(module.asset)
+    st.write(module.dataset_builder.BUILDER_CONFIGS[0].__dict__)
+    # module.download()
 
-    if module.client.local.exists('bruh'):
-        module.client.local.rm('bruh', recursive=True)
-    module.download(destination='bruh')
-
-
-    # module.algocean.create_datanft(name=module.builder_name)
-
-    # st.write(isoformat2datetime('2022-08-24T20:53:57.342766')-datetime.timedelta(hours=1)) 
-    # st.write(module.algocean.datatokens)
-    # st.write(module.dataset_builder.BUILDER_CONFIGS)
-    # st.write(module.datanft)
-    # st.write(module.asset)
-
-    # st.write(module.create_asset())
-    # import time
-    # trial_count = 0
-
-    # except:
-    #     print(f'Still waiting for {module.dataset_name}')
-    # module.dispense_tokens()
-    # st.write(module.algocean.get_balance(datatoken='token', datanft=module.dataset_name))
-    # st.write(module.asset.services[0].additional_information['file_info'])
-    # st.write(module.get_url_data())
-    # module.download( )
-    # module.algocean.save()
-    # st.write(module.algocean.save())
-    # # module.dataset.info.FSGSFS = 'bro'
-    # load_dataset('glue')
-    # st.write(module.info)
-    # # st.write(module.save())
-    # ds_builder = load_dataset_builder('ai2_arc')
-    # with ray.init(address="auto",namespace="commune"):
-    #     model = DatasetModule.deploy(actor={'refresh': False})
-    #     sentences = ['ray.get(model.encode.remote(sentences))', 'ray.get(model.encoder.remote(sentences)) # whadup fam']
-    #     print(ray.get(model.self_similarity.remote(sentences)))
-
-
-# section 4 referencing section 4.18
