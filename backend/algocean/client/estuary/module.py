@@ -699,11 +699,11 @@ if __name__ == '__main__':
     module = EstuaryModule()
 
 
-    st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
+    # st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
     # st.write(module.view_data_cid(pin))
     st.write(module.list_pins())
-    bro = module.ipfs.cat('bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy')
-    st.write(len(bro))
+    # bro = module.ipfs.cat('bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy')
+    # st.write(len(bro))
     # st.write(module.rm_all_pins())
     # st.write(module.remove_pin('35921207'))
     # st.write(module.list_pins()[1][0])

@@ -37,27 +37,42 @@ class Timer:
         self.end_time = None
         if start:
             self.start()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.stop()
     
     def start(self):
         assert self.start_time == None, f'You already started the timer at {self.start_time}'
         
-        self.start_time = self.current_timestamp
+        self.start_time = self.current_time
 
 
     @staticmethod
-    def get_current_timestamp():
-        return int(datetime.datetime.utcnow().timestamp())
+    def get_current_time():
+        return datetime.datetime.utcnow()
 
     @property
-    def current_timestamp(self):
-        return self.get_current_timestamp()
+    def current_time(self):
+        return self.get_current_time()
 
-    def elapsed_time(self, return_type='second'):
+    def elapsed_time(self, return_type='seconds'):
+        div_factor = 1
+        if return_type in ['microseconds', 'ms', 'micro', 'microsecond']:
+            div_factor = 1
+        elif return_type in ['seconds', 's' , 'second', 'sec']:
+            div_factor = 1000
         
-        assert isinstance(self.start_time, int), f'You need to start the timer with self.start()'
-        assert return_type in self.supported_modes, f'return_type: {return_type} not supported in {self.supported_modes}'
+        elif return_type in ['minutes', 'm', 'min' , 'minutes']: 
+            div_factor = 1000*60
         
-        timestamp_period =  self.current_timestamp -self.start_time 
+        else:
+            raise NotImplementedError
+        
+        timestamp_period =  (self.current_time -self.start_time).microseconds/div_factor
         return timestamp_period
 
     def stop(self):

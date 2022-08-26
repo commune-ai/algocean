@@ -12,6 +12,8 @@ import torch
 import ray
 from algocean.utils import dict_put
 from datasets.utils.py_utils import asdict, unique_values
+import datetime
+
 
 from ocean_lib.models.data_nft import DataNFT
 import fsspec
@@ -21,7 +23,7 @@ from fsspec import register_implementation
 import asyncio
 import io
 from algocean.ocean import OceanModule
-from algocean.utils import Timer
+from algocean.utils import Timer, round_sig
 
 
 from transformers import AutoModel, AutoTokenizer
@@ -29,16 +31,38 @@ from datasets import load_dataset, Dataset, load_dataset_builder
 
 
 
+def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False):
+    '''
+    params:
+        kwargs: dictionary of key word arguments
+        defaults: list or dictionary of keywords->types
+    '''
+    try:
+        assert isinstance(kwargs, dict)
+        if isinstance(defaults, list):
+            for k in defaults:
+                assert k in defaults
+        elif isinstance(defaults, dict):
+            for k,k_type in defaults.items():
+                assert isinstance(kwargs[k], k_type)
+    except Exception as e:
+        if return_bool:
+            return False
+        
+        else:
+            raise e
+
 
 class DatasetModule(BaseModule, Dataset):
     default_cfg_path = 'huggingface.dataset.module'
 
     datanft = None
     default_token_name='token' 
+    last_saved = None
 
     
     dataset = {}
-    def __init__(self, config=None, init_state=False):
+    def __init__(self, config=None, load_state=True):
         BaseModule.__init__(self, config=config)
         self.algocean = OceanModule()
         self.web3 = self.algocean.web3
@@ -47,12 +71,13 @@ class DatasetModule(BaseModule, Dataset):
 
 
         if load_state:
+            self.load_state(**self.config.get('dataset'))
             
+    def load_state(self, **kwargs):
+        self.dataset_factory = self.load_dataset_factory(path=kwargs['path'])
+        self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
     
-    def load_state(self, path, ):
-        self.load_dataset_factory(path=path)
-        self.load_dataset_builder()
-        self.load_dataset()
+        self.dataset = self.load_dataset(**kwargs)
 
     @staticmethod
     def is_load_dataset_config(kwargs):
@@ -68,40 +93,21 @@ class DatasetModule(BaseModule, Dataset):
         return  'path' in kwargs
 
     @staticmethod
-    def load_dataset_builder( path:str):
-        dataset_builder = datasets.load.import_main_class(path)
+    def load_dataset_builder( path:str=None, factory_module_path:str=None):
+        if factory_module_path == None:
+            assert isinstance(path, str)
+            factory_module = datasets.load.dataset_module_factory(path)
+            factory_module_path = factory_module.module_path
+
+        dataset_builder = datasets.load.import_main_class(factory_module_path)
         return dataset_builder
 
     @staticmethod
-    def load_dataset_module_factory( path:str):
+    def load_dataset_factory( path:str):
         return datasets.load.dataset_module_factory(path)
 
-    @staticmethod
-    def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False)
-        '''
-        params:
-            kwargs: dictionary of key word arguments
-            defualts: list or dictionary of keywords->types
-        '''
-        try:
-            assert isinstance(kwargs, dict)
-            if isinstance(defualts, list):
-                for k in defaults:
-                    assert k in defaults
-            elif isinstance(defaults, dict):
-                for k,k_type in defaults.items():
-                    assert isinstance(kwargs[k], k_type)
-        except Exception as e:
-            if return_bool:
-                return False
-            
-            else:
-                raise e
 
         
-
-
-
     def load_dataset(self, **kwargs):
         '''
         path: path to the model in the hug
@@ -109,28 +115,50 @@ class DatasetModule(BaseModule, Dataset):
         split: the split of the model
         
         '''
-        if len(args) + len(kwargs) == 0:
-            config_kwargs = self.config.get('dataset')
-            split = config_kwargs.get('split', ['train'])
-            if isinstance(split, str):
-                split = [split]
-            if isinstance(split, list):
-                split = {s:s for s in split}
-            kwargs = config_kwargs
+
+        # ensure the checks pass
+        check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
+
+        if len(kwargs) == 0:
+            kwargs = self.config.get('dataset')
+
+        split = kwargs.get('split', ['train'])
+        if isinstance(split, str):
+            split = [split]
+        if isinstance(split, list):
+            kwargs['split'] = {s:s for s in split}
 
 
-        self.dataset = load_dataset(*args, **kwargs )
+        if 'name' not in kwargs:
+            kwargs['name'] = self.list_configs(path = kwargs['path'], return_type='dict.keys')[0]
 
 
-        return self.dataset
+        return  load_dataset(**kwargs )
     
     def get_split(self, split='train'):
         return self.dataset[split]
 
+    def list_datasets(self, include_configs=True, limit=100, handle_error=False):
+        datasets_list = datasets.list_datasets()[:limit]
 
-    @staticmethod
-    def list_datasets():
-        return datasets.list_datasets()
+
+        if include_configs:
+            tmp_datasets_list = []
+            for d in datasets_list:
+                try:
+                    for d_cfg in self.list_configs(path=d, return_type='dict.keys'):
+                        tmp_datasets_list.append(f'{d}.{d_cfg}')
+                except Exception as e:
+                    if handle_error:  
+                        print(d, 'FAILED')
+                        pass
+                    else:
+                        raise e
+            
+            datasets_list =  tmp_datasets_list
+
+                
+        return datasets_list
 
     def get_info(self, to_dict =True):
 
@@ -162,18 +190,29 @@ class DatasetModule(BaseModule, Dataset):
     # def builder_configs(self):
     #     return {v.name:v for v in module.dataset_builder.BUILDER_CONFIGS}
 
+    @property
+    def state_path_map(self):
+        st.write(self.config.get('state_path_map'), 'bru')
+        return self.config.get('state_path_map')
+
+
 
     def save(self,mode:str='ipfs'):
+
         if mode == 'ipfs':
-            path_split_map = {}
+            state_path_map = {}
             for split, dataset in self.dataset.items():
                 cid = self.client.ipfs.save_dataset(dataset)
-                path_split_map[split] = self.client.ipfs.ls(cid)
-            self.config['state_path'] = path_split_map
+                state_path_map[split] = self.client.ipfs.ls(cid)
+
+            self.config['state_path_map'] = state_path_map
+            st.write(state_path_map)
         else:
             raise NotImplementedError
+
+        self.last_saved = datetime.datetime.utcnow().timestamp()
     
-        return self.config['state_path']
+        return state_path_map
 
 
 
@@ -205,17 +244,8 @@ class DatasetModule(BaseModule, Dataset):
     def path(self):
         return self.config['dataset']['path']
 
-    @property
-    def builder_name(self):
-        return self.path
+    builder_name = dataset_name = path
 
-    @property
-    def dataset_name(self):
-        return self.path
-
-    @property
-    def config_name(self):
-        return self.config['dataset']['name']
 
     def create_asset(self, datatoken='token', services:list=None ):
         
@@ -227,14 +257,14 @@ class DatasetModule(BaseModule, Dataset):
     def url_files_metadata(self):
         pass
 
-    def get_url_data(self):
-        split_path_map = self.save()
+    @property
+    def url_data(self):
 
         file_index = 0
         url_files = []
         split_url_files_info = {}
         cid2index = {}
-        for split, split_file_configs in split_path_map.items():
+        for split, split_file_configs in self.state_path_map.items():
             split_url_files_info[split] = []
       
             for file_config in split_file_configs:
@@ -260,7 +290,7 @@ class DatasetModule(BaseModule, Dataset):
         return url_files, split_url_files_info
     @property
     def additional_information(self):
-        url_files, split_url_files_info = self.get_url_data()
+        url_files, split_url_files_info = self.url_data
 
         info_dict = {
             'organization': 'huggingface',
@@ -307,7 +337,7 @@ class DatasetModule(BaseModule, Dataset):
         if name == None:
             name = self.config_name
         if files == None:
-            files, split_files_metadata = self.get_url_data()
+            files, split_files_metadata = self.url_data
         name = '.'.join([name, service_type])
         return self.algocean.create_service(name=name,
                                             timeout=timeout,
@@ -483,19 +513,6 @@ class DatasetModule(BaseModule, Dataset):
         return self.algocean.create_asset(datanft=self.datanft, metadata=metadata, services=services)
 
 
-    def save(self,mode:str='ipfs'):
-        if mode == 'ipfs':
-            path_split_map = {}
-            for split, dataset in self.dataset.items():
-                cid = self.client.ipfs.save_dataset(dataset)
-                path_split_map[split] = self.client.ipfs.ls(cid)
-            self.config['state_path'] = path_split_map
-        else:
-            raise NotImplementedError
-    
-        return self.config['state_path']
-
-
 
 
     def load(self, path:dict=None, mode:str='ipfs'):
@@ -513,14 +530,110 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
+    def list_configs(self, path:str=None, return_type='dict'):
+        if isinstance(path, str):
+            if path != self.path:
+                dataset_builder = self.load_dataset_builder(path)
+            else:
+                dataset_builder = self.dataset_builder
+        else:
+            dataset_builder = self.dataset_builder
+
+
+        configs = [config.__dict__ for config in dataset_builder.BUILDER_CONFIGS]
+
+        if len(configs) == 0:
+            configs =  [dataset_builder('default').info.__dict__]
+            configs[0]['name'] = 'default'
+            # st.write(configs)
+
+        if return_type.startswith('dict'):
+            configs = {config['name']: config for config in configs}
+            if return_type in ['dict.keys']:
+                return list(configs.keys())
+            elif return_type in ['dict.values']:
+                return list(configs.values())
+            elif return_type == 'dict':
+                return configs
+            else:
+                raise NotImplementedError
+
+        
+        elif return_type in ['list']:
+            return configs
+        else:
+            raise NotImplementedError
+        return configs
+    
+
+    @staticmethod
+    def timeit(fn, trials=1, time_type = 'seconds', return_results = False, timer_kwargs={} ,*args,**kwargs):
+        
+        elapsed_times = []
+        results = []
+        
+        for i in range(trials):
+            with Timer(**timer_kwargs) as t:
+                result = fn(*args, **kwargs)
+                results.append(result)
+                elapsed_times.append(t.elapsed_time(return_type=time_type))
+        
+        stat_dict = {
+            'mean':round_sig(np.mean(elapsed_times),3), 
+                'std':round_sig(np.std(elapsed_times),3), 
+                'max':round_sig(np.max(elapsed_times),3), 
+                'min':round_sig(np.min(elapsed_times), 3), 
+        }
+        
+        output_dict = {
+                'trials':trials, 
+                'metric': time_type,
+                **stat_dict
+                }
+
+        if return_results:
+            output_dict['results'] = results
+
+
+        return output_dict            
+
+    @property
+    def splits(self):
+        return list(self.dataset.keys())
+
+
+    @property
+    def config_name(self):
+        return self.info['config_name']
+
+    subtype = flavor = config_name
+
+
+    @property
+    def info(self):
+        return self.dataset[self.splits[0]].info.__dict__
+
+
 
 
 if __name__ == '__main__':
     import streamlit as st
+    import numpy as np
     from algocean.utils import *
 
-    module = DatasetModule()
-    st.write(module.asset)
-    st.write(module.dataset_builder.BUILDER_CONFIGS[0].__dict__)
-    # module.download()
 
+    module = DatasetModule()
+    # st.write(module.asset)
+
+    from algocean.utils import Timer
+
+
+    # module.save()
+    # st.write(module.url_data[1])
+    st.write(module.dataset['train'].shard(10,1))
+    # st.write(module.dataset['validation'].info.__dict__)
+    # st.write(module.list_datasets())
+    # st.write(module.load_dataset(path=module.list_datasets()[0])['train']._info.__dict__)
+
+
+    

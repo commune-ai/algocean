@@ -1,8 +1,9 @@
 import ray
 from algocean.config import ConfigLoader
 from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr
-from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class 
+from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer
 import os
+import numpy as np
 import datetime
 import inspect
 from types import ModuleType
@@ -247,3 +248,19 @@ class ActorModule:
     @classmethod
     def parents(cls):
         return get_parents(cls)
+
+    @staticmethod
+    def timeit(fn, trials=1, time_type = 'seconds', timer_kwargs={} ,*args,**kwargs):
+        
+        elapsed_times = []
+        results = []
+        
+        for i in range(trials):
+            with Timer(**timer_kwargs) as t:
+                result = fn(*args, **kwargs)
+                results.append(result)
+                elapsed_times.append(t.elapsed_time(return_type=time_type))
+        return dict(mean=np.mean(elapsed_times), std=np.std(elapsed_times), trials=trials, results=[])
+
+
+    

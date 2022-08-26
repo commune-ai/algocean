@@ -4,7 +4,6 @@ module: huggingface.dataset.DatasetModule
 
 dataset: 
   path: "glue"
-  name: "mrpc"
   split: [train, validation]
   
 
