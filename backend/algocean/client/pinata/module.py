@@ -34,7 +34,7 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
         BaseModule.__init__(self, config=config)
         AsyncIPFSFileSystem.__init__(self)
         self.api_key = self.get_api_key(api_key = self.config.get('api_key'))
-        self.url = self.config.get('url', 'https://api.pinata.cloud')
+        self.url = self.config.get('url', f'{self.url}')
         self.local =  LocalModule()
 
     def get_api_key(self, api_key=None):
@@ -284,7 +284,7 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
         'offset' - Provide the record offset for records being returned. This is how you retrieve records on additional pages (default is 0)
         '''
 
-        base_url = 'https://api.pinata.cloud/pinning/pinJobs/'
+        base_url = f'{self.url}/pinning/pinJobs/'
 
         header = {'Authorization': f'Bearer {self.api_key}'}
 
@@ -293,6 +293,7 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
         return response
 
     # %% ../nbs/03_pinataapi.ipynb 37
+
     def get_pinned_files(self,params=None # Filter returned pinned files
     ):
 
@@ -314,13 +315,17 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
         if there's 30 records that match your query, and you passed in a pageLimit of 10, providing a pageOffset of 10 would return records 11-20.
         '''
 
-        base_url = 'https://api.pinata.cloud/data/pinList?'
+        base_url = f'{self.url}/data/pinList?'
 
         header = {'Authorization': f'Bearer {self.api_key}'}
 
         response = requests.get(base_url, headers=header,params=params)
 
         return response
+    
+    ls_pins = get_pinned_files
+    ls = get_pinned_files
+
 
     # %% ../nbs/03_pinataapi.ipynb 40
     def get_datausage(self,params=None # Filter returned data usage statistics
@@ -328,7 +333,7 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
 
         header = {'Authorization': f'Bearer {self.api_key}'}
 
-        base_url = 'https://api.pinata.cloud/data/userPinnedDataTotal'
+        base_url = f'{self.url}/data/userPinnedDataTotal'
 
         response = requests.get(base_url, headers=header,params=params)
 

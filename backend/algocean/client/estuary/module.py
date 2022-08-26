@@ -15,6 +15,7 @@ import requests
 from ipfspy.utils import parse_response
 
 from algocean.client.local import LocalModule
+from algocean.client.ipfs import IPFSModule
 from algocean import BaseModule
 
 
@@ -30,9 +31,9 @@ class EstuaryModule(BaseModule):
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
-        st.write(self.config)
         self.api_key = self.get_api_key(api_key = self.config.get('api_key'))
         self.local =  LocalModule()
+        self.ipfs = IPFSModule()
         self.url = self.config.get('url', 'https://shuttle-4.estuary.tech')
 
 
@@ -64,7 +65,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/viewer', headers=headers)
+        response = requests.get(f'{self.url["get"]}/viewer', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 6
@@ -80,11 +81,18 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'https://api.estuary.tech/pinning/pins', headers=headers)
+        response = requests.get(f'{self.url["get"]}/pinning/pins', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 7
     # add pin
+
+
+    def rm_all_pins(self):
+
+        pins = self.list_pins()[1][0]['results']
+        return [self.remove_pin(p['requestid']) for p in pins]
+
     def add_pin(self,
         file_name: str, # File name to pin
         cid: str, # CID to attach
@@ -103,7 +111,7 @@ class EstuaryModule(BaseModule):
             'cid': cid,
         }
 
-        response = requests.post(f'{self.url}/pinning/pins', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["post"]}/pinning/pins', headers=headers, json=json_data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 8
@@ -120,7 +128,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'https://api.estuary.tech/pinning/pins/{pin_id}', headers=headers)
+        response = requests.get(f'{self.url["get"]}/pinning/pins/{pin_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 9
@@ -138,7 +146,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.post(f'{self.url}/pinning/pins/{pin_id}', headers=headers)
+        response = requests.post(f'{self.url["post"]}/pinning/pins/{pin_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 10
@@ -155,7 +163,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.delete(f'{self.url}/pinning/pins/{pin_id}', headers=headers)
+        response = requests.delete(f'{self.url["get"]}/pinning/pins/{pin_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 12
@@ -179,7 +187,7 @@ class EstuaryModule(BaseModule):
             'description': description,
         }
 
-        response = requests.post(f'{self.url}/collections/create', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["post"]}/collections/create', headers=headers, json=json_data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 13
@@ -204,7 +212,7 @@ class EstuaryModule(BaseModule):
             'collection': collection_id,
         }
 
-        response = requests.post(f'{self.url}/collections/add-content', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["post"]}/collections/add-content', headers=headers, json=json_data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 14
@@ -220,7 +228,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/collections/list', headers=headers)
+        response = requests.get(f'{self.url["get"]}/collections/list', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 15
@@ -239,7 +247,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/collections/content/{collection_id}', headers=headers)
+        response = requests.get(f'{self.url["get"]}/collections/content/{collection_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 16
@@ -261,7 +269,7 @@ class EstuaryModule(BaseModule):
             'col': collection_id,
         }
 
-        response = requests.get(f'{self.url}/collections/fs/list?col=UUID&dir={path}', params=params, headers=headers)
+        response = requests.get(f'{self.url["get"]}/collections/fs/list?col=UUID&dir={path}', params=params, headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 17
@@ -284,7 +292,7 @@ class EstuaryModule(BaseModule):
             'col': collection_id,
         }
 
-        response = requests.post(f'{self.url}/collections/fs/add?col=UUID&content=LOCAL_ID&path={path}', params=params, headers=headers)
+        response = requests.post(f'{self.url["post"]}/collections/fs/add?col=UUID&content=LOCAL_ID&path={path}', params=params, headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 19
@@ -305,7 +313,7 @@ class EstuaryModule(BaseModule):
             'expiry': expiry,
         }
 
-        response = requests.post(f'{self.url}/user/api-keys', params=params, headers=headers)
+        response = requests.post(f'{self.url["post"]}/user/api-keys', params=params, headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 20
@@ -326,7 +334,7 @@ class EstuaryModule(BaseModule):
         }
 
 
-        response = requests.post(f'{self.url}/content/add', headers=headers, files=files)
+        response = requests.post(f'{self.url["post"]}/content/add', headers=headers, files=files)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 21
@@ -350,7 +358,7 @@ class EstuaryModule(BaseModule):
             'root': cid,
         }
 
-        response = requests.post(f'{self.url}/content/add-ipfs', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["post"]}/content/add-ipfs', headers=headers, json=json_data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 22
@@ -371,7 +379,7 @@ class EstuaryModule(BaseModule):
         with open(path_to_file, 'rb') as f:
             data = f.read()
 
-        response = requests.post(f'{self.url}/content/add-car', headers=headers, data=data)
+        response = requests.post(f'{self.url["post"]}/content/add-car', headers=headers, data=data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 23
@@ -394,7 +402,7 @@ class EstuaryModule(BaseModule):
             'content': content_id,
         }
 
-        response = requests.post(f'{self.url}/deals/make/{provider_id}', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["post"]}/deals/make/{provider_id}', headers=headers, json=json_data)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 24
@@ -411,7 +419,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'https://api.estuary.tech/content/by-cid/{cid}', headers=headers)
+        response = requests.get(f'{self.url["get"]}/content/by-cid/{cid}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 25
@@ -425,7 +433,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/content/stats', headers=headers)
+        response = requests.get(f'{self.url["get"]}/content/stats', headers=headers)
         return response, parse_response(response)
 
     # list deals
@@ -439,7 +447,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/content/deals', headers=headers)
+        response = requests.get(f'{self.url["get"]}/content/deals', headers=headers)
         return response, parse_response(response)
 
     # get deal status by id
@@ -463,7 +471,7 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-        response = requests.get(f'{self.url}/content/status/{deal_id}', headers=headers)
+        response = requests.get(f'{self.url["get"]}/content/status/{deal_id}', headers=headers)
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 28
@@ -471,7 +479,7 @@ class EstuaryModule(BaseModule):
     def get_node_stats(self):
         "Get Estuary node stats"
 
-        response = requests.get(f'{self.url}/public/stats')
+        response = requests.get(f'{self.url["get"]}/public/stats')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 29
@@ -479,7 +487,7 @@ class EstuaryModule(BaseModule):
     def get_deal_data(self):
         "Get on-chain deal data"
 
-        response = requests.get(f'{self.url}/public/metrics/deals-on-chain')
+        response = requests.get(f'{self.url["get"]}/public/metrics/deals-on-chain')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 30
@@ -490,7 +498,7 @@ class EstuaryModule(BaseModule):
     ):
         "Get the query ask and verified ask for any miner"
 
-        response = requests.get(f'{self.url}/public/miners/storage/query/{miner_id}')
+        response = requests.get(f'{self.url["get"]}/public/miners/storage/query/{miner_id}')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 31
@@ -500,7 +508,7 @@ class EstuaryModule(BaseModule):
     ):
         "Get all of the failure logs for a specific miner"
 
-        response = requests.get(f'{self.url}/public/miners/failures/{miner_id}')
+        response = requests.get(f'{self.url["get"]}/public/miners/failures/{miner_id}')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 32
@@ -510,7 +518,7 @@ class EstuaryModule(BaseModule):
     ):
         "Get deal logs by provider"
 
-        response = requests.get(f'{self.url}/public/miners/deals/{provider_id}')
+        response = requests.get(f'{self.url["get"]}/public/miners/deals/{provider_id}')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 33
@@ -520,7 +528,7 @@ class EstuaryModule(BaseModule):
     ):
         "Get provider stats"
 
-        response = requests.get(f'{self.url}/public/miners/stats/{provider_id}')
+        response = requests.get(f'{self.url["get"]}/public/miners/stats/{provider_id}')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 34
@@ -528,7 +536,7 @@ class EstuaryModule(BaseModule):
     def list_providers(self):
         "List Estuary providers"
 
-        response = requests.get(f'{self.url}/public/miners')
+        response = requests.get(f'{self.url["get"]}/public/miners')
         return response, parse_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 36
@@ -539,7 +547,7 @@ class EstuaryModule(BaseModule):
     ):
         "Download data from Estuary CID"
 
-        url = f'https://dweb.link/ipfs/{cid}'
+        url = f'{self.url["dweb"]}/{cid}'
         response = requests.get(url, allow_redirects=True)  # to get content
         with open(path_name, 'wb') as f:
             f.write(response.content)
@@ -689,10 +697,14 @@ if __name__ == '__main__':
 
 
     module = EstuaryModule()
-    st.write(module.name)
 
 
-    # st.write(module.save_dataset(path='glue', name='mrpc', split='train',  mode='🤗'))
-    pin = 'bafkreihzlhqysawlelgmwicufctqqpfczashjszbq3gvn64bvlufhmxan4'
+    st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
     # st.write(module.view_data_cid(pin))
     st.write(module.list_pins())
+    bro = module.ipfs.cat('bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy')
+    st.write(len(bro))
+    # st.write(module.rm_all_pins())
+    # st.write(module.remove_pin('35921207'))
+    # st.write(module.list_pins()[1][0])
+    
