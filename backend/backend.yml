@@ -6,7 +6,7 @@ services:
       context: ./
       dockerfile: Dockerfile
     ports:
-      - 8501:8501 # for the user streamlit app
+      - 8501-8506:8501-8506 # for the user streamlit app
       - 8265:8265
       - 8000:8000
       - 8001:8001

@@ -1,4 +1,4 @@
-zimport ray
+import ray
 import torch
 
 

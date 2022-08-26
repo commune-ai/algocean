@@ -22,8 +22,7 @@ build_backend:
 	docker-compose -f "backend/backend.yml" build;
 
 app:
-	docker exec -it ocean_backend_1 bash -c "streamlit run ${arg}"
-
+	make streamlit
 kill_all:
 	docker kill $(docker ps -q)
 

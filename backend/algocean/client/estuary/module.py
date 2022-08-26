@@ -6,7 +6,6 @@ import asyncio
 import json
 import pickle
 import io
-from transformers import AutoModel, AutoTokenizer
 from datasets import load_dataset, Dataset
 import os, sys
 sys.path.append(os.getenv('PWD'))
@@ -66,7 +65,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/viewer', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 6
     # list pins
@@ -82,7 +81,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/pinning/pins', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 7
     # add pin
@@ -112,7 +111,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/pinning/pins', headers=headers, json=json_data)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 8
     # get pin by ID
@@ -129,7 +128,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/pinning/pins/{pin_id}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 9
     # replace pin by ID
@@ -147,7 +146,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/pinning/pins/{pin_id}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 10
     # remove pin by ID
@@ -164,16 +163,20 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.delete(f'{self.url["get"]}/pinning/pins/{pin_id}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 12
     # create new collection
     def create_collection(self,
         name: str, # Collection name
-        description: str, # Collection description
+        description: str='No Description', # Collection description
         api_key: str= None # Your Estuary API key
 
     ):
+
+        if name in self.collection_names:
+            raise Exception(f'collection: {name} already exists')
+        
         "Create new collection"
         api_key = self.resolve_api_key(api_key)
 
@@ -187,11 +190,57 @@ class EstuaryModule(BaseModule):
             'description': description,
         }
 
-        response = requests.post(f'{self.url["post"]}/collections/create', headers=headers, json=json_data)
-        return response, parse_response(response)
+        response = requests.post(f'{self.url["get"]}/collections/create', headers=headers, json=json_data)
+        return self.handle_response(response)
+
+
+    def delete_collection(self,
+        collection: str, # Collection name
+        api_key: str= None # Your Estuary API key
+
+    ):
+
+        "Create new collection"
+        api_key = self.resolve_api_key(api_key)
+
+        headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+        }
+
+
+        uuid = self.get_collection(collection)['uuid']
+        st.write(uuid)
+
+        response = requests.delete(f'{self.url["get"]}/collections/{uuid}', headers=headers)
+        return self.handle_response(response)
+
+
 
     # %% ../nbs/02_estuaryapi.ipynb 13
     # add content
+
+    @property
+    def name2collection(self):
+        return {c['name']:c for c in self.list_collections()}
+
+    @property
+    def uuid2collection(self):
+        return {c['uuid']:c for c in self.list_collections()}
+
+
+    def get_collection(self, collection:str):
+        # get collection by name
+        collection_maps = [self.uuid2collection, self.name2collection]
+
+        for collection_map in collection_maps:
+            try:
+                return collection_map.get(collection)
+            except KeyError as e:
+                pass
+            
+        return None
+
     def add_content(self,
         collection_id: str, # Collection ID
         data: list, # List of paths to data to be added
@@ -213,10 +262,11 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/collections/add-content', headers=headers, json=json_data)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 14
     # list collections
+
     def list_collections(self,
         api_key: str=None # Your Estuary API key
     ):
@@ -229,11 +279,14 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/collections/list', headers=headers)
-        return response, parse_response(response)
+        
+        
+        
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 15
     # list collection content
-    def list_coll_content(self,
+    def list_collection_content(self,
         collection_id: str, # Collection ID
         api_key: str=None # Your Estuary API key
 
@@ -248,7 +301,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/collections/content/{collection_id}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 16
     # FS list content of a path
@@ -270,7 +323,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/collections/fs/list?col=UUID&dir={path}', params=params, headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 17
     # FS add content to path
@@ -293,7 +346,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/collections/fs/add?col=UUID&content=LOCAL_ID&path={path}', params=params, headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 19
     # add client safe upload key
@@ -314,7 +367,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/user/api-keys', params=params, headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 20
     def add_data(self,
@@ -335,7 +388,7 @@ class EstuaryModule(BaseModule):
 
 
         response = requests.post(f'{self.url["post"]}/content/add', headers=headers, files=files)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 21
     # add CID
@@ -359,7 +412,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/content/add-ipfs', headers=headers, json=json_data)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 22
     # add CAR
@@ -380,7 +433,7 @@ class EstuaryModule(BaseModule):
             data = f.read()
 
         response = requests.post(f'{self.url["post"]}/content/add-car', headers=headers, data=data)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 23
     # make deal with specific provider
@@ -403,7 +456,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.post(f'{self.url["post"]}/deals/make/{provider_id}', headers=headers, json=json_data)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 24
     # data by CID
@@ -420,7 +473,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/content/by-cid/{cid}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 25
     # list data
@@ -434,7 +487,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/content/stats', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # list deals
     def list_deals( self,
@@ -448,7 +501,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/content/deals', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # get deal status by id
 
@@ -472,7 +525,7 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/content/status/{deal_id}', headers=headers)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 28
     # get Estuary node stats
@@ -480,7 +533,7 @@ class EstuaryModule(BaseModule):
         "Get Estuary node stats"
 
         response = requests.get(f'{self.url["get"]}/public/stats')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 29
     # get on chain deal data
@@ -488,7 +541,7 @@ class EstuaryModule(BaseModule):
         "Get on-chain deal data"
 
         response = requests.get(f'{self.url["get"]}/public/metrics/deals-on-chain')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 30
     # get miner query ask
@@ -499,7 +552,7 @@ class EstuaryModule(BaseModule):
         "Get the query ask and verified ask for any miner"
 
         response = requests.get(f'{self.url["get"]}/public/miners/storage/query/{miner_id}')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 31
     # get failure logs by provider
@@ -509,7 +562,7 @@ class EstuaryModule(BaseModule):
         "Get all of the failure logs for a specific miner"
 
         response = requests.get(f'{self.url["get"]}/public/miners/failures/{miner_id}')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 32
     # get deal logs by provider
@@ -519,7 +572,7 @@ class EstuaryModule(BaseModule):
         "Get deal logs by provider"
 
         response = requests.get(f'{self.url["get"]}/public/miners/deals/{provider_id}')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 33
     # get provider stats
@@ -529,7 +582,7 @@ class EstuaryModule(BaseModule):
         "Get provider stats"
 
         response = requests.get(f'{self.url["get"]}/public/miners/stats/{provider_id}')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 34
     # list providers
@@ -537,7 +590,7 @@ class EstuaryModule(BaseModule):
         "List Estuary providers"
 
         response = requests.get(f'{self.url["get"]}/public/miners')
-        return response, parse_response(response)
+        return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 36
 
@@ -551,7 +604,7 @@ class EstuaryModule(BaseModule):
         response = requests.get(url, allow_redirects=True)  # to get content
         with open(path_name, 'wb') as f:
             f.write(response.content)
-        return response, parse_response(response)
+        return self.handle_response(response)
 
 
 
@@ -691,9 +744,27 @@ class EstuaryModule(BaseModule):
     def name(self):
         return self.id
 
+    @staticmethod
+    def handle_response(response):
+
+        if response.status_code == 200:
+            return parse_response(response)[0]
+        else:
+            return response
+
+    @property
+    def collection_names(self):
+        return [c['name'] for c in self.list_collections()]
+
+
+    @property
+    def collection_uuids(self):
+        return [c['uuid'] for c in self.list_collections()]
+
 if __name__ == '__main__':
     import ipfspy
     import streamlit as st
+    from algocean.utils import *
 
 
     module = EstuaryModule()
@@ -701,7 +772,11 @@ if __name__ == '__main__':
 
     # st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
     # st.write(module.view_data_cid(pin))
-    st.write(module.list_pins())
+    module.describe(streamlit=True)
+    st.write(module.create_collection('default1'))
+    st.write(module.list_collections())
+
+
     # bro = module.ipfs.cat('bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy')
     # st.write(len(bro))
     # st.write(module.rm_all_pins())

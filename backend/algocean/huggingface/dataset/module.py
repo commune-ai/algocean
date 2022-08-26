@@ -192,8 +192,10 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def state_path_map(self):
-        st.write(self.config.get('state_path_map'), 'bru')
-        return self.config.get('state_path_map')
+        state_path_map = self.config.get('state_path_map')
+        if state_path_map == None:
+            state_path_map = self.save()
+        return state_path_map
 
 
 
@@ -206,7 +208,6 @@ class DatasetModule(BaseModule, Dataset):
                 state_path_map[split] = self.client.ipfs.ls(cid)
 
             self.config['state_path_map'] = state_path_map
-            st.write(state_path_map)
         else:
             raise NotImplementedError
 
@@ -247,12 +248,6 @@ class DatasetModule(BaseModule, Dataset):
     builder_name = dataset_name = path
 
 
-    def create_asset(self, datatoken='token', services:list=None ):
-        
-        
-        self.algocean.create_asset(datanft=self.dataset_name, datatoken=datatoken,
-                                 services=services )
-
     @property
     def url_files_metadata(self):
         pass
@@ -292,15 +287,17 @@ class DatasetModule(BaseModule, Dataset):
     def additional_information(self):
         url_files, split_url_files_info = self.url_data
 
+
         info_dict = {
             'organization': 'huggingface',
             'package': {
                         'name': 'datasets',
-                        'version': datasets.__version__
+                        'version': str(datasets.__version__)
                         },
             'info': self.info, 
             'file_info': split_url_files_info
         }
+
         return info_dict
 
     def dispense_tokens(self,token=None, wallet=None):
@@ -352,7 +349,6 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def metadata(self):
-        st.sidebar.write(self.info)
         metadata ={}
         metadata['name'] = self.path
         metadata['description'] = self.info['description']
@@ -371,6 +367,10 @@ class DatasetModule(BaseModule, Dataset):
     @property
     def split_info(self):
         return self.info['splits']
+
+    @property
+    def features(self):
+        return self.info['features']
 
     @property
     def builder_configs(self):
@@ -509,7 +509,6 @@ class DatasetModule(BaseModule, Dataset):
             services = [services]
             
 
-
         return self.algocean.create_asset(datanft=self.datanft, metadata=metadata, services=services)
 
 
@@ -609,10 +608,30 @@ class DatasetModule(BaseModule, Dataset):
     subtype = flavor = config_name
 
 
+
     @property
     def info(self):
-        return self.dataset[self.splits[0]].info.__dict__
+        info = deepcopy(self.dataset[self.splits[0]].info.__dict__)
+        assert 'splits' in info
+        split_info = {}
+        for split in self.splits:
+            
+            split_info[split] = info['splits'][split].__dict__
+        
+        info['splits'] = split_info
 
+
+        feature_info = {}
+        for feature in info['features'].keys():
+            feature_info[feature] = info['features'][feature].__dict__
+            if 'pa_type' in feature_info[feature]:
+                feature_info[feature]['pa_type'] =  str(feature_info[feature]['pa_type'])
+        
+        info['features'] = feature_info
+
+        
+        info['version'] = str(info['version'])
+        return info
 
 
 
@@ -623,14 +642,16 @@ if __name__ == '__main__':
 
 
     module = DatasetModule()
-    # st.write(module.asset)
+    st.write(module.asset)
 
     from algocean.utils import Timer
 
 
     # module.save()
     # st.write(module.url_data[1])
-    st.write(module.dataset['train'].shard(10,1))
+    # st.write(module.info) 
+    st.write(module.metadata)
+    # st.write(module.download())
     # st.write(module.dataset['validation'].info.__dict__)
     # st.write(module.list_datasets())
     # st.write(module.load_dataset(path=module.list_datasets()[0])['train']._info.__dict__)

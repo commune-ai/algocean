@@ -1,7 +1,7 @@
 import ray
 from algocean.config import ConfigLoader
 from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr
-from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer
+from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer, get_functions
 import os
 import numpy as np
 import datetime
@@ -211,16 +211,36 @@ class ActorModule:
         obect = get_functions(object)
 
     @classmethod
-    def functions(cls, include_hidden=False):
-        fn_list = []
-        for fn_name in dir(cls):
+    def functions(cls, return_type='str', **kwargs):
+        functions =  get_functions(obj=cls, **kwargs)
+        if return_type in ['str', 'string']:
+            return functions
         
-            if not cls.is_hidden_function(fn_name) or include_hidden:
-                fn = getattr(cls, fn_name)
-                if callable(fn):
-                    fn_list.append(fn_name)
+        elif return_type in ['func', 'fn','functions']:
+            return [getattr(cls, f) for f in functions]
+        else:
+            raise NotImplementedError
 
-        return fn_list
+
+    @classmethod
+    def describe(cls, obj=None, streamlit=False, sidebar=True,**kwargs):
+        if obj == None:
+            obj = cls
+
+        assert is_class(obj)
+
+        fn_list = cls.functions(return_type='fn', **kwargs)
+        
+        fn_dict =  {f.__name__:f for f in fn_list}
+        if streamlit:
+            import streamlit as st
+            for k,v in fn_dict.items():
+                with (st.sidebar if sidebar else st).expander(k):
+                    st.write(k,v)
+        else:
+            return fn_dict
+        
+        
 
     @classmethod
     def hasfunc(cls, key):
@@ -264,3 +284,5 @@ class ActorModule:
 
 
     
+
+        
