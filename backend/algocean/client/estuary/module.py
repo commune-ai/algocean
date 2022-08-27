@@ -170,12 +170,17 @@ class EstuaryModule(BaseModule):
     def create_collection(self,
         name: str, # Collection name
         description: str='No Description', # Collection description
+        handle_error:bool=True, 
         api_key: str= None # Your Estuary API key
+
 
     ):
 
         if name in self.collection_names:
-            raise Exception(f'collection: {name} already exists')
+            if handle_error:
+                return None
+            else:
+                raise Exception(f'collection: {name} already exists')
         
         "Create new collection"
         api_key = self.resolve_api_key(api_key)
@@ -193,8 +198,8 @@ class EstuaryModule(BaseModule):
         response = requests.post(f'{self.url["get"]}/collections/create', headers=headers, json=json_data)
         return self.handle_response(response)
 
-
-    def delete_collection(self,
+    add_collection = create_collection
+    def rm_collection(self,
         collection: str, # Collection name
         api_key: str= None # Your Estuary API key
 
@@ -208,13 +213,17 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
-
-        uuid = self.get_collection(collection)['uuid']
-        st.write(uuid)
+        collection = self.get_collection(collection)
+        if collection == None:
+            return None
+            
+        assert isinstance(collection, dict)
+        uuid = collection['uuid']
 
         response = requests.delete(f'{self.url["get"]}/collections/{uuid}', headers=headers)
         return self.handle_response(response)
 
+    delete_collection = remove_collection = rm_collection
 
 
     # %% ../nbs/02_estuaryapi.ipynb 13
@@ -229,17 +238,21 @@ class EstuaryModule(BaseModule):
         return {c['uuid']:c for c in self.list_collections()}
 
 
-    def get_collection(self, collection:str):
+    def collection_exists(self, collection):
+        return bool(self.get_collection(collection))
+
+    def get_collection(self, collection:str, handle_error=True):
         # get collection by name
         collection_maps = [self.uuid2collection, self.name2collection]
 
         for collection_map in collection_maps:
-            try:
-                return collection_map.get(collection)
-            except KeyError as e:
-                pass
-            
-        return None
+            if collection in collection_map:
+                return collection_map[collection]
+
+        if handle_error:
+            return None
+        else:
+            raise Exception(f'{collection} does not exist in {list(collection_maps[0].keys())} uuids or {list(collection_maps[1].keys())} name')
 
     def add_content(self,
         collection_id: str, # Collection ID
@@ -394,7 +407,8 @@ class EstuaryModule(BaseModule):
     # add CID
     def add_cid(self,
         file_name: str, # File name to add to CID
-        cid: str, # CID for file
+        cid: str, # CID for file,
+        collection:str='default',
         api_key: str=None, # Your Estuary API key
 
     ):
@@ -405,10 +419,13 @@ class EstuaryModule(BaseModule):
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {api_key}',
         }
+        
+        coluid= self.get_collection(collection)['uuid']
 
         json_data = {
             'name': file_name,
-            'root': cid,
+            'root': coluid,
+            'coluid': s
         }
 
         response = requests.post(f'{self.url["post"]}/content/add-ipfs', headers=headers, json=json_data)
@@ -748,7 +765,12 @@ class EstuaryModule(BaseModule):
     def handle_response(response):
 
         if response.status_code == 200:
-            return parse_response(response)[0]
+            parsed_response = parse_response(response)
+            if len(parsed_response)==1 and \
+                 isinstance(parsed_response, list):
+                 return parsed_response[0]
+            else:
+                return parsed_response
         else:
             return response
 
@@ -772,9 +794,7 @@ if __name__ == '__main__':
 
     # st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
     # st.write(module.view_data_cid(pin))
-    module.describe(streamlit=True)
-    st.write(module.create_collection('default1'))
-    st.write(module.list_collections())
+
 
 
     # bro = module.ipfs.cat('bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy')
@@ -783,3 +803,4 @@ if __name__ == '__main__':
     # st.write(module.remove_pin('35921207'))
     # st.write(module.list_pins()[1][0])
     
+    st.write(module.list_pins())
