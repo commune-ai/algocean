@@ -137,12 +137,10 @@ class ActiveLoopDS:
         parse_topkey = {k: v for k, v in metadata.items() if k is not None and not k.startswith("_")}
 
         for k_top in parse_topkey:
+            
+            metadata_dict.update({k_top:{k: v for k, v in parse_topkey[k_top].items() if k in select_fields}})
 
-            print(k_top)
-
-            metadata.update({k_top:{k: v for k, v in parse_topkey[k_top].items() if k in select_fields}})
-
-        return metadata
+        return metadata_dict
 
 
     def create_tensors(self,labels:list,htype:list,compression:list,class_names:list):
