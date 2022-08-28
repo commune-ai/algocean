@@ -199,19 +199,27 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
-    def save(self,mode:str='ipfs'):
+    def save(self,mode:str='estuary'):
 
-        if mode == 'ipfs':
+        if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
                 split_state = self.client.estuary.save_dataset(dataset)
                 state_path_map[split] = split_state
-          
+            
 
 
-            self.config['state_path_map'] = state_path_map
+        elif mode == 'ipfs':
+            state_path_map = {}
+            for split, dataset in self.dataset.items():
+                cid = self.client.ipfs.save_dataset(dataset)
+                state_path_map[split] = self.client.ipfs.info(cid)
+    
+
         else:
             raise NotImplementedError
+
+        self.config['state_path_map'] = state_path_map
 
         self.last_saved = datetime.datetime.utcnow().timestamp()
     
@@ -279,7 +287,7 @@ class DatasetModule(BaseModule, Dataset):
 
 
     @property
-    def split_file_info_map(self):
+    def split_file_info(self):
 
         file_index = 0
         url_files = []
@@ -297,16 +305,19 @@ class DatasetModule(BaseModule, Dataset):
                 filesize = file_config['size']
 
 
+                file_index = None
                 for i in range(len(url_files)):
                     if url_files[i].hash == cid:
                         file_index = i
-
+                        break  
+                    
+                assert file_index != None
 
                 split_url_files_info[split].append(dict(
                     name=filename ,
                     type=filetype,
                     size = filesize,
-                    file_index=cid2index[cid],
+                    file_index=file_index,
                     file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
                 ))
 
@@ -319,48 +330,10 @@ class DatasetModule(BaseModule, Dataset):
     
 
 
-    @property
-    def url_data(self):
-
-        file_index = 0
-        url_files = []
-        split_url_files_info = {}
-        cid2index = {}
-        for split, split_file_configs in self.state_path_map.items():
-            split_url_files_info[split] = []
-      
-            for file_config in split_file_configs:
-                
-                cid = file_config['cid']
-                filename = file_config['name']
-                filetype = file_config['type']
-                filesize = file_config['size']
-
-                if cid not in cid2index:
-                    url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
-                    cid2index[cid] = file_index
-                    file_index += 1
-
-
-                split_url_files_info[split].append(dict(
-                    name=filename ,
-                    type=filetype,
-                    size = filesize,
-                    file_index=cid2index[cid],
-                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
-                ))
-
-
-
-        # url_files = 
-
-        return url_files, split_url_files_info
     
-    
-    
-    @property
-    def additional_information(self):
-        url_files, split_url_files_info = self.url_data
+
+    def additional_information(self, mode='service'):
+
 
 
         info_dict = {
@@ -369,9 +342,15 @@ class DatasetModule(BaseModule, Dataset):
                         'name': 'datasets',
                         'version': str(datasets.__version__)
                         },
-            'info': self.info, 
-            'file_info': split_url_files_info
+            'info': {'configs': self.configs}, 
         }
+
+        if mode == 'service':
+            info_dict['info'] = self.info
+        elif mode == 'asset':
+            info_dict['info'] = self.info
+        else:
+            raise NotImplementedError
 
         return info_dict
 
@@ -386,6 +365,10 @@ class DatasetModule(BaseModule, Dataset):
 
     def assets(self):
         return self.algocean.get_assets()
+
+
+
+
 
     def create_service(self,
                         name: str= None,
@@ -405,21 +388,31 @@ class DatasetModule(BaseModule, Dataset):
         else:
             raise NotImplementedError
 
-
         if name == None:
             name = self.config_name
         if files == None:
-            files, split_files_metadata = self.url_data
+            files = self.url_files
         name = '.'.join([name, service_type])
-        return self.algocean.create_service(name=name,
-                                            timeout=timeout,
-                                            datatoken=datatoken,
-                                            datanft = datanft,
-                                            service_type=service_type, 
-                                            description= self.info['description'],
-                                            files=files,
-                                             additional_information=self.additional_information) 
 
+        service = self.get_service(name)
+        if service != None:
+            return service
+        else:
+            return self.algocean.create_service(name=name,
+                                                timeout=timeout,
+                                                datatoken=datatoken,
+                                                datanft = datanft,
+                                                service_type=service_type, 
+                                                description= self.info['description'],
+                                                files=files,
+                                                additional_information=self.additional_information('service')) 
+
+    def get_service(self, name):
+        for service in self.services:
+            st.write(service.name, name)
+            if service.name == name:
+                return service
+        return None
 
 
     @property
@@ -431,7 +424,7 @@ class DatasetModule(BaseModule, Dataset):
         metadata['license'] = self.info.get('license', "CC0: PublicDomain")
         metadata['categories'] = []
         metadata['tags'] = []
-        metadata['additionalInformation'] = self.additional_information
+        metadata['additionalInformation'] = self.additional_information('asset')
         metadata['type'] = 'dataset'
 
         current_datetime = datetime.datetime.now().isoformat()
@@ -452,7 +445,7 @@ class DatasetModule(BaseModule, Dataset):
         return [c.__dict__ for c in self.dataset_builder.BUILDER_CONFIGS]
 
     @property
-    def configs(self):
+    def all_configs(self):
         return self.builder_configs
 
     @property
@@ -477,7 +470,7 @@ class DatasetModule(BaseModule, Dataset):
         
         return assets[0]
 
-    def search_assets(self, seach='metadata'):
+    def search_assets(self, search='metadata'):
         return self.algocean.search(text=search)
 
 
@@ -487,9 +480,9 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def asset(self):
-        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} metadata.author:{self.wallet.address}')
+        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} metadata.author:{self.wallet.address} metadata.additionalInformation.info.configs')
         if len(assets) == 0:
-            return self.create_asset()
+            return None
         
         return assets[0]
 
@@ -526,12 +519,16 @@ class DatasetModule(BaseModule, Dataset):
         
         elif isinstance(service, str):
             services = [s for s in services if s.name == service]
-            assert len(services)==1, f'{service} is not in {services}'
-            service = services[0]
+            # assert len(services)==1, f'{service} is not in {services}'
+            if len(services)>0:
+                service = services[0]
+            else:
+                service=None
         else:
             return services[0]
             raise NotImplementedError
         
+        return service
 
         
 
@@ -582,6 +579,8 @@ class DatasetModule(BaseModule, Dataset):
 
         if not isinstance(services, list):
             services = [services]
+
+        
             
 
         return self.algocean.create_asset(datanft=self.datanft, metadata=metadata, services=services)
@@ -692,6 +691,7 @@ class DatasetModule(BaseModule, Dataset):
         for split in self.splits:
             
             split_info[split] = info['splits'][split].__dict__
+            split_info[split]['file_info'] = self.split_file_info[split]
         
         info['splits'] = split_info
 
@@ -709,26 +709,43 @@ class DatasetModule(BaseModule, Dataset):
         return info
 
 
+    @property
+    def configs(self):
+        configs = [self.config_name]
+        for service in self.services:
+            if service.type == 'access':
+                configs.append(service.additional_information['info']['config_name'])
+        
+        
+        return list(set(configs))
+
+    def add_service(self):
+        asset = self.asset
+        service = self.create_service()
+        asset.add_service(service)
+        self.algocean.ocean.asset.update(asset)
+
+
 
 if __name__ == '__main__':
     import streamlit as st
     import numpy as np
     from algocean.utils import *
 
-
     module = DatasetModule()
-    st.write(module.asset.__dict__)
-
-    from algocean.utils import Timer
 
 
     # module.save()
     # st.write(module.url_data[1])
     # st.write(module.info) 
-    # st.write(module.create_asset())
+    st.write(module.services[0].name)
+    st.write(module.add_service())
+    # st.write(module.additional_information('service'))
     # st.write(module.download())
     # st.write(module.additional_information)
-    # st.write(module.url_files[0].hash)
+    # st.write(module.my_assets[0].__dict__)
+    # st.sidebar.write(module.services[0].__dict__)
+    # st.write(module.search_assets('services.0'))
     # st.write(module.list_datasets())
     # st.write(module.load_dataset(path=module.list_datasets()[0])['train']._info.__dict__)
 
