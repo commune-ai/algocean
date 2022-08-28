@@ -1,1 +1,1 @@
-from .module import IPFSModule
+from .module import PinataModule

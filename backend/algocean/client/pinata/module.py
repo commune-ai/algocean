@@ -27,8 +27,9 @@ import streamlit as st
 #     print(f.read())
 
 
-class Pinata(BaseModule,AsyncIPFSFileSystem):
+class PinataModule(BaseModule,AsyncIPFSFileSystem):
     default_cfg_path= 'client.pinata.module'
+    url = 'https://api.pinata.cloud'
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
@@ -226,7 +227,7 @@ class Pinata(BaseModule,AsyncIPFSFileSystem):
               cid:str #IPFS CID
     ):
 
-        url = ff"{self.url}/pinning/unpin/{cid}"
+        url = f"{self.url}/pinning/unpin/{cid}"
 
         payload={}
         headers = {

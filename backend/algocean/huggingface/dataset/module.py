@@ -204,8 +204,10 @@ class DatasetModule(BaseModule, Dataset):
         if mode == 'ipfs':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                cid = self.client.ipfs.save_dataset(dataset)
-                state_path_map[split] = self.client.ipfs.ls(cid)
+                split_state = self.client.estuary.save_dataset(dataset)
+                state_path_map[split] = split_state
+          
+
 
             self.config['state_path_map'] = state_path_map
         else:
@@ -253,6 +255,71 @@ class DatasetModule(BaseModule, Dataset):
         pass
 
     @property
+    def url_files(self):
+    
+        url_files = []
+        file_index = 0
+        cid2index = {}
+        for split, split_configs in self.state_path_map.items():
+            
+
+            for split_config in split_configs:
+                cid = split_config['cid']
+
+                if cid not in cid2index:
+                    url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
+                    cid2index[cid] = file_index
+                    file_index += 1
+            
+
+        return url_files
+   
+
+
+
+
+    @property
+    def split_file_info_map(self):
+
+        file_index = 0
+        url_files = []
+        split_url_files_info = {}
+        cid2index = {}
+        url_files = deepcopy(self.url_files)
+        for split, split_file_configs in self.state_path_map.items():
+            split_url_files_info[split] = []
+      
+            for file_config in split_file_configs:
+                
+                cid = file_config['cid']
+                filename = file_config['name']
+                filetype = file_config['type']
+                filesize = file_config['size']
+
+
+                for i in range(len(url_files)):
+                    if url_files[i].hash == cid:
+                        file_index = i
+
+
+                split_url_files_info[split].append(dict(
+                    name=filename ,
+                    type=filetype,
+                    size = filesize,
+                    file_index=cid2index[cid],
+                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
+                ))
+
+
+
+        # url_files = 
+
+        return split_url_files_info
+    
+    
+
+
+    @property
     def url_data(self):
 
         file_index = 0
@@ -264,16 +331,21 @@ class DatasetModule(BaseModule, Dataset):
       
             for file_config in split_file_configs:
                 
-                cid = file_config['CID']
+                cid = file_config['cid']
+                filename = file_config['name']
+                filetype = file_config['type']
+                filesize = file_config['size']
+
                 if cid not in cid2index:
                     url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
                     cid2index[cid] = file_index
                     file_index += 1
 
+
                 split_url_files_info[split].append(dict(
-                    name=file_config['name'].split('/')[1],
-                    type=file_config['type'],
-                    size = file_config['size'],
+                    name=filename ,
+                    type=filetype,
+                    size = filesize,
                     file_index=cid2index[cid],
                     file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
                 ))
@@ -283,6 +355,9 @@ class DatasetModule(BaseModule, Dataset):
         # url_files = 
 
         return url_files, split_url_files_info
+    
+    
+    
     @property
     def additional_information(self):
         url_files, split_url_files_info = self.url_data
@@ -642,7 +717,7 @@ if __name__ == '__main__':
 
 
     module = DatasetModule()
-    st.write(module.asset)
+    st.write(module.asset.__dict__)
 
     from algocean.utils import Timer
 
@@ -650,9 +725,10 @@ if __name__ == '__main__':
     # module.save()
     # st.write(module.url_data[1])
     # st.write(module.info) 
-    st.write(module.metadata)
+    # st.write(module.create_asset())
     # st.write(module.download())
-    # st.write(module.dataset['validation'].info.__dict__)
+    # st.write(module.additional_information)
+    # st.write(module.url_files[0].hash)
     # st.write(module.list_datasets())
     # st.write(module.load_dataset(path=module.list_datasets()[0])['train']._info.__dict__)
 

@@ -81,7 +81,10 @@ class EstuaryModule(BaseModule):
         }
 
         response = requests.get(f'{self.url["get"]}/pinning/pins', headers=headers)
-        return self.handle_response(response)
+        return self.handle_response(response, return_fn=lambda x: x['results'] )
+
+
+    ls_pins = list_pins
 
     # %% ../nbs/02_estuaryapi.ipynb 7
     # add pin
@@ -176,12 +179,9 @@ class EstuaryModule(BaseModule):
 
     ):
 
-        if name in self.collection_names:
-            if handle_error:
-                return None
-            else:
-                raise Exception(f'collection: {name} already exists')
-        
+        collection = self.get_collection(name)
+        if collection !=None:
+            return collection
         "Create new collection"
         api_key = self.resolve_api_key(api_key)
 
@@ -241,7 +241,7 @@ class EstuaryModule(BaseModule):
     def collection_exists(self, collection):
         return bool(self.get_collection(collection))
 
-    def get_collection(self, collection:str, handle_error=True):
+    def get_collection(self, collection:str, handle_error=True, create_if_null=False):
         # get collection by name
         collection_maps = [self.uuid2collection, self.name2collection]
 
@@ -249,6 +249,9 @@ class EstuaryModule(BaseModule):
             if collection in collection_map:
                 return collection_map[collection]
 
+
+        if create_if_null:
+            return self.create_collection(collection)
         if handle_error:
             return None
         else:
@@ -319,8 +322,8 @@ class EstuaryModule(BaseModule):
     # %% ../nbs/02_estuaryapi.ipynb 16
     # FS list content of a path
     def list_content_path(self,
-        collection_id: str, # Collection ID
-        path: str, # Path in collection to list files from
+        path: str='/dir1', # Path in collection to list files from
+        collection: str='default', # Collection ID
         api_key: str=None # Your Estuary API key
     ):
         "List content of a path in collection"
@@ -331,12 +334,15 @@ class EstuaryModule(BaseModule):
         'Authorization': f'Bearer {api_key}',
         }
 
+        collection_id = self.get_collection(collection)['uuid']
+
         params = {
             'col': collection_id,
+            'dir': path
         }
 
-        response = requests.get(f'{self.url["get"]}/collections/fs/list?col=UUID&dir={path}', params=params, headers=headers)
-        return self.handle_response(response)
+        response = requests.get(f'{self.url["get"]}/collections/fs/list', params=params, headers=headers)
+        return response
 
     # %% ../nbs/02_estuaryapi.ipynb 17
     # FS add content to path
@@ -401,19 +407,28 @@ class EstuaryModule(BaseModule):
 
 
         response = requests.post(f'{self.url["post"]}/content/add', headers=headers, files=files)
-        return self.handle_response(response)
+        response =  self.handle_response(response)
+
+        if isinstance(response,dict):
+            response['file'] = os.path.basename(path_to_file)
+            response['size'] = self.ipfs.size(response['cid'])
+            return response
+        else:
+            return response
 
     # %% ../nbs/02_estuaryapi.ipynb 21
     # add CID
-    def add_cid(self,
-        file_name: str, # File name to add to CID
+    def add_collection_cid(self,
         cid: str, # CID for file,
+        path: str, # File name to add to CID
         collection:str='default',
         api_key: str=None, # Your Estuary API key
 
     ):
         "Use an existing IPFS CID to make storage deals."
         api_key = self.resolve_api_key(api_key)
+
+        self.create_collection(collection)['uuid']
 
         headers = {
         'Content-Type': 'application/json',
@@ -422,13 +437,18 @@ class EstuaryModule(BaseModule):
         
         coluid= self.get_collection(collection)['uuid']
 
+
+
+        file_name = os.path.basename(path)
+
         json_data = {
             'name': file_name,
-            'root': coluid,
-            'coluid': s
+            'root': cid,
+            'coluid': coluid,
+            'collectionPath': path
         }
 
-        response = requests.post(f'{self.url["post"]}/content/add-ipfs', headers=headers, json=json_data)
+        response = requests.post(f'{self.url["get"]}/content/add-ipfs', headers=headers, json=json_data)
         return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 22
@@ -711,9 +731,10 @@ class EstuaryModule(BaseModule):
 
         tmp_path = self.get_temp_path()
         dataset = dataset.save_to_disk(tmp_path)
-        cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
+        cids = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
+
         # self.fs.local.rm(tmp_path,  recursive=True)
-        return cid
+        return [self.info(cid['cid']) for cid in  cids]
 
     def put_json(self, data, path='json_placeholder.pkl'):
         tmp_path = self.get_temp_path(path=path)
@@ -745,7 +766,7 @@ class EstuaryModule(BaseModule):
                 else:
                     files = [lpath]
                 # for f in self.local.ls(lpath)
-                cid= {f: self.add_data(f) for f in files}
+                cid= [self.add_data(f) for f in files]
                 break
             except fsspec.exceptions.FSTimeoutError:
                 trial_count += 1
@@ -762,15 +783,22 @@ class EstuaryModule(BaseModule):
         return self.id
 
     @staticmethod
-    def handle_response(response):
+    def handle_response(response, return_fn=None):
 
         if response.status_code == 200:
             parsed_response = parse_response(response)
+            output = None
             if len(parsed_response)==1 and \
                  isinstance(parsed_response, list):
-                 return parsed_response[0]
+                 parsed_response = parsed_response[0]
             else:
-                return parsed_response
+                parsed_response =  parsed_response
+
+            if callable(return_fn):
+                parsed_response = return_fn(parsed_response)
+            
+            return parsed_response
+             
         else:
             return response
 
@@ -779,6 +807,13 @@ class EstuaryModule(BaseModule):
         return [c['name'] for c in self.list_collections()]
 
 
+    def info(self, cid):
+        
+        for pin in self.list_pins():
+            if pin['pin']['cid'] == cid:
+                response = { k:pin['pin'][k] for k in ['cid', 'name']}
+                response.update({k:v for k,v in self.ipfs.info(cid).items() if k in ['size', 'type']})
+                return response
     @property
     def collection_uuids(self):
         return [c['uuid'] for c in self.list_collections()]
@@ -790,10 +825,16 @@ if __name__ == '__main__':
 
 
     module = EstuaryModule()
+    module.describe(streamlit=True, sidebar=True)
+    st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
+    # cid = 'bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy'
+    # st.write(module.info(cid=cid))
+    # # st.write(module.view_data_cid(pin))
 
+    
+    # bro  = module.ipfs.cat('bafkreidemdtdxdsfus4zy66aiczbys5d5fcc6zutqq42akbbgel3snle2u')
 
-    # st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
-    # st.write(module.view_data_cid(pin))
+    # len(bro)
 
 
 
@@ -801,6 +842,9 @@ if __name__ == '__main__':
     # st.write(len(bro))
     # st.write(module.rm_all_pins())
     # st.write(module.remove_pin('35921207'))
-    # st.write(module.list_pins()[1][0])
-    
-    st.write(module.list_pins())
+    # st.write(module.ipfs.size('bafkreidemdtdxdsfus4zy66aiczbys5d5fcc6zutqq42akbbgel3snle2u'))
+
+    # module.create_collection('default')
+    # st.write(module.list_collections())
+
+    # st.write(module.list_content_path('/dir1').__dict__)
