@@ -29,8 +29,11 @@ make up
 
 3. Run the Streamlit app with huggingface dataset
 ```
-make streamlit arg=algocean/huggingface/dataset/module.py
+make streamlit arg=huggingface/dataset
 ```
+after running this command, view the streamlit app in localhost:8501
+
+
 
 
 
@@ -50,6 +53,8 @@ make streamlit arg=algocean/huggingface/dataset/module.py
 - Run Streamlit Server
     
      ``` make app arg=${path to streamlit in backend with respect to algocean}```
+
+     [localhost:8501](localhost:8501)
 
 **Base Modules**
 - ClientModule
