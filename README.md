@@ -31,7 +31,7 @@ make up
 ```
 make streamlit arg=huggingface/dataset
 ```
-after running this command, view the streamlit app in localhost:8501
+after running this command, view the streamlit app in [localhost:8501](localhost:8501)
 
 
 
