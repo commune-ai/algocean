@@ -35,3 +35,6 @@ enter_backend:
 	docker exec -it ocean_backend_1 bash
 pull:
 	git submodule update --init --recursive
+	
+kill_all:
+	docker kill $(docker ps -q) 

@@ -65,7 +65,7 @@ class LocalModule(LocalFileSystem):
             with self.open(path, 'w') as outfile:
                 outfile.write(data)
 
-    def get_json(self, path, handle_error = True):
+    def get_json(self, path, handle_error = False):
         try:
             return json.loads(self.cat(path))
         except FileNotFoundError as e:

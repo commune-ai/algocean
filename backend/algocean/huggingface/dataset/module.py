@@ -31,6 +31,7 @@ from datasets import load_dataset, Dataset, load_dataset_builder
 
 
 
+TEST_DATASET_OPTIONS = ['glue','wikitext', 'blimp' ]
 def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False):
     '''
     params:
@@ -72,12 +73,15 @@ class DatasetModule(BaseModule, Dataset):
 
         if load_state:
             self.load_state(**self.config.get('dataset'))
-            
-    def load_state(self, **kwargs):
-        self.dataset_factory = self.load_dataset_factory(path=kwargs['path'])
+
+    def load_builder(self, path):
+        self.dataset_factory = self.load_dataset_factory(path=path)
         self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
-    
-        self.dataset = self.load_dataset(**kwargs)
+        
+    def load_state(self, path, name=None, split=['train'] ,**kwargs):
+        self.config['dataset'] = dict(path=path, name=name, split=split)
+        self.load_builder(path=path)
+        self.dataset = self.load_dataset(path=path, name=name, split=split)
 
     @staticmethod
     def is_load_dataset_config(kwargs):
@@ -138,7 +142,21 @@ class DatasetModule(BaseModule, Dataset):
     def get_split(self, split='train'):
         return self.dataset[split]
 
-    def list_datasets(self, include_configs=True, limit=100, handle_error=False):
+
+
+
+    def list_datasets(self, include_configs=False, limit=100, handle_error=False, test=True):
+        
+        if test:
+            return TEST_DATASET_OPTIONS
+        cache_path = '/tmp/list_datasets.json'
+        try:
+            bro = self.client.local.get_json(cache_path, handle_error=True)
+            st.write(bro)
+        except FileNotFound as e:
+            pass
+        st.write('bro')
+        
         datasets_list = datasets.list_datasets()[:limit]
 
 
@@ -156,7 +174,7 @@ class DatasetModule(BaseModule, Dataset):
                         raise e
             
             datasets_list =  tmp_datasets_list
-
+        self.client.local.put_json(data=datasets_list,path= cache_path)
                 
         return datasets_list
 
@@ -342,7 +360,7 @@ class DatasetModule(BaseModule, Dataset):
                         'name': 'datasets',
                         'version': str(datasets.__version__)
                         },
-            'info': {'configs': self.configs}, 
+            # 'info': {'configs': self.configs}, 
         }
 
         if mode == 'service':
@@ -459,6 +477,8 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def services(self):
+        if self.asset == None:
+            return []
         return self.asset.services
 
 
@@ -566,6 +586,9 @@ class DatasetModule(BaseModule, Dataset):
             
     def create_asset(self, price_mode='free', services=None):
 
+        asset = self.asset
+        if asset != None:
+            return asset
         self.datanft = self.algocean.create_datanft(name=self.dataset_name)
 
         metadata = self.metadata
@@ -727,19 +750,54 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
+    def strealit_sidebar(self):
+
+        # self.load_state(**self.config.get('dataset'))
+        
+
+        with st.sidebar.form('Get Dataset'):
+
+
+            dataset = st.selectbox('Select a Dataset', self.list_datasets(),0)
+            self.load_builder(dataset)    
+
+            config_dict = self.list_configs(dataset, return_type='dict')
+            config = st.selectbox('Select a Config', list(config_dict.keys()), 0)
+
+            config = config_dict[config]
+            dataset_config = dict(path=dataset, name=config)
+
+            submitted = st.form_submit_button("load")
+
+            if submitted:
+                self.config['dataset'] = dict(path=dataset, name=config, split=['train'])
+                self.load_state(**self.config['dataset'])
+
+
+  
+        st.write(self.config)
+        st.write(self.asset.__dict__)
+    def streamlit(self):
+        self.strealit_sidebar()
+
+        
+
+
 if __name__ == '__main__':
     import streamlit as st
     import numpy as np
     from algocean.utils import *
 
-    module = DatasetModule()
+    module = DatasetModule(load_state=False)
+    module.streamlit()
 
 
     # module.save()
     # st.write(module.url_data[1])
     # st.write(module.info) 
-    st.write(module.services[0].name)
-    st.write(module.add_service())
+
+    # st.write(module.services[0].name)
+    # st.write(module.add_service())
     # st.write(module.additional_information('service'))
     # st.write(module.download())
     # st.write(module.additional_information)

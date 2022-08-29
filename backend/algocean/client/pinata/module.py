@@ -418,7 +418,7 @@ class PinataModule(BaseModule,AsyncIPFSFileSystem):
 
     def put_pickle(self, data, path='/pickle_placeholder.pkl'):
         tmp_path = self.get_temp_path(path=path)
-         self.local.put_pickle(path=tmp_path, data=data)
+        self.local.put_pickle(path=tmp_path, data=data)
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
         self.local.rm(tmp_path)
         return cid
