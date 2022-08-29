@@ -3,9 +3,9 @@ down:
 stop:
 	./start.sh --purge
 start:
-	./start.sh --force-pull
+	./start.sh
 up:
-	./start.sh --force-pull
+	./start.sh
 backend: 
 	./start.sh --backend; docker exec -it ocean_backend_1;
 

@@ -210,7 +210,8 @@ COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
 
 COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
 
-
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
 
 
 
@@ -247,9 +248,10 @@ while :; do
             printf $COLOR_Y'Starting with Registry...\n\n'$COLOR_RESET
             ;;
         --with-c2d)
+            COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
-	    COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
+
             printf $COLOR_Y'Starting with C2D...\n\n'$COLOR_RESET
             ;;
         --with-rbac)
