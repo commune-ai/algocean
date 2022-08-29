@@ -23,4 +23,4 @@ RUN pip install -e ./ipfspy
 # add ipfsspec commune fork
 ADD ./ipfsspec /app/ipfsspec
 RUN pip install -e ./ipfsspec
-
+RUN pip install jupyterlab

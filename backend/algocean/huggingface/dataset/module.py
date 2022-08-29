@@ -81,7 +81,8 @@ class DatasetModule(BaseModule, Dataset):
     def load_state(self, path, name=None, split=['train'] ,**kwargs):
         self.config['dataset'] = dict(path=path, name=name, split=split)
         self.load_builder(path=path)
-        self.dataset = self.load_dataset(path=path, name=name, split=split)
+        st.write(self.config['dataset'])
+        self.dataset = self.load_dataset(**self.config['dataset'])
 
     @staticmethod
     def is_load_dataset_config(kwargs):
@@ -123,6 +124,7 @@ class DatasetModule(BaseModule, Dataset):
         # ensure the checks pass
         check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
 
+        st.write(kwargs )
         if len(kwargs) == 0:
             kwargs = self.config.get('dataset')
 
@@ -224,15 +226,15 @@ class DatasetModule(BaseModule, Dataset):
             for split, dataset in self.dataset.items():
                 split_state = self.client.estuary.save_dataset(dataset)
                 state_path_map[split] = split_state
-            
-
 
         elif mode == 'ipfs':
             state_path_map = {}
             for split, dataset in self.dataset.items():
                 cid = self.client.ipfs.save_dataset(dataset)
                 state_path_map[split] = self.client.ipfs.info(cid)
-    
+
+        elif mode == 'pinata':
+            raise NotImplementedError
 
         else:
             raise NotImplementedError
@@ -500,7 +502,7 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def asset(self):
-        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} metadata.author:{self.wallet.address} metadata.additionalInformation.info.configs')
+        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} metadata.author:{self.wallet.address}')
         if len(assets) == 0:
             return None
         
@@ -584,10 +586,10 @@ class DatasetModule(BaseModule, Dataset):
         files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
                 
             
-    def create_asset(self, price_mode='free', services=None):
+    def create_asset(self, price_mode='free', services=None, force_create = False):
 
         asset = self.asset
-        if asset != None:
+        if asset != None and force_create==False:
             return asset
         self.datanft = self.algocean.create_datanft(name=self.dataset_name)
 
@@ -762,21 +764,24 @@ class DatasetModule(BaseModule, Dataset):
             self.load_builder(dataset)    
 
             config_dict = self.list_configs(dataset, return_type='dict')
-            config = st.selectbox('Select a Config', list(config_dict.keys()), 0)
+            config_name = st.selectbox('Select a Config', list(config_dict.keys()), 0)
 
-            config = config_dict[config]
+            config = config_dict[config_name]
             dataset_config = dict(path=dataset, name=config)
 
             submitted = st.form_submit_button("load")
 
             if submitted:
-                self.config['dataset'] = dict(path=dataset, name=config, split=['train'])
+                self.config['dataset'] = dict(path=dataset, name=config_name, split=['train'])
+                # st.write(self.config['dataset'])
                 self.load_state(**self.config['dataset'])
+                self.create_asset()
 
 
-  
-        st.write(self.config)
-        st.write(self.asset.__dict__)
+        st.write(self.services[0].__dict__)
+        # st.write(self.config)
+
+        # st.write(self.asset.__dict__)
     def streamlit(self):
         self.strealit_sidebar()
 
@@ -788,8 +793,12 @@ if __name__ == '__main__':
     import numpy as np
     from algocean.utils import *
 
-    module = DatasetModule(load_state=False)
-    module.streamlit()
+    module = DatasetModule(load_state=True)
+    st.write(module.create_asset(force_create=False))
+    # module.create_asset(force_create=False)
+    st.write(module.services[0].__dict__)
+
+    # module.streamlit()
 
 
     # module.save()

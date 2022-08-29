@@ -10,7 +10,6 @@ dataset:
 
 # submodules: 
 #   algocean: get_cfg(ocean.module)
-
 pipeline: 
   - 
     tokenizer: 'bert-base-cased'
