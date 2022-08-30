@@ -133,3 +133,26 @@ def resolve_class(obj):
 get_class = resolve_class
 
 
+
+def is_full_function(fn_schema):
+
+    for mode in ['input', 'output']:
+        if len(fn_schema[mode]) > 0:
+            for value_key, value_type in fn_schema[mode].items():
+                if value_type == None:
+                    return None
+        else:
+            return None
+    return fn_schema 
+
+def get_full_functions(module):
+    module_fn_schemas = get_module_function_schema(module) 
+    filtered_module_fn_schemas = {}
+    for fn_key, fn_schema in module_fn_schemas.items():
+        
+        if 'self' in fn_schema['input']:
+            fn_schema['input'].pop('self')
+        if is_full_function(fn_schema):
+            filtered_module_fn_schemas[fn_key] = fn_schema
+
+    return filtered_module_fn_schemas

@@ -9,7 +9,7 @@ from inspect import getfile
 import inspect
 import socket
 from algocean.utils import SimpleNamespace
-
+from algocean.utils import *
 
 class bcolor:
     HEADER = '\033[95m'
@@ -25,7 +25,7 @@ class bcolor:
 
 
 class GradioModule(BaseModule):
-    default_cfg_path =  'gradio.module'
+    default_cfg_path =  'gradio.api.module'
 
 
     # without '__reduce__', the instance is unserializable.
@@ -37,6 +37,7 @@ class GradioModule(BaseModule):
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
+        print(self.client, 'CLIENTS')
 
         self.port2module = {} 
         self.module2port = {}
@@ -123,7 +124,6 @@ class GradioModule(BaseModule):
                 continue
 
 
-        st.write(module_list)
 
         return module_list
 
@@ -202,6 +202,58 @@ class GradioModule(BaseModule):
 
 
 
+    def get_modules(self, force_update=True):
+        
+        modules = []
+        failed_modules = []
+        print( self.client)
+        for root, dirs, files in self.client.local.walk('/app/algocean'):
+            if all([f in files for f in ['module.py', 'module.yaml']]):
+
+                try:
+                    
+                    cfg = self.config_loader.load(root)   
+                    if cfg == None:
+                        cfg = {}           
+                except TypeError as e:
+                    cfg = {}
+
+
+
+                module_path = cfg.get('module')
+                if isinstance(module_path, str):
+                    modules.append(module_path)
+                elif module_path == None: 
+                    failed_modules.append(root)
+
+        return modules
+
+    def get_gradio_modules(self):
+        return list(self.get_module_schemas().keys())
+
+    def get_module_schemas(self):
+        module_schema_map = {}
+        module_paths = self.get_modules()
+
+        for module_path in module_paths:
+            module = self.get_object(module_path)
+            module_fn_schemas = get_full_functions(module)
+            
+
+            if len(module_fn_schemas)>0:
+                module_schema_map[module_path] = module_fn_schemas
+        
+
+        return module_schema_map
+
+
+    module = None
+    @classmethod
+    def get_module(cls, config = {}):
+        if cls.module == None:
+            cls.module = cls(config=config)
+        return cls.module
+
 import socket
 import argparse
 from fastapi import FastAPI
@@ -209,91 +261,32 @@ import uvicorn
 
 app = FastAPI()
 
-
-module = None
-
-
-def get_module(config = {}):
-    global module
-    if module == None:
-        module = GradioModule(config=config)
-    
-    return module
-
-
-
 @app.get("/")
 async def root():
-    module = get_module()
+    module = GradioModule.get_module()
     print(module)
     return {"message": "Hello World"}
 
 
-@app.get("/append/port")
-def append_port(port:int=10):
-    module = get_module()
-    current = request.json
-    visable.append(port)
-    return jsonify({"executed" : True})
-
-
-@app.get("/append/fam")
-def append_port(port:int=10):
-    module = get_module()
-    current = request.json
-    visable.append(port)
-    return jsonify({"executed" : True})
-
-
-@app.put("/remove/port")
-def remove_port(port:int=10, output_example:dict={'bro': {'bro':1}}):
-    module = get_module()
-    current = request.json
-    print(current)
-    visable.remove(current)
-    return jsonify({"executed" : True,
-                    "ports" : current['port']})
-
-@app.get("/open/ports")
-
-
-
-def open_ports():
-    module = get_module()
-
-    return jsonify(visable)
-
-
-
-import inspect
-
-def get_parents(cls):
-    return list(cls.__mro__[1:-1])
-
-def get_parent_functions(cls):
-    parent_classes = get_parents(cls)
-    function_list = []
-    for parent in parent_classes:
-        function_list += get_functions(parent)
-
-    return list(set(function_list))
-
-
-
-
-from algocean.utils import *
-
+@app.get("/modules")
+async def modules():
+    module = GradioModule.get_module()
+    modules = module.get_modules()
+    return modules
 
 if __name__ == "__main__":
-    import streamlit as st
+    # import streamlit as st
 
-    module = GradioModule()
-    # st.write(type(GradioModule.active_port))
-    import json
-
-
-    st.write(get_function_schema(GradioModule.rm_module))
-
+    # module = GradioModule()
+    # # st.write(type(GradioModule.active_port))
+    # import json
+    # st.write(module.get_gradio_modules())
+    # st.write(module.get_module_schemas())
 
 
-    # uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+                
+
+
+    # st.write(module_list)
+    # st.write(get_function_schema(GradioModule.rm_module))
+    uvicorn.run("module:app", host="0.0.0.0", port=8000, reload=True, workers=2)

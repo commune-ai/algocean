@@ -229,7 +229,7 @@ class ConfigLoader:
         '''
         :return:
         '''
-
+        keys = []
         if isinstance(cfg, dict):
             keys = list(cfg.keys())
         elif isinstance(cfg, list):

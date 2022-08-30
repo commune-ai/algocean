@@ -8,13 +8,29 @@ class GraphQLModule(BaseModule):
 
     def __init__(self,config,):
         BaseModule.__init__(self, config)
-        self.url = f"http://{config['host']}:{config['port']}"
+        self.
 
-    def query(self,query, url=None, return_one=False):
-        if url != None:
-            self.url = url
 
+
+    def url(self):
+        if not hasattr(self,'_url'):
+            url = self.config.get('url')
+            if url == None:
+                assert 'host' in self.config
+                assert 'port' in self.config
+
+            url = f"http://{config['host']}:{config['port']}"
+            self._url = url
         
+        return self._url
+
+    @url.setter
+    def url(self, value:str):
+        self._url = value
+
+
+    
+    def query(self,query, url=None, return_one=False):
         output = graphql_query(url=self.url, query=query)
         if return_one:
             output = list(output.values())[0]

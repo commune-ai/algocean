@@ -127,7 +127,7 @@ Methods for Getting Abstractions
 
 """
 
-def get_module_file(path,prefix = 'commune', handle_failure= False):
+def get_module(path,prefix = 'algocean', handle_failure= False):
     '''
     gets the object
     {module_path}.{object_name}
@@ -151,9 +151,10 @@ def get_module_file(path,prefix = 'commune', handle_failure= False):
 
     return module
 
+get_module_file = get_module
 
 
-def get_object(path,prefix = 'commune', handle_failure= False):
+def get_object(path,prefix = 'algocean', handle_failure= False):
     '''
     gets the object
     {module_path}.{object_name}
@@ -166,6 +167,7 @@ def get_object(path,prefix = 'commune', handle_failure= False):
         path = '.'.join([prefix, path])
 
     module_path = '.'.join(path.split('.')[:-1])
+    module = import_module(module_path)
     object_name = path.split('.')[-1]
 
     module_class = None
@@ -173,8 +175,6 @@ def get_object(path,prefix = 'commune', handle_failure= False):
     try:
         module = import_module(module_path)
         module_class = getattr(module, object_name)
-
-
 
     except (AttributeError, ModuleNotFoundError) as e:
         if handle_failure :

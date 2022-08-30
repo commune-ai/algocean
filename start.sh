@@ -324,6 +324,7 @@ while :; do
             printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
+            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
             
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
            

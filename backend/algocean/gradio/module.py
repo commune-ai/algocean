@@ -10,7 +10,7 @@ import socket
 from algocean.utils import SimpleNamespace
 
 class GradioModule(BaseModule):
-    default_cfg_path =  'gradio.module'
+    default_cfg_path =  'gradio.example.module'
 
 
     # without '__reduce__', the instance is unserializable.
