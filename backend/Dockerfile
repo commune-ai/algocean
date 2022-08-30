@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Install dependencies:
 COPY requirements.txt .
-RUN python3.8 -m pip -r requirements.txt
+RUN python3.8 -m pip install -r requirements.txt
 
 # add BITTENSOR commune fork
 ADD ./ocean.py /app/ocean.py

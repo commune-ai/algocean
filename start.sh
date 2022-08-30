@@ -208,10 +208,10 @@ COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
 COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
 
-COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
+# COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
 
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
 
 
 
