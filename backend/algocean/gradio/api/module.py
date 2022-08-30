@@ -8,8 +8,11 @@ from algocean import BaseModule
 from inspect import getfile
 import inspect
 import socket
+from multiprocessing import Process
 from algocean.utils import SimpleNamespace
 from algocean.utils import *
+from algocean.thread import PriorityThreadPoolExecutor
+
 
 class bcolor:
     HEADER = '\033[95m'
@@ -23,6 +26,21 @@ class bcolor:
     UNDERLINE = '\033[4m'
     
 
+
+
+class ProcessManager:
+    def __init__(self, config=None):
+        self.processes = []
+
+    def submit(self, fn, *args, **kwargs):
+        p = Process(target=fn, args=args, kwargs=kwargs)
+        p.start()
+        self.processes.append(p)
+
+    def shutdown(self, p):
+        pass
+
+    
 
 class GradioModule(BaseModule):
     default_cfg_path =  'gradio.api.module'
@@ -46,6 +64,8 @@ class GradioModule(BaseModule):
         self.num_ports = self.config.get('num_ports', 10)
         self.port_range = self.config.get('port_range', [7860, 7865])
         
+        self.thread_manager = PriorityThreadPoolExecutor()
+        self.process_manager = ProcessManager()
 
     @property
     def active_modules(self):
@@ -65,14 +85,13 @@ class GradioModule(BaseModule):
         return jsonify({"executed" : True,
                         "ports" : current['port']})
 
-
-    @staticmethod
-    def find_registered_functions(self):
+    def find_registered_functions(self, module:str):
         '''
         find the registered functions
         '''
         fn_keys = []
-        for fn_key in GradioModule.get_funcs(self):
+        self.get_module
+        for fn_key in self.get_funcs(module):
             try:
                 if getattr(getattr(getattr(self,fn_key), '__decorator__', None), '__name__', None) == GradioModule.register.__name__:
                     fn_keys.append(fn_key)
@@ -100,34 +119,6 @@ class GradioModule(BaseModule):
 
 
 
-    def list_modules(self, mode='config', output_example=['bro']):
-
-        assert mode in ['config', 'module']
-
-        '''
-        mode: options are active (running modules) all and inactive
-        '''
-
-        module_config_list = list(map( lambda x: x['config'], self.config_manager.module_tree(tree=False)))
-
-
-        module_list = []
-        for m_cfg_path in module_config_list:
-
-            try:
-                m_cfg = self.config_loader.load(m_cfg_path)
-
-                object_module = self.get_object(m_cfg['module'])
-                if self.has_gradio(object_module):
-                    module_list.append(object_module)
-            except:
-                continue
-
-
-
-        return module_list
-
-
     def active_port(self, port:int=1):
         is_active = port in self.port2module
         return is_active
@@ -138,13 +129,6 @@ class GradioModule(BaseModule):
         result = s.connect_ex((self.host, port))
         if result == 0: return True
         return False
-
-
-    @staticmethod
-    def has_gradio(self):
-        return GradioModule.has_registered_functions(self)
-
-
 
     def suggest_port(self, max_trial_count=10):
         trial_count = 0 
@@ -158,27 +142,29 @@ class GradioModule(BaseModule):
         '''
         raise Exception(f'There does not exist an open port between {self.port_range}')
         
-    @staticmethod
-    def compile(self, live=False, flagging='never', theme='default', **kwargs):
+    def compile(self, module:str, live=False, flagging='never', theme='default', **kwargs):
         print("Just putting on the finishing touches... 🔧🧰")
-        for func in GradioModule.find_registered_functions(self):
-            registered_fn = getattr(self, func)
-            registered_fn()
+        module_class = self.get_object(module)
+        module = module_class()
+
+        gradio_functions_schema = self.get_gradio_function_schemas(module)
 
 
-        demos = []
-        names = []
-        for fn_key, fn_params in self.registered_gradio_functons.items():                
-            names.append(func)
-            demos.append(gradio.Interface(fn=getattr(self, fn_key),
-                                        inputs=fn_params['inputs'],
-                                        outputs=fn_params['outputs'],
-                                        theme='default'))
+        interface_fn_map = {}
+
+        for fn_key, fn_params in gradio_functions_schema.items():                
+            interface_fn_map[fn_key] = gradio.Interface(fn=getattr(module, fn_key),
+                                        inputs=fn_params['input'],
+                                        outputs=fn_params['output'],
+                                        theme=theme)
             print(f"{fn_key}....{bcolor.BOLD}{bcolor.OKGREEN} done {bcolor.ENDC}")
 
 
         print("\nHappy Visualizing... 🚀")
+        demos = list(interface_fn_map.values())
+        names = list(interface_fn_map.keys())
         return gradio.TabbedInterface(demos, names)
+
 
     @staticmethod
     def register(inputs, outputs):
@@ -196,6 +182,7 @@ class GradioModule(BaseModule):
                 else:
                     self.registered_gradio_functons[fn_name] = dict(inputs=inputs, outputs=outputs)
                     return None
+
             wrap.__decorator__ = GradioModule.register
             return wrap
         return register_gradio
@@ -206,7 +193,6 @@ class GradioModule(BaseModule):
         
         modules = []
         failed_modules = []
-        print( self.client)
         for root, dirs, files in self.client.local.walk('/app/algocean'):
             if all([f in files for f in ['module.py', 'module.yaml']]):
 
@@ -217,8 +203,6 @@ class GradioModule(BaseModule):
                         cfg = {}           
                 except TypeError as e:
                     cfg = {}
-
-
 
                 module_path = cfg.get('module')
                 if isinstance(module_path, str):
@@ -231,14 +215,58 @@ class GradioModule(BaseModule):
     def get_gradio_modules(self):
         return list(self.get_module_schemas().keys())
 
-    def get_module_schemas(self):
+    @staticmethod
+    def get_module_function_schema(module, gradio_only):
+        return get_module_function_schema(module)
+        
+
+
+    @staticmethod
+    def schema2gradio(fn_schema):
+        gradio_schema = {}
+        fn_example = fn_schema['example']
+        gradio_schema['example'] = fn_example
+
+
+        for m in ['input', 'output']:
+            gradio_schema[m] = []
+            for k,v_type in fn_schema[m].items():
+                v = fn_example[m][k] 
+                if v_type == 'int':
+                    gradio_schema[m] += [gradio.Number(value=v, label=k)]
+                elif v_type == 'text':
+                    gradio_schema[m] += [gradio.Textbox(value=v, label=k)]
+                elif v_type == 'dict':
+                    gradio_schema[m] += [gradio.JSON(value=v, label=k)]
+                else:
+                    raise NotImplementedError
+
+
+        return gradio_schema
+                
+
+
+    def get_gradio_function_schemas(self, module):
+        if isinstance(module, str):
+            module = get_object(module)
+        function_defaults_dict = get_module_function_defaults(module)
+        function_defaults_dict = get_full_functions(module_fn_schemas=function_defaults_dict)
+
+        gradio_fn_schema_dict = {}
+        for fn, fn_defaults in function_defaults_dict.items():
+            module_fn_schema = get_function_schema(defaults_dict=fn_defaults)
+            module_fn_schema['example'] = fn_defaults
+            gradio_fn_schema_dict[fn] = self.schema2gradio(module_fn_schema)
+
+        return gradio_fn_schema_dict
+
+    def get_module_schemas(self,filter_complete=False):
         module_schema_map = {}
         module_paths = self.get_modules()
 
         for module_path in module_paths:
-            module = self.get_object(module_path)
-            module_fn_schemas = get_full_functions(module)
-            
+
+            module_fn_schemas = get_function_schemas(module_path)
 
             if len(module_fn_schemas)>0:
                 module_schema_map[module_path] = module_fn_schemas
@@ -247,12 +275,59 @@ class GradioModule(BaseModule):
         return module_schema_map
 
 
+    def launch(self, interface:gradio.Interface=None, module:str=None, **kwargs):
+        """
+            @params:
+                - name : string
+                - interface : gradio.Interface(...)
+                - **kwargs
+            
+            Take any gradio interface object 
+            that is created by the gradio 
+            package and send it to the flaks api
+        """
+        if interface == None:
+            assert isinstance(module, str)
+            interface = self.compile(module=module)
+
+        kwargs["port"] = kwargs.pop('port', self.suggest_port()) 
+        kwargs["server_port"] = kwargs.pop('port')
+        kwargs['server_name'] = self.host
+        
+        default_kwargs = dict(
+                    
+                        inline= False,
+                        share= None,
+                        debug=False,
+                        enable_queue= None,
+                        max_threads=None,
+                        auth= None,
+                        auth_message= None,
+                        prevent_thread_lock= False,
+                        show_error= True,
+                        show_tips= False,
+                        height= 500,
+                        width= 900,
+                        encrypt= False,
+                        favicon_path= None,
+                        ssl_keyfile= None,
+                        ssl_certfile= None,
+                        ssl_keyfile_password= None,
+                        quiet= False
+        )
+
+        kwargs = {**default_kwargs, **kwargs}
+        interface.launch(**kwargs)
+
+
     module = None
     @classmethod
-    def get_module(cls, config = {}):
+    def get_instance(cls, config = {}):
         if cls.module == None:
             cls.module = cls(config=config)
         return cls.module
+
+    
 
 import socket
 import argparse
@@ -263,16 +338,34 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
-    module = GradioModule.get_module()
+    module = GradioModule.get_instance()
     print(module)
     return {"message": "Hello World"}
 
 
-@app.get("/modules")
-async def modules():
-    module = GradioModule.get_module()
+register = GradioModule.register
+
+
+@app.get("/module/list")
+async def module_list():
+    module = GradioModule.get_instance()
     modules = module.get_modules()
     return modules
+
+import threading
+
+@app.get("/module/start")
+async def module_start(module:str=None, ):
+    self = GradioModule.get_instance()
+    if module == None:
+        module = self.get_modules()[0]
+
+    # self.launch(module=module)
+
+    self.process_manager.submit(self.launch, module=module)
+    return module
+
+
 
 if __name__ == "__main__":
     # import streamlit as st

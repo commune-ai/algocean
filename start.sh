@@ -337,8 +337,16 @@ while :; do
 
             export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
-            
-            
+            shift
+            break
+            ;;
+
+        --restart-backend)
+            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
+
+            export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" down
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
             shift
             break
             ;;

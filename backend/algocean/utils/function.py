@@ -70,10 +70,12 @@ def get_function_defaults(fn, include_null = False, mode=['input','output'],outp
 
 
 
-def get_function_schema(fn, include_self=True,**kwargs):
+def get_function_schema(fn=None, include_self=True, defaults_dict=None, **kwargs):
 
+    if defaults_dict == None:
+        assert fn != None
+        defaults_dict = get_function_defaults(fn=fn, **kwargs)
 
-    defaults_dict = get_function_defaults(fn=fn, **kwargs)
     function_schema = {}   
 
 
@@ -120,6 +122,20 @@ def get_module_function_schema(module, completed_only=False):
     return schema_dict
 
 
+def get_module_function_defaults(module, completed_only=False):
+    cls = resolve_class(module)
+    cls_function_names = get_functions(cls)
+    schema_dict = {}
+    for cls_function_name in cls_function_names:
+        fn = getattr(cls, cls_function_name)
+        fn_schema = get_function_defaults(fn)
+        if not is_fn_schema_complete(fn_schema) and completed_only:
+            continue
+        schema_dict[cls_function_name] = get_function_defaults(fn)
+
+    return schema_dict
+
+
 
 def resolve_class(obj):
     '''
@@ -145,8 +161,10 @@ def is_full_function(fn_schema):
             return None
     return fn_schema 
 
-def get_full_functions(module):
-    module_fn_schemas = get_module_function_schema(module) 
+def get_full_functions(module=None, module_fn_schemas:dict=None):
+    if module_fn_schemas == None:
+        assert module != None
+        module_fn_schemas = get_module_function_schema(module) 
     filtered_module_fn_schemas = {}
     for fn_key, fn_schema in module_fn_schemas.items():
         

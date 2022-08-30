@@ -1,3 +1,4 @@
+
 import os
 import sys
 import json
@@ -10,7 +11,7 @@ class RestModule(BaseModule):
     default_cfg_path = f"client.rest.module"
     def __init__(
         self,
-        config
+        config=None
     ):
         BaseModule.__init__(self, config=config)
 
@@ -57,8 +58,14 @@ if __name__ == '__main__':
     import streamlit as st
     rest = RestModule.deploy(actor=False)
     st.write(rest.url)
-    st.write(rest.get(endpoint='modules'))
-    
+    # st.write(rest.get(endpoint='module/list'))
+    # st.write(rest.get(endpoint='module/start', params={'module': 'gradio.example.module.ExampleModule'}))
+    import socket, subprocess
+    PORT = 7866
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(('', PORT))
+    sock.listen(5)
+    cli, addr = sock.accept()
     # print(api.get(endpoint='launcher/send', 
     #                  params=dict(module='process.bittensor.module.BitModule', fn='getattr', kwargs='{"key": "n"}')))
 

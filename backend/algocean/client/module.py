@@ -11,6 +11,7 @@ from algocean.client.local import LocalModule
 from algocean.client.s3 import S3Module
 from algocean.client.estuary import EstuaryModule
 from algocean.client.pinata import PinataModule
+from algocean.client.rest import RestModule
 
 class ClientModule:
     def __init__(self, config={}):
@@ -19,6 +20,7 @@ class ClientModule:
         self.s3 = S3Module()
         self.estuary = EstuaryModule()
         self.pinata = PinataModule()
+        self.rest = RestModule()
 
 if __name__ == '__main__':
     module = ClientModule()
