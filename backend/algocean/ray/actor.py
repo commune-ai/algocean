@@ -208,7 +208,8 @@ class ActorModule:
 
     @staticmethod
     def get_functions(object):
-        obect = get_functions(object)
+        functions = get_functions(object)
+        return functions
 
     @classmethod
     def functions(cls, return_type='str', **kwargs):

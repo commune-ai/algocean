@@ -3,6 +3,7 @@
 import streamlit as st
 import os, sys
 sys.path.append(os.getenv('PWD'))
+from algocean import BaseModule
 
 from algocean.utils import RecursiveNamespace, dict_put, dict_has, Timer
 import datetime
@@ -30,7 +31,7 @@ from ocean_lib.web3_internal.constants import ZERO_ADDRESS
 import fsspec
 
 from ocean_lib.structures.file_objects import UrlFile
-from algocean import BaseModule
+
 # from algocean import BaseModule
 
 

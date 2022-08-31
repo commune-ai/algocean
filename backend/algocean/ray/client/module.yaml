@@ -1,0 +1,2 @@
+module: ray.client.module.ClientModule
+client: {}

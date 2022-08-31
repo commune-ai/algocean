@@ -79,9 +79,13 @@ class DatasetModule(BaseModule, Dataset):
         self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
         
     def load_state(self, path, name=None, split=['train'] ,**kwargs):
-        self.config['dataset'] = dict(path=path, name=name, split=split)
+        
         self.load_builder(path=path)
-        st.write(self.config['dataset'])
+        if name == None:
+            name = self.list_configs(path = path, return_type='dict.keys')[0]
+
+        self.config['dataset'] = dict(path=path, name=name, split=split)
+
         self.dataset = self.load_dataset(**self.config['dataset'])
 
     @staticmethod
@@ -120,9 +124,13 @@ class DatasetModule(BaseModule, Dataset):
         split: the split of the model
         
         '''
+        if kwargs.get('name') == None:
+            assert kwargs.get('path') != None
+            name = self.list_configs(path = kwargs['path'], return_type='dict.keys')[0]
 
         # ensure the checks pass
         check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
+
 
         st.write(kwargs )
         if len(kwargs) == 0:
@@ -134,9 +142,6 @@ class DatasetModule(BaseModule, Dataset):
         if isinstance(split, list):
             kwargs['split'] = {s:s for s in split}
 
-
-        if 'name' not in kwargs:
-            kwargs['name'] = self.list_configs(path = kwargs['path'], return_type='dict.keys')[0]
 
 
         return  load_dataset(**kwargs )
@@ -502,7 +507,9 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def asset(self):
-        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} metadata.author:{self.wallet.address}')
+        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} AND metadata.author:{self.wallet.address}')
+        
+        st.write(self.dataset_name, assets)
         if len(assets) == 0:
             return None
         
@@ -778,7 +785,6 @@ class DatasetModule(BaseModule, Dataset):
                 self.create_asset()
 
 
-        st.write(self.services[0].__dict__)
         # st.write(self.config)
 
         # st.write(self.asset.__dict__)

@@ -2,9 +2,11 @@ version: '3'
 services:
   backend:
     image: algocean/backend
+    cpu_count: 4
     build:
       context: ./
       dockerfile: Dockerfile
+      shm_size: '4gb'
       
     ports:
       - 8501-8506:8501-8506 # for the user streamlit app
