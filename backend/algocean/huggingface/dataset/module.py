@@ -157,15 +157,15 @@ class DatasetModule(BaseModule, Dataset):
         if test:
             return TEST_DATASET_OPTIONS
         cache_path = '/tmp/list_datasets.json'
+        datasets_list = None
         try:
-            bro = self.client.local.get_json(cache_path, handle_error=True)
-            st.write(bro)
+            datasets_list = self.client.local.get_json(cache_path, handle_error=True)
         except FileNotFound as e:
             pass
         st.write('bro')
         
-        datasets_list = datasets.list_datasets()[:limit]
-
+        if datasets_list == None:
+            datasets_list = datasets.list_datasets()[:limit]
 
         if include_configs:
             tmp_datasets_list = []

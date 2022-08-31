@@ -3,9 +3,9 @@ module: huggingface.dataset.DatasetModule
 
 
 dataset: 
-  path: "glue"
-  name: "cola"
-  split: [train, validation]
+  path: "wikitext"
+  # name: "cola"
+  split: [validation]
   
 
 # submodules: 

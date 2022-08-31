@@ -190,9 +190,10 @@ COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
 
 # aquarius
+COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
 COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/elasticsearch.yml"
+
 
 # provider
 COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
