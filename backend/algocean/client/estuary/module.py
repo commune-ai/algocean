@@ -818,6 +818,17 @@ class EstuaryModule(BaseModule):
     def collection_uuids(self):
         return [c['uuid'] for c in self.list_collections()]
 
+
+    def describe_state(self, mode='type'):
+        if mode == 'type':
+            return {k: type(v)for k,v in self.__dict__.items()}
+        else:
+            raise NotImplementedError(f'mode not supported {mode}')
+        st.write(dataset.__dict__.keys())
+        return dataset 
+
+
+
 if __name__ == '__main__':
     import ipfspy
     import streamlit as st
@@ -826,8 +837,33 @@ if __name__ == '__main__':
 
     module = EstuaryModule()
     module.describe(streamlit=True, sidebar=True)
-    dataset = load_dataset(path='wikitext', name='wikitext-103-v1', split='train').shard(40,1)
-    st.write(module.save_dataset(dataset=dataset,  mode='🤗'))
+    from algocean.utils import Timer
+
+
+
+
+    def shard_dataset(dataset, shards=10, return_type='list'):
+        '''
+        return type options are list or dict
+        '''
+        if return_type == 'list':
+            return [dataset.shard(shards, s) for s in range(shards)]
+        elif return_type == 'dict':
+             return {f'shard_{s}':dataset.shard(shards, s) for s in range(shards)}
+
+        else:
+            raise NotImplemented
+
+
+
+    kwargs = dict(path='wikitext', name='wikitext-103-v1', split='train')
+    dataset =  load_dataset(**kwargs)
+
+    for dataset_shard in shard_dataset(dataset=dataset, shards=10):
+        with Timer(streamlit=True, prefix='ELAPSED_TIME: {t}') as t:
+            st.write(f'Splitting : {dataset_shard.num_rows} {kwargs}')
+            st.write(module.save_dataset(dataset=dataset_shard,  mode='🤗'))
+
     # cid = 'bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy'
     # st.write(module.info(cid=cid))
     # # st.write(module.view_data_cid(pin))

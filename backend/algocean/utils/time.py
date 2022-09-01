@@ -1,5 +1,5 @@
 import datetime
-
+import streamlit as st
 def isoformat2datetime(isoformat:str):
     dt, _, us = isoformat.partition(".")
     dt = datetime.datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
@@ -30,19 +30,29 @@ def timedeltatimestamp( **kwargs):
 
 class Timer:
     supported_modes = ['second', 'timestamp']
+    start_time = None
+    
 
 
-    def __init__(self, start=False):
-        self.start_time = None
-        self.end_time = None
-        if start:
-            self.start()
+    def __init__(self, return_type='seconds', streamlit=False, prefix=''):
+        
+        if len(prefix) > 0:
+            streamlit = True
+            
+        
+        self.__dict__.update(locals())
 
+
+        
     def __enter__(self):
         self.start()
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
+
+        if self.streamlit:
+            st.write(self.prefix.format(x=self.elapsed, t=self.elapsed))
+
         self.stop()
     
     def start(self):
@@ -59,8 +69,10 @@ class Timer:
     def current_time(self):
         return self.get_current_time()
 
-    def elapsed_time(self, return_type='seconds'):
+    @property
+    def elapsed_time(self):
         div_factor = 1
+        return_type = self.return_type
         if return_type in ['microseconds', 'ms', 'micro', 'microsecond']:
             div_factor = 1
         elif return_type in ['seconds', 's' , 'second', 'sec']:
@@ -72,9 +84,10 @@ class Timer:
         else:
             raise NotImplementedError
         
-        timestamp_period =  (self.current_time -self.start_time).microseconds/div_factor
+        timestamp_period =  (self.current_time -self.start_time).microseconds/(1000*div_factor)
         return timestamp_period
 
+    elapsed = elapsed_time
     def stop(self):
         self.end_time = None
         self.start_time = None
