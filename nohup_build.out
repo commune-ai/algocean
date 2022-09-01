@@ -1,0 +1,1014 @@
+nohup: ignoring input
+Sending build context to Docker daemon  1.297MB
+Step 1/7 : FROM node:16
+ ---> c8af85aa3027
+Step 2/7 : COPY package*.json /usr/src/app/
+ ---> Using cache
+ ---> d5517fd5bc6e
+Step 3/7 : WORKDIR /usr/src/app
+ ---> Using cache
+ ---> 8acacc468cf5
+Step 4/7 : RUN npm install
+ ---> Using cache
+ ---> 92ff5dde952d
+Step 5/7 : COPY . /usr/src/app
+ ---> Using cache
+ ---> d8daa47c0c57
+Step 6/7 : ENV DEPLOY_SUBGRAPH=true
+ ---> Using cache
+ ---> dc02071f9254
+Step 7/7 : ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
+ ---> Using cache
+ ---> 3aea2566fa46
+Successfully built 3aea2566fa46
+Successfully tagged algocean/subgraph:latest
+Sending build context to Docker daemon   1.11MB
+Step 1/29 : FROM ubuntu:18.04
+ ---> 8d5df41c547b
+Step 2/29 : LABEL maintainer="Ocean Protocol <devops@oceanprotocol.com>"
+ ---> Using cache
+ ---> 3c97390a2401
+Step 3/29 : ARG VERSION
+ ---> Using cache
+ ---> 15f0607b0677
+Step 4/29 : RUN apt-get update &&    apt-get install --no-install-recommends -y    gcc    python3.8    python3-pip    python3.8-dev    gettext-base
+ ---> Using cache
+ ---> 8bd9025ed061
+Step 5/29 : COPY . /ocean-provider
+ ---> 6b4d90cb69eb
+Step 6/29 : WORKDIR /ocean-provider
+ ---> Running in 0d73f9e18090
+Removing intermediate container 0d73f9e18090
+ ---> 78568dd74672
+Step 7/29 : RUN python3.8 -m pip install --upgrade pip
+ ---> Running in 54e9177bda62
+Collecting pip
+  Downloading https://files.pythonhosted.org/packages/1f/2c/d9626f045e7b49a6225c6b09257861f24da78f4e5f23af2ddbdf852c99b8/pip-22.2.2-py3-none-any.whl (2.0MB)
+Installing collected packages: pip
+  Found existing installation: pip 9.0.1
+    Not uninstalling pip at /usr/lib/python3/dist-packages, outside environment /usr
+Successfully installed pip-22.2.2
+Removing intermediate container 54e9177bda62
+ ---> e5530314fef0
+Step 8/29 : RUN python3.8 -m pip install setuptools
+ ---> Running in 46b90fcdbf4d
+Collecting setuptools
+  Downloading setuptools-65.3.0-py3-none-any.whl (1.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 2.9 MB/s eta 0:00:00
+Installing collected packages: setuptools
+Successfully installed setuptools-65.3.0
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mRemoving intermediate container 46b90fcdbf4d
+ ---> 6e40423858f4
+Step 9/29 : RUN python3.8 -m pip install wheel
+ ---> Running in 70c09b5dd179
+Collecting wheel
+  Downloading wheel-0.37.1-py2.py3-none-any.whl (35 kB)
+Installing collected packages: wheel
+Successfully installed wheel-0.37.1
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mRemoving intermediate container 70c09b5dd179
+ ---> 8c74133e7263
+Step 10/29 : RUN python3.8 -m pip install .
+ ---> Running in 2743e47c9d56
+Processing /ocean-provider
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting web3==5.25.0
+  Downloading web3-5.25.0-py3-none-any.whl (485 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 485.4/485.4 kB 2.7 MB/s eta 0:00:00
+Collecting Flask==2.1.2
+  Downloading Flask-2.1.2-py3-none-any.whl (95 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 95.2/95.2 kB 885.5 kB/s eta 0:00:00
+Collecting Flask-Cors==3.0.9
+  Downloading Flask_Cors-3.0.9-py2.py3-none-any.whl (14 kB)
+Collecting flask_caching==1.10.1
+  Downloading Flask_Caching-1.10.1-py3-none-any.whl (34 kB)
+Collecting Flask-RESTful==0.3.8
+  Downloading Flask_RESTful-0.3.8-py2.py3-none-any.whl (25 kB)
+Collecting flask-swagger==0.2.14
+  Downloading flask-swagger-0.2.14.tar.gz (8.6 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting flask-swagger-ui==3.25.0
+  Downloading flask-swagger-ui-3.25.0.tar.gz (521 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 521.1/521.1 kB 6.2 MB/s eta 0:00:00
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting Jinja2<3.1,>=2.10.1
+  Downloading Jinja2-3.0.3-py3-none-any.whl (133 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 133.6/133.6 kB 1.4 MB/s eta 0:00:00
+Collecting gunicorn==20.0.4
+  Downloading gunicorn-20.0.4-py2.py3-none-any.whl (77 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 77.9/77.9 kB 1.0 MB/s eta 0:00:00
+Collecting ocean-contracts==1.0.0
+  Downloading ocean_contracts-1.0.0-py3-none-any.whl (230 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 230.5/230.5 kB 3.2 MB/s eta 0:00:00
+Collecting coloredlogs==15.0.1
+  Downloading coloredlogs-15.0.1-py2.py3-none-any.whl (46 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 46.0/46.0 kB 473.1 kB/s eta 0:00:00
+Collecting Werkzeug==2.0.3
+  Downloading Werkzeug-2.0.3-py3-none-any.whl (289 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 289.2/289.2 kB 2.5 MB/s eta 0:00:00
+Collecting requests_testadapter
+  Downloading requests-testadapter-0.3.0.tar.gz (5.4 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting eciespy
+  Downloading eciespy-0.3.12-py3-none-any.whl (11 kB)
+Collecting coincurve<15,>=13
+  Downloading coincurve-14.0.0-cp38-cp38-manylinux1_x86_64.whl (550 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 550.5/550.5 kB 6.2 MB/s eta 0:00:00
+Collecting ipaddress
+  Downloading ipaddress-1.0.23-py2.py3-none-any.whl (18 kB)
+Collecting dnspython
+  Downloading dnspython-2.2.1-py3-none-any.whl (269 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 269.1/269.1 kB 3.1 MB/s eta 0:00:00
+Collecting flask-sieve==1.3.1
+  Downloading flask_sieve-1.3.1-py3-none-any.whl (19 kB)
+Collecting SQLAlchemy==1.3.23
+  Downloading SQLAlchemy-1.3.23-cp38-cp38-manylinux2010_x86_64.whl (1.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 11.0 MB/s eta 0:00:00
+Collecting json-sempai==0.4.0
+  Downloading json_sempai-0.4.0-py2.py3-none-any.whl (6.2 kB)
+Collecting redis==4.0.2
+  Downloading redis-4.0.2-py3-none-any.whl (119 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 119.6/119.6 kB 852.0 kB/s eta 0:00:00
+Collecting enforce-typing==1.0.0.post1
+  Downloading enforce_typing-1.0.0.post1-py2.py3-none-any.whl (15 kB)
+Collecting pyjwt==2.4.0
+  Downloading PyJWT-2.4.0-py3-none-any.whl (18 kB)
+Collecting pysha3==1.0.2
+  Downloading pysha3-1.0.2.tar.gz (829 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 829.2/829.2 kB 5.1 MB/s eta 0:00:00
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting humanfriendly>=9.1
+  Downloading humanfriendly-10.0-py2.py3-none-any.whl (86 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 86.8/86.8 kB 510.3 kB/s eta 0:00:00
+Collecting importlib-metadata>=3.6.0
+  Downloading importlib_metadata-4.12.0-py3-none-any.whl (21 kB)
+Collecting itsdangerous>=2.0
+  Downloading itsdangerous-2.1.2-py3-none-any.whl (15 kB)
+Collecting click>=8.0
+  Downloading click-8.1.3-py3-none-any.whl (96 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 96.6/96.6 kB 535.2 kB/s eta 0:00:00
+Collecting Six
+  Downloading six-1.16.0-py2.py3-none-any.whl (11 kB)
+Collecting pytz
+  Downloading pytz-2022.2.1-py2.py3-none-any.whl (500 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 500.6/500.6 kB 122.5 kB/s eta 0:00:00
+Collecting aniso8601>=0.82
+  Downloading aniso8601-9.0.1-py2.py3-none-any.whl (52 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.8/52.8 kB 49.6 kB/s eta 0:00:00
+Collecting requests
+  Downloading requests-2.28.1-py3-none-any.whl (62 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 62.8/62.8 kB 128.4 kB/s eta 0:00:00
+Collecting Pillow
+  Downloading Pillow-9.2.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.1/3.1 MB 414.0 kB/s eta 0:00:00
+Collecting filetype
+  Downloading filetype-1.1.0-py2.py3-none-any.whl (17 kB)
+Collecting python-dateutil
+  Downloading python_dateutil-2.8.2-py2.py3-none-any.whl (247 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 247.7/247.7 kB 616.2 kB/s eta 0:00:00
+Collecting PyYAML>=5.1
+  Downloading PyYAML-6.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (701 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 701.2/701.2 kB 1.6 MB/s eta 0:00:00
+Requirement already satisfied: setuptools>=3.0 in /usr/local/lib/python3.8/dist-packages (from gunicorn==20.0.4->ocean-provider==1.3.2) (65.3.0)
+Collecting deprecated
+  Downloading Deprecated-1.2.13-py2.py3-none-any.whl (9.6 kB)
+Collecting aiohttp<4,>=3.7.4.post0
+  Downloading aiohttp-3.8.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 371.4 kB/s eta 0:00:00
+Collecting websockets<10,>=9.1
+  Downloading websockets-9.1-cp38-cp38-manylinux2010_x86_64.whl (102 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 102.3/102.3 kB 26.8 kB/s eta 0:00:00
+Collecting eth-utils<2.0.0,>=1.9.5
+  Downloading eth_utils-1.10.0-py3-none-any.whl (24 kB)
+Collecting jsonschema<4.0.0,>=3.2.0
+  Downloading jsonschema-3.2.0-py2.py3-none-any.whl (56 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.3/56.3 kB 8.7 kB/s eta 0:00:00
+Collecting protobuf<4,>=3.10.0
+  Downloading protobuf-3.20.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl (1.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 3.0 MB/s eta 0:00:00
+Collecting eth-hash[pycryptodome]<1.0.0,>=0.2.0
+  Downloading eth_hash-0.5.0-py3-none-any.whl (8.9 kB)
+Collecting hexbytes<1.0.0,>=0.1.0
+  Downloading hexbytes-0.3.0-py3-none-any.whl (6.4 kB)
+Collecting eth-typing<3.0.0,>=2.0.0
+  Downloading eth_typing-2.3.0-py3-none-any.whl (6.2 kB)
+Collecting ipfshttpclient==0.8.0a2
+  Downloading ipfshttpclient-0.8.0a2-py3-none-any.whl (82 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 82.6/82.6 kB 867.3 kB/s eta 0:00:00
+Collecting lru-dict<2.0.0,>=1.1.6
+  Downloading lru_dict-1.1.8-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (29 kB)
+Collecting eth-abi<3.0.0,>=2.0.0b6
+  Downloading eth_abi-2.2.0-py3-none-any.whl (28 kB)
+Collecting eth-account<0.6.0,>=0.5.6
+  Downloading eth_account-0.5.9-py3-none-any.whl (101 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.8/101.8 kB 35.0 kB/s eta 0:00:00
+Collecting multiaddr>=0.0.7
+  Downloading multiaddr-0.0.9-py2.py3-none-any.whl (16 kB)
+Collecting asn1crypto
+  Downloading asn1crypto-1.5.1-py2.py3-none-any.whl (105 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 105.0/105.0 kB 60.0 kB/s eta 0:00:00
+Collecting cffi>=1.3.0
+  Downloading cffi-1.15.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (442 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 442.7/442.7 kB 2.8 MB/s eta 0:00:00
+Collecting MarkupSafe>=2.0
+  Downloading MarkupSafe-2.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (25 kB)
+Collecting pycryptodome<4.0.0,>=3.14.1
+  Downloading pycryptodome-3.15.0-cp35-abi3-manylinux2010_x86_64.whl (2.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 12.8 MB/s eta 0:00:00
+Collecting eth-keys<0.5.0,>=0.4.0
+  Downloading eth_keys-0.4.0-py3-none-any.whl (21 kB)
+Collecting async-timeout<5.0,>=4.0.0a3
+  Downloading async_timeout-4.0.2-py3-none-any.whl (5.8 kB)
+Collecting multidict<7.0,>=4.5
+  Downloading multidict-6.0.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (121 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 121.3/121.3 kB 1.4 MB/s eta 0:00:00
+Collecting attrs>=17.3.0
+  Downloading attrs-22.1.0-py2.py3-none-any.whl (58 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58.8/58.8 kB 289.7 kB/s eta 0:00:00
+Collecting aiosignal>=1.1.2
+  Downloading aiosignal-1.2.0-py3-none-any.whl (8.2 kB)
+Collecting yarl<2.0,>=1.0
+  Downloading yarl-1.8.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (262 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 262.1/262.1 kB 569.7 kB/s eta 0:00:00
+Collecting charset-normalizer<3.0,>=2.0
+  Downloading charset_normalizer-2.1.1-py3-none-any.whl (39 kB)
+Collecting frozenlist>=1.1.1
+  Downloading frozenlist-1.3.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (161 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 161.3/161.3 kB 835.6 kB/s eta 0:00:00
+Collecting pycparser
+  Downloading pycparser-2.21-py2.py3-none-any.whl (118 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 118.7/118.7 kB 836.8 kB/s eta 0:00:00
+Collecting parsimonious<0.9.0,>=0.8.0
+  Downloading parsimonious-0.8.1.tar.gz (45 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.1/45.1 kB 310.4 kB/s eta 0:00:00
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting rlp<3,>=1.0.0
+  Downloading rlp-2.0.1-py2.py3-none-any.whl (20 kB)
+Collecting eth-account<0.6.0,>=0.5.6
+  Downloading eth_account-0.5.8-py3-none-any.whl (101 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.8/101.8 kB 23.2 kB/s eta 0:00:00
+  Downloading eth_account-0.5.7-py3-none-any.whl (101 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.8/101.8 kB 15.8 kB/s eta 0:00:00
+Collecting bitarray<1.3.0,>=1.2.1
+  Downloading bitarray-1.2.2.tar.gz (48 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 48.2/48.2 kB 5.9 kB/s eta 0:00:00
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting eth-account<0.6.0,>=0.5.6
+  Downloading eth_account-0.5.6-py3-none-any.whl (101 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.8/101.8 kB 18.5 kB/s eta 0:00:00
+INFO: pip is looking at multiple versions of eth-abi to determine which version is compatible with other requirements. This could take a while.
+Collecting eth-abi<3.0.0,>=2.0.0b6
+  Downloading eth_abi-2.1.1-py3-none-any.whl (27 kB)
+INFO: pip is looking at multiple versions of click to determine which version is compatible with other requirements. This could take a while.
+Collecting click>=8.0
+  Downloading click-8.1.2-py3-none-any.whl (96 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 96.6/96.6 kB 111.3 kB/s eta 0:00:00
+INFO: pip is looking at multiple versions of cffi to determine which version is compatible with other requirements. This could take a while.
+Collecting cffi>=1.3.0
+  Downloading cffi-1.15.0-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (446 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 446.7/446.7 kB 148.9 kB/s eta 0:00:00
+INFO: pip is looking at multiple versions of aniso8601 to determine which version is compatible with other requirements. This could take a while.
+Collecting aniso8601>=0.82
+  Downloading aniso8601-9.0.0-py2.py3-none-any.whl (52 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.4/52.4 kB 60.3 kB/s eta 0:00:00
+INFO: pip is looking at multiple versions of aiohttp to determine which version is compatible with other requirements. This could take a while.
+Collecting aiohttp<4,>=3.7.4.post0
+  Downloading aiohttp-3.8.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 683.4 kB/s eta 0:00:00
+INFO: pip is looking at multiple versions of requests-testadapter to determine which version is compatible with other requirements. This could take a while.
+Collecting requests_testadapter
+  Downloading requests-testadapter-0.2.0.tar.gz (5.3 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+INFO: pip is looking at multiple versions of ipaddress to determine which version is compatible with other requirements. This could take a while.
+Collecting ipaddress
+  Downloading ipaddress-1.0.22-py2.py3-none-any.whl (18 kB)
+INFO: pip is looking at multiple versions of eciespy to determine which version is compatible with other requirements. This could take a while.
+Collecting eciespy
+  Downloading eciespy-0.3.11-py3-none-any.whl (11 kB)
+Collecting eth-keys<0.4.0,>=0.3.3
+  Downloading eth_keys-0.3.4-py3-none-any.whl (21 kB)
+Collecting eth-keyfile<0.6.0,>=0.5.0
+  Downloading eth_keyfile-0.5.1-py3-none-any.whl (8.3 kB)
+Collecting eth-rlp<2,>=0.1.2
+  Downloading eth_rlp-0.3.0-py3-none-any.whl (5.0 kB)
+Collecting bitarray<3,>=1.2.1
+  Downloading bitarray-2.6.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (241 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 241.4/241.4 kB 184.0 kB/s eta 0:00:00
+Collecting cytoolz<1.0.0,>=0.10.1
+  Downloading cytoolz-0.12.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 567.3 kB/s eta 0:00:00
+Collecting eth-utils<2.0.0,>=1.9.5
+  Downloading eth_utils-1.9.5-py3-none-any.whl (23 kB)
+Collecting zipp>=0.5
+  Downloading zipp-3.8.1-py3-none-any.whl (5.6 kB)
+Collecting pyrsistent>=0.14.0
+  Downloading pyrsistent-0.18.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (119 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 119.8/119.8 kB 27.3 kB/s eta 0:00:00
+Collecting idna<4,>=2.5
+  Downloading idna-3.3-py3-none-any.whl (61 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 61.2/61.2 kB 8.3 kB/s eta 0:00:00
+Collecting certifi>=2017.4.17
+  Downloading certifi-2022.6.15-py3-none-any.whl (160 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 160.2/160.2 kB 51.8 kB/s eta 0:00:00
+Collecting urllib3<1.27,>=1.21.1
+  Downloading urllib3-1.26.12-py2.py3-none-any.whl (140 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 140.4/140.4 kB 705.4 kB/s eta 0:00:00
+Collecting wrapt<2,>=1.10
+  Downloading wrapt-1.14.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (81 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 81.0/81.0 kB 9.2 kB/s eta 0:00:00
+Collecting toolz>=0.8.0
+  Downloading toolz-0.12.0-py3-none-any.whl (55 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 55.8/55.8 kB 15.6 kB/s eta 0:00:00
+Collecting eth-rlp<2,>=0.1.2
+  Downloading eth_rlp-0.2.1-py3-none-any.whl (5.0 kB)
+Collecting base58
+  Downloading base58-2.1.1-py3-none-any.whl (5.6 kB)
+Collecting varint
+  Downloading varint-1.0.2.tar.gz (1.9 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting netaddr
+  Downloading netaddr-0.8.0-py2.py3-none-any.whl (1.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 1.3 MB/s eta 0:00:00
+Building wheels for collected packages: ocean-provider, flask-swagger, flask-swagger-ui, pysha3, requests_testadapter, parsimonious, varint
+  Building wheel for ocean-provider (setup.py): started
+  Building wheel for ocean-provider (setup.py): finished with status 'done'
+  Created wheel for ocean-provider: filename=ocean_provider-1.3.2-py2.py3-none-any.whl size=42650 sha256=8cd4c8b282058de16d2b7f5e710644675d387cbe741d2966c1ea4d9179c76644
+  Stored in directory: /root/.cache/pip/wheels/3e/be/4a/6942b5e3c249c40d4c645534b7dccc5fa44f2e4b0720f91d0a
+  Building wheel for flask-swagger (setup.py): started
+  Building wheel for flask-swagger (setup.py): finished with status 'done'
+  Created wheel for flask-swagger: filename=flask_swagger-0.2.14-py3-none-any.whl size=7256 sha256=aaff727f20896caad483bc56bfee200e5d6b303791edd26f88d9b974b222650f
+  Stored in directory: /root/.cache/pip/wheels/66/4d/fe/bfaf9b89c8db3b29f52c01cb9bd050f68e67195747b5dda118
+  Building wheel for flask-swagger-ui (setup.py): started
+  Building wheel for flask-swagger-ui (setup.py): finished with status 'done'
+  Created wheel for flask-swagger-ui: filename=flask_swagger_ui-3.25.0-py3-none-any.whl size=525499 sha256=44997eee6f39a6d7b338e70bcb11712ab8e54550831b66331da8acf75ea50797
+  Stored in directory: /root/.cache/pip/wheels/2b/cc/5a/42005e650fab91cdb5745d3acf9b76c12b34b83cac2fe27698
+  Building wheel for pysha3 (setup.py): started
+  Building wheel for pysha3 (setup.py): finished with status 'done'
+  Created wheel for pysha3: filename=pysha3-1.0.2-cp38-cp38-linux_x86_64.whl size=133144 sha256=8b223bb982d7d16376b9da2aedbc07530b7b00f98b4863ceff6cfd1946b27207
+  Stored in directory: /root/.cache/pip/wheels/ee/35/47/386d23587167a3b03fc702b6be1ff60c92fddbeef125873088
+  Building wheel for requests_testadapter (setup.py): started
+  Building wheel for requests_testadapter (setup.py): finished with status 'done'
+  Created wheel for requests_testadapter: filename=requests_testadapter-0.3.0-py3-none-any.whl size=4684 sha256=e6432367e061dd0eeb4d7f5827d5979f74088a12b143588a7a79bc398730f41e
+  Stored in directory: /root/.cache/pip/wheels/88/64/5c/fad4fe1e87bcf3b5c155c0aa5b94932f105d6880bc7c1f169d
+  Building wheel for parsimonious (setup.py): started
+  Building wheel for parsimonious (setup.py): finished with status 'done'
+  Created wheel for parsimonious: filename=parsimonious-0.8.1-py3-none-any.whl size=42708 sha256=e4a9397802c2bc3581bae19400c6326a8c6ac2b16aefbcabdd6295ddab870f1f
+  Stored in directory: /root/.cache/pip/wheels/d8/af/19/fb896f509a437aca2dcf62583e84d7fb2cd5b628c1564a609c
+  Building wheel for varint (setup.py): started
+  Building wheel for varint (setup.py): finished with status 'done'
+  Created wheel for varint: filename=varint-1.0.2-py3-none-any.whl size=1962 sha256=4685769bbe8fe4bd872fa7f812f23f54ee8ad20f6dd855967da088c6280d2c42
+  Stored in directory: /root/.cache/pip/wheels/cc/a8/a4/4d9e9807c27585dc974fc0e86a3e4345649d71f8a35906d1a8
+Successfully built ocean-provider flask-swagger flask-swagger-ui pysha3 requests_testadapter parsimonious varint
+Installing collected packages: varint, pytz, pysha3, netaddr, lru-dict, json-sempai, ipaddress, filetype, bitarray, asn1crypto, aniso8601, zipp, wrapt, Werkzeug, websockets, urllib3, toolz, SQLAlchemy, Six, PyYAML, pyrsistent, pyjwt, pycryptodome, pycparser, protobuf, Pillow, ocean-contracts, multidict, MarkupSafe, itsdangerous, idna, humanfriendly, hexbytes, gunicorn, frozenlist, eth-typing, eth-hash, enforce-typing, dnspython, click, charset-normalizer, certifi, base58, attrs, async-timeout, yarl, requests, python-dateutil, parsimonious, multiaddr, jsonschema, Jinja2, importlib-metadata, deprecated, cytoolz, coloredlogs, cffi, aiosignal, requests_testadapter, redis, ipfshttpclient, Flask, eth-utils, coincurve, aiohttp, rlp, flask-swagger-ui, flask-swagger, flask-sieve, Flask-RESTful, Flask-Cors, flask_caching, eth-keys, eth-abi, eth-rlp, eth-keyfile, eciespy, eth-account, web3, ocean-provider
+Successfully installed Flask-2.1.2 Flask-Cors-3.0.9 Flask-RESTful-0.3.8 Jinja2-3.0.3 MarkupSafe-2.1.1 Pillow-9.2.0 PyYAML-6.0 SQLAlchemy-1.3.23 Six-1.16.0 Werkzeug-2.0.3 aiohttp-3.8.1 aiosignal-1.2.0 aniso8601-9.0.1 asn1crypto-1.5.1 async-timeout-4.0.2 attrs-22.1.0 base58-2.1.1 bitarray-2.6.0 certifi-2022.6.15 cffi-1.15.1 charset-normalizer-2.1.1 click-8.1.3 coincurve-14.0.0 coloredlogs-15.0.1 cytoolz-0.12.0 deprecated-1.2.13 dnspython-2.2.1 eciespy-0.3.11 enforce-typing-1.0.0.post1 eth-abi-2.2.0 eth-account-0.5.9 eth-hash-0.5.0 eth-keyfile-0.5.1 eth-keys-0.3.4 eth-rlp-0.2.1 eth-typing-2.3.0 eth-utils-1.9.5 filetype-1.1.0 flask-sieve-1.3.1 flask-swagger-0.2.14 flask-swagger-ui-3.25.0 flask_caching-1.10.1 frozenlist-1.3.1 gunicorn-20.0.4 hexbytes-0.3.0 humanfriendly-10.0 idna-3.3 importlib-metadata-4.12.0 ipaddress-1.0.23 ipfshttpclient-0.8.0a2 itsdangerous-2.1.2 json-sempai-0.4.0 jsonschema-3.2.0 lru-dict-1.1.8 multiaddr-0.0.9 multidict-6.0.2 netaddr-0.8.0 ocean-contracts-1.0.0 ocean-provider-1.3.2 parsimonious-0.8.1 protobuf-3.20.1 pycparser-2.21 pycryptodome-3.15.0 pyjwt-2.4.0 pyrsistent-0.18.1 pysha3-1.0.2 python-dateutil-2.8.2 pytz-2022.2.1 redis-4.0.2 requests-2.28.1 requests_testadapter-0.3.0 rlp-2.0.1 toolz-0.12.0 urllib3-1.26.12 varint-1.0.2 web3-5.25.0 websockets-9.1 wrapt-1.14.1 yarl-1.8.1 zipp-3.8.1
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mRemoving intermediate container 2743e47c9d56
+ ---> b79d3a4275c7
+Step 11/29 : ENV NETWORK_URL='http://127.0.0.1:8545'
+ ---> Running in db1d55a675f0
+Removing intermediate container db1d55a675f0
+ ---> f4ac5b8ea19e
+Step 12/29 : ENV PROVIDER_PRIVATE_KEY=''
+ ---> Running in f175c6b0b472
+Removing intermediate container f175c6b0b472
+ ---> 5b8eb588cb56
+Step 13/29 : ENV PROVIDER_ADDRESS=''
+ ---> Running in b76b493902a7
+Removing intermediate container b76b493902a7
+ ---> 15e3943b7148
+Step 14/29 : ENV AZURE_ACCOUNT_NAME=''
+ ---> Running in 112366237b2c
+Removing intermediate container 112366237b2c
+ ---> 7abe28b49c5a
+Step 15/29 : ENV AZURE_ACCOUNT_KEY=''
+ ---> Running in 18c5e9fac608
+Removing intermediate container 18c5e9fac608
+ ---> e824f75f148d
+Step 16/29 : ENV AZURE_RESOURCE_GROUP=''
+ ---> Running in 9f2e32678d04
+Removing intermediate container 9f2e32678d04
+ ---> 68a7569c2584
+Step 17/29 : ENV AZURE_LOCATION=''
+ ---> Running in e55dc2b2ef59
+Removing intermediate container e55dc2b2ef59
+ ---> ae017a16c4e4
+Step 18/29 : ENV AZURE_CLIENT_ID=''
+ ---> Running in 4a65fdc3e16c
+Removing intermediate container 4a65fdc3e16c
+ ---> b4ca02a28deb
+Step 19/29 : ENV AZURE_CLIENT_SECRET=''
+ ---> Running in 64934af6c84c
+Removing intermediate container 64934af6c84c
+ ---> 4ee6d33e57c8
+Step 20/29 : ENV AZURE_TENANT_ID=''
+ ---> Running in 75a29e92c243
+Removing intermediate container 75a29e92c243
+ ---> 6e153fc4c987
+Step 21/29 : ENV AZURE_SUBSCRIPTION_ID=''
+ ---> Running in 7a1164820a76
+Removing intermediate container 7a1164820a76
+ ---> ec02ac2479bf
+Step 22/29 : ENV AZURE_SHARE_INPUT='compute'
+ ---> Running in 7d2138774a7e
+Removing intermediate container 7d2138774a7e
+ ---> d9f3b51b0a7e
+Step 23/29 : ENV AZURE_SHARE_OUTPUT='output'
+ ---> Running in 9cdf8ab47671
+Removing intermediate container 9cdf8ab47671
+ ---> f635df5bd6cf
+Step 24/29 : ENV OCEAN_PROVIDER_URL='http://0.0.0.0:8030'
+ ---> Running in 947a29567e74
+Removing intermediate container 947a29567e74
+ ---> e5ad7947d991
+Step 25/29 : ENV OCEAN_PROVIDER_WORKERS='1'
+ ---> Running in 7b40e0c8ad9c
+Removing intermediate container 7b40e0c8ad9c
+ ---> ca6c5beb8415
+Step 26/29 : ENV OCEAN_PROVIDER_TIMEOUT='9000'
+ ---> Running in c3e88f0eb68c
+Removing intermediate container c3e88f0eb68c
+ ---> 5f16c173a812
+Step 27/29 : ENV ALLOW_NON_PUBLIC_IP=False
+ ---> Running in 7f62ce4641ad
+Removing intermediate container 7f62ce4641ad
+ ---> 1370670d964e
+Step 28/29 : ENTRYPOINT ["/ocean-provider/docker-entrypoint.sh"]
+ ---> Running in 1ab6f18b5528
+Removing intermediate container 1ab6f18b5528
+ ---> 8d33c50045aa
+Step 29/29 : EXPOSE 8030
+ ---> Running in 25d1ca2491e8
+Removing intermediate container 25d1ca2491e8
+ ---> e6330976d356
+Successfully built e6330976d356
+Successfully tagged algocean/provider:latest
+Sending build context to Docker daemon  545.3kB
+Step 1/29 : FROM ubuntu:18.04
+ ---> 8d5df41c547b
+Step 2/29 : LABEL maintainer="Ocean Protocol <devops@oceanprotocol.com>"
+ ---> Using cache
+ ---> 3c97390a2401
+Step 3/29 : ARG VERSION
+ ---> Using cache
+ ---> 15f0607b0677
+Step 4/29 : RUN apt-get update &&     apt-get install --no-install-recommends -y     gcc     python3.8     python3-pip     python3.8-dev     gettext-base
+ ---> Using cache
+ ---> 5a4e04fe40e2
+Step 5/29 : COPY . /aquarius
+ ---> 6901975c4b8d
+Step 6/29 : WORKDIR /aquarius
+ ---> Running in bbe5f4e9751a
+Removing intermediate container bbe5f4e9751a
+ ---> 767be06d1213
+Step 7/29 : RUN python3.8 -m pip install -U pip==20.2.2
+ ---> Running in d303ca5568a2
+Collecting pip==20.2.2
+  Downloading https://files.pythonhosted.org/packages/5a/4a/39400ff9b36e719bdf8f31c99fe1fa7842a42fa77432e584f707a5080063/pip-20.2.2-py2.py3-none-any.whl (1.5MB)
+Installing collected packages: pip
+  Found existing installation: pip 9.0.1
+    Not uninstalling pip at /usr/lib/python3/dist-packages, outside environment /usr
+Successfully installed pip-20.2.2
+Removing intermediate container d303ca5568a2
+ ---> e8e58a584fd5
+Step 8/29 : RUN pip install setuptools
+ ---> Running in 7f0d5d640d6a
+Collecting setuptools
+  Downloading setuptools-65.3.0-py3-none-any.whl (1.2 MB)
+Installing collected packages: setuptools
+Successfully installed setuptools-65.3.0
+[91mWARNING: You are using pip version 20.2.2; however, version 22.2.2 is available.
+You should consider upgrading via the '/usr/bin/python3.8 -m pip install --upgrade pip' command.
+[0mRemoving intermediate container 7f0d5d640d6a
+ ---> 23bd3d9305dc
+Step 9/29 : RUN pip install wheel
+ ---> Running in e52b0781bf66
+Collecting wheel
+  Downloading wheel-0.37.1-py2.py3-none-any.whl (35 kB)
+Installing collected packages: wheel
+Successfully installed wheel-0.37.1
+[91mWARNING: You are using pip version 20.2.2; however, version 22.2.2 is available.
+You should consider upgrading via the '/usr/bin/python3.8 -m pip install --upgrade pip' command.
+[0mRemoving intermediate container e52b0781bf66
+ ---> cf5b0747cc52
+Step 10/29 : RUN pip install .
+ ---> Running in fdf2e76f26ff
+Processing /aquarius
+Collecting coloredlogs==15.0.1
+  Downloading coloredlogs-15.0.1-py2.py3-none-any.whl (46 kB)
+Collecting Flask==2.2.1
+  Downloading Flask-2.2.1-py3-none-any.whl (101 kB)
+Collecting Flask-Cors==3.0.10
+  Downloading Flask_Cors-3.0.10-py2.py3-none-any.whl (14 kB)
+Collecting flask-swagger==0.2.14
+  Downloading flask-swagger-0.2.14.tar.gz (8.6 kB)
+Collecting flask-swagger-ui==4.11.1
+  Downloading flask_swagger_ui-4.11.1-py3-none-any.whl (1.4 MB)
+Collecting Jinja2>=2.10.1
+  Downloading Jinja2-3.1.2-py3-none-any.whl (133 kB)
+Collecting requests>=2.21.0
+  Downloading requests-2.28.1-py3-none-any.whl (62 kB)
+Collecting gunicorn==20.1.0
+  Downloading gunicorn-20.1.0-py3-none-any.whl (79 kB)
+Collecting elasticsearch==7.17.0
+  Downloading elasticsearch-7.17.0-py2.py3-none-any.whl (385 kB)
+Collecting PyYAML==6.0
+  Downloading PyYAML-6.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (701 kB)
+Collecting pytz==2022.1
+  Downloading pytz-2022.1-py2.py3-none-any.whl (503 kB)
+Collecting ocean-contracts==1.1.0
+  Downloading ocean_contracts-1.1.0-py3-none-any.whl (269 kB)
+Collecting web3==5.30.0
+  Downloading web3-5.30.0-py3-none-any.whl (501 kB)
+Collecting gevent
+  Downloading gevent-21.12.0-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (6.5 MB)
+Collecting json-sempai==0.4.0
+  Downloading json_sempai-0.4.0-py2.py3-none-any.whl (6.2 kB)
+Collecting python-dateutil==2.8.2
+  Downloading python_dateutil-2.8.2-py2.py3-none-any.whl (247 kB)
+Collecting pyshacl==0.19.1
+  Downloading pyshacl-0.19.1-py3-none-any.whl (1.2 MB)
+Collecting gql==3.4.0
+  Downloading gql-3.4.0-py2.py3-none-any.whl (65 kB)
+Collecting aiohttp==3.8.1
+  Downloading aiohttp-3.8.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.3 MB)
+Collecting humanfriendly>=9.1
+  Downloading humanfriendly-10.0-py2.py3-none-any.whl (86 kB)
+Collecting click>=8.0
+  Downloading click-8.1.3-py3-none-any.whl (96 kB)
+Collecting itsdangerous>=2.0
+  Downloading itsdangerous-2.1.2-py3-none-any.whl (15 kB)
+Collecting importlib-metadata>=3.6.0; python_version < "3.10"
+  Downloading importlib_metadata-4.12.0-py3-none-any.whl (21 kB)
+Collecting Werkzeug>=2.2.0
+  Downloading Werkzeug-2.2.2-py3-none-any.whl (232 kB)
+Collecting Six
+  Downloading six-1.16.0-py2.py3-none-any.whl (11 kB)
+Collecting MarkupSafe>=2.0
+  Downloading MarkupSafe-2.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (25 kB)
+Collecting idna<4,>=2.5
+  Downloading idna-3.3-py3-none-any.whl (61 kB)
+Collecting certifi>=2017.4.17
+  Downloading certifi-2022.6.15-py3-none-any.whl (160 kB)
+Collecting charset-normalizer<3,>=2
+  Downloading charset_normalizer-2.1.1-py3-none-any.whl (39 kB)
+Collecting urllib3<1.27,>=1.21.1
+  Downloading urllib3-1.26.12-py2.py3-none-any.whl (140 kB)
+Requirement already satisfied: setuptools>=3.0 in /usr/local/lib/python3.8/dist-packages (from gunicorn==20.1.0->ocean-aquarius==4.2.0) (65.3.0)
+Collecting jsonschema<5,>=3.2.0
+  Downloading jsonschema-4.14.0-py3-none-any.whl (82 kB)
+Collecting lru-dict<2.0.0,>=1.1.6
+  Downloading lru_dict-1.1.8-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (29 kB)
+Collecting eth-hash[pycryptodome]<1.0.0,>=0.2.0
+  Downloading eth_hash-0.5.0-py3-none-any.whl (8.9 kB)
+Collecting hexbytes<1.0.0,>=0.1.0
+  Downloading hexbytes-0.3.0-py3-none-any.whl (6.4 kB)
+Collecting ipfshttpclient==0.8.0a2
+  Downloading ipfshttpclient-0.8.0a2-py3-none-any.whl (82 kB)
+Collecting eth-account<0.6.0,>=0.5.7
+  Downloading eth_account-0.5.9-py3-none-any.whl (101 kB)
+Collecting eth-typing<3.0.0,>=2.0.0
+  Downloading eth_typing-2.3.0-py3-none-any.whl (6.2 kB)
+Collecting eth-abi<3.0.0,>=2.0.0b6
+  Downloading eth_abi-2.2.0-py3-none-any.whl (28 kB)
+Collecting websockets<10,>=9.1
+  Downloading websockets-9.1-cp38-cp38-manylinux2010_x86_64.whl (102 kB)
+Collecting eth-rlp<0.3
+  Downloading eth_rlp-0.2.1-py3-none-any.whl (5.0 kB)
+Collecting protobuf<4,>=3.10.0
+  Downloading protobuf-3.20.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl (1.0 MB)
+Collecting eth-utils<2.0.0,>=1.9.5
+  Downloading eth_utils-1.10.0-py3-none-any.whl (24 kB)
+Collecting zope.event
+  Downloading zope.event-4.5.0-py2.py3-none-any.whl (6.8 kB)
+Collecting greenlet<2.0,>=1.1.0; platform_python_implementation == "CPython"
+  Downloading greenlet-1.1.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (157 kB)
+Collecting zope.interface
+  Downloading zope.interface-5.4.0-cp38-cp38-manylinux2010_x86_64.whl (259 kB)
+Collecting packaging>=21.3
+  Downloading packaging-21.3-py3-none-any.whl (40 kB)
+Collecting rdflib<8,>=6.1.1
+  Downloading rdflib-6.2.0-py3-none-any.whl (500 kB)
+Collecting prettytable<3.0.0,>=2.2.1
+  Downloading prettytable-2.5.0-py3-none-any.whl (24 kB)
+Collecting owlrl<7,>=6.0.2
+  Downloading owlrl-6.0.2-py3-none-any.whl (54 kB)
+Collecting yarl<2.0,>=1.6
+  Downloading yarl-1.8.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (262 kB)
+Collecting backoff<3.0,>=1.11.1
+  Downloading backoff-2.1.2-py3-none-any.whl (14 kB)
+Collecting graphql-core<3.3,>=3.2
+  Downloading graphql_core-3.2.1-py3-none-any.whl (202 kB)
+Collecting frozenlist>=1.1.1
+  Downloading frozenlist-1.3.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (161 kB)
+Collecting aiosignal>=1.1.2
+  Downloading aiosignal-1.2.0-py3-none-any.whl (8.2 kB)
+Collecting attrs>=17.3.0
+  Downloading attrs-22.1.0-py2.py3-none-any.whl (58 kB)
+Collecting multidict<7.0,>=4.5
+  Downloading multidict-6.0.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (121 kB)
+Collecting async-timeout<5.0,>=4.0.0a3
+  Downloading async_timeout-4.0.2-py3-none-any.whl (5.8 kB)
+Collecting zipp>=0.5
+  Downloading zipp-3.8.1-py3-none-any.whl (5.6 kB)
+Collecting pkgutil-resolve-name>=1.3.10; python_version < "3.9"
+  Downloading pkgutil_resolve_name-1.3.10-py3-none-any.whl (4.7 kB)
+Collecting importlib-resources>=1.4.0; python_version < "3.9"
+  Downloading importlib_resources-5.9.0-py3-none-any.whl (33 kB)
+Collecting pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0
+  Downloading pyrsistent-0.18.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (119 kB)
+Collecting pycryptodome<4,>=3.6.6; extra == "pycryptodome"
+  Downloading pycryptodome-3.15.0-cp35-abi3-manylinux2010_x86_64.whl (2.3 MB)
+Collecting multiaddr>=0.0.7
+  Downloading multiaddr-0.0.9-py2.py3-none-any.whl (16 kB)
+Collecting rlp<3,>=1.0.0
+  Downloading rlp-2.0.1-py2.py3-none-any.whl (20 kB)
+Collecting eth-keyfile<0.6.0,>=0.5.0
+  Downloading eth_keyfile-0.5.1-py3-none-any.whl (8.3 kB)
+Collecting bitarray<3,>=1.2.1
+  Downloading bitarray-2.6.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (241 kB)
+Collecting eth-keys<0.4.0,>=0.3.4
+  Downloading eth_keys-0.3.4-py3-none-any.whl (21 kB)
+Collecting parsimonious<0.9.0,>=0.8.0
+  Downloading parsimonious-0.8.1.tar.gz (45 kB)
+Collecting cytoolz<1.0.0,>=0.10.1; implementation_name == "cpython"
+  Downloading cytoolz-0.12.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.8 MB)
+Collecting pyparsing!=3.0.5,>=2.0.2
+  Downloading pyparsing-3.0.9-py3-none-any.whl (98 kB)
+Collecting isodate
+  Downloading isodate-0.6.1-py2.py3-none-any.whl (41 kB)
+Collecting wcwidth
+  Downloading wcwidth-0.2.5-py2.py3-none-any.whl (30 kB)
+Collecting varint
+  Downloading varint-1.0.2.tar.gz (1.9 kB)
+Collecting base58
+  Downloading base58-2.1.1-py3-none-any.whl (5.6 kB)
+Collecting netaddr
+  Downloading netaddr-0.8.0-py2.py3-none-any.whl (1.9 MB)
+Collecting toolz>=0.8.0
+  Downloading toolz-0.12.0-py3-none-any.whl (55 kB)
+Building wheels for collected packages: ocean-aquarius, flask-swagger, parsimonious, varint
+  Building wheel for ocean-aquarius (setup.py): started
+  Building wheel for ocean-aquarius (setup.py): finished with status 'done'
+  Created wheel for ocean-aquarius: filename=ocean_aquarius-4.2.0-py2.py3-none-any.whl size=28932 sha256=1b3bd8e1d302459384d1177153fe31f0de4e66fa08cb7ad385a995a528bfb89d
+  Stored in directory: /tmp/pip-ephem-wheel-cache-dgcs2js7/wheels/ca/f2/c5/cf22978ba6615a8a6e9ff33e9ea207849f73d5a46cc4f60255
+  Building wheel for flask-swagger (setup.py): started
+  Building wheel for flask-swagger (setup.py): finished with status 'done'
+  Created wheel for flask-swagger: filename=flask_swagger-0.2.14-py3-none-any.whl size=7256 sha256=b17ae49e68461fa78c4622c5ffa4d6bfb3d6808cfa1891f8726c9d9392aa689b
+  Stored in directory: /root/.cache/pip/wheels/66/4d/fe/bfaf9b89c8db3b29f52c01cb9bd050f68e67195747b5dda118
+  Building wheel for parsimonious (setup.py): started
+  Building wheel for parsimonious (setup.py): finished with status 'done'
+  Created wheel for parsimonious: filename=parsimonious-0.8.1-py3-none-any.whl size=42708 sha256=deba533b2d8a0a8bba91e77f4c2d893912400b3a34d1127906b5e15ea04522bd
+  Stored in directory: /root/.cache/pip/wheels/d8/af/19/fb896f509a437aca2dcf62583e84d7fb2cd5b628c1564a609c
+  Building wheel for varint (setup.py): started
+  Building wheel for varint (setup.py): finished with status 'done'
+  Created wheel for varint: filename=varint-1.0.2-py3-none-any.whl size=1962 sha256=d64792ad17793df2463cc3e2e395a613568ed5e876717e5f5d0b698c39e4a574
+  Stored in directory: /root/.cache/pip/wheels/cc/a8/a4/4d9e9807c27585dc974fc0e86a3e4345649d71f8a35906d1a8
+Successfully built ocean-aquarius flask-swagger parsimonious varint
+Installing collected packages: humanfriendly, coloredlogs, click, MarkupSafe, Jinja2, itsdangerous, zipp, importlib-metadata, Werkzeug, Flask, Six, Flask-Cors, PyYAML, flask-swagger, flask-swagger-ui, idna, certifi, charset-normalizer, urllib3, requests, gunicorn, elasticsearch, pytz, ocean-contracts, pkgutil-resolve-name, importlib-resources, attrs, pyrsistent, jsonschema, lru-dict, pycryptodome, eth-hash, hexbytes, varint, base58, netaddr, multiaddr, ipfshttpclient, toolz, cytoolz, eth-typing, eth-utils, rlp, eth-rlp, parsimonious, eth-abi, eth-keys, eth-keyfile, bitarray, eth-account, frozenlist, aiosignal, multidict, yarl, async-timeout, aiohttp, websockets, protobuf, web3, zope.event, greenlet, zope.interface, gevent, json-sempai, python-dateutil, pyparsing, packaging, isodate, rdflib, wcwidth, prettytable, owlrl, pyshacl, backoff, graphql-core, gql, ocean-aquarius
+Successfully installed Flask-2.2.1 Flask-Cors-3.0.10 Jinja2-3.1.2 MarkupSafe-2.1.1 PyYAML-6.0 Six-1.16.0 Werkzeug-2.2.2 aiohttp-3.8.1 aiosignal-1.2.0 async-timeout-4.0.2 attrs-22.1.0 backoff-2.1.2 base58-2.1.1 bitarray-2.6.0 certifi-2022.6.15 charset-normalizer-2.1.1 click-8.1.3 coloredlogs-15.0.1 cytoolz-0.12.0 elasticsearch-7.17.0 eth-abi-2.2.0 eth-account-0.5.9 eth-hash-0.5.0 eth-keyfile-0.5.1 eth-keys-0.3.4 eth-rlp-0.2.1 eth-typing-2.3.0 eth-utils-1.10.0 flask-swagger-0.2.14 flask-swagger-ui-4.11.1 frozenlist-1.3.1 gevent-21.12.0 gql-3.4.0 graphql-core-3.2.1 greenlet-1.1.3 gunicorn-20.1.0 hexbytes-0.3.0 humanfriendly-10.0 idna-3.3 importlib-metadata-4.12.0 importlib-resources-5.9.0 ipfshttpclient-0.8.0a2 isodate-0.6.1 itsdangerous-2.1.2 json-sempai-0.4.0 jsonschema-4.14.0 lru-dict-1.1.8 multiaddr-0.0.9 multidict-6.0.2 netaddr-0.8.0 ocean-aquarius-4.2.0 ocean-contracts-1.1.0 owlrl-6.0.2 packaging-21.3 parsimonious-0.8.1 pkgutil-resolve-name-1.3.10 prettytable-2.5.0 protobuf-3.20.1 pycryptodome-3.15.0 pyparsing-3.0.9 pyrsistent-0.18.1 pyshacl-0.19.1 python-dateutil-2.8.2 pytz-2022.1 rdflib-6.2.0 requests-2.28.1 rlp-2.0.1 toolz-0.12.0 urllib3-1.26.12 varint-1.0.2 wcwidth-0.2.5 web3-5.30.0 websockets-9.1 yarl-1.8.1 zipp-3.8.1 zope.event-4.5.0 zope.interface-5.4.0
+[91mERROR: After October 2020 you may experience errors when installing or updating packages. This is because pip will change the way that it resolves dependency conflicts.
+
+We recommend you use --use-feature=2020-resolver to test your packages with the new resolver before it becomes the default.
+
+eth-utils 1.10.0 requires eth-hash<0.4.0,>=0.3.1, but you'll have eth-hash 0.5.0 which is incompatible.
+[0m[91mWARNING: You are using pip version 20.2.2; however, version 22.2.2 is available.
+You should consider upgrading via the '/usr/bin/python3.8 -m pip install --upgrade pip' command.
+[0mRemoving intermediate container fdf2e76f26ff
+ ---> 854c42a30999
+Step 11/29 : ENV DB_MODULE='elasticsearch'
+ ---> Running in 079c2b168d9d
+Removing intermediate container 079c2b168d9d
+ ---> b6a6cd350e89
+Step 12/29 : ENV DB_HOSTNAME='localhost'
+ ---> Running in 1c40b4217d0a
+Removing intermediate container 1c40b4217d0a
+ ---> ae30e5bed80f
+Step 13/29 : ENV DB_PORT='27017'
+ ---> Running in 170ad282a17b
+Removing intermediate container 170ad282a17b
+ ---> 69f6361b0683
+Step 14/29 : ENV DB_INDEX='aquarius'
+ ---> Running in d9b5277cdf7a
+Removing intermediate container d9b5277cdf7a
+ ---> b1687e739bc0
+Step 15/29 : ENV AQUARIUS_BIND_URL='http://0.0.0.0:5000'
+ ---> Running in 53620b28e001
+Removing intermediate container 53620b28e001
+ ---> 295f5666708d
+Step 16/29 : ENV ALLOW_FREE_ASSETS_ONLY='false'
+ ---> Running in 2748606b0f8a
+Removing intermediate container 2748606b0f8a
+ ---> 4cfbb42faa8d
+Step 17/29 : ENV AQUARIUS_WORKERS='8'
+ ---> Running in 730ff83731c6
+Removing intermediate container 730ff83731c6
+ ---> b9464d6063f8
+Step 18/29 : ENV USE_POA_MIDDLEWARE='1'
+ ---> Running in 6bc4405f5c7f
+Removing intermediate container 6bc4405f5c7f
+ ---> a01083700478
+Step 19/29 : ENV EVENTS_ALLOW=''
+ ---> Running in 0c140ad65854
+Removing intermediate container 0c140ad65854
+ ---> ba83c2522d0d
+Step 20/29 : ENV RUN_EVENTS_MONITOR='1'
+ ---> Running in bfeec310376f
+Removing intermediate container bfeec310376f
+ ---> 5272b303ff1d
+Step 21/29 : ENV ASSET_PURGATORY_URL="https://raw.githubusercontent.com/oceanprotocol/list-purgatory/main/list-assets.json"
+ ---> Running in 8aed63578a30
+Removing intermediate container 8aed63578a30
+ ---> a4e52af667ae
+Step 22/29 : ENV ACCOUNT_PURGATORY_URL="https://raw.githubusercontent.com/oceanprotocol/list-purgatory/main/list-accounts.json"
+ ---> Running in c8f8c0c2148a
+Removing intermediate container c8f8c0c2148a
+ ---> a8b482f46593
+Step 23/29 : ENV PURGATORY_UPDATE_INTERVAL='60'
+ ---> Running in bd30fb359965
+Removing intermediate container bd30fb359965
+ ---> 125a890ae00f
+Step 24/29 : ENV RUN_AQUARIUS_SERVER='1'
+ ---> Running in 9febe487feb9
+Removing intermediate container 9febe487feb9
+ ---> 5f708ad7e789
+Step 25/29 : ENV EVENTS_RPC='http://127.0.0.1:8545'
+ ---> Running in ad37587e0ec2
+Removing intermediate container ad37587e0ec2
+ ---> 08df1df37686
+Step 26/29 : ENV PRIVATE_KEY='0xc6914ea1e5ac6a1cd2107240be714735bf799ce9ea4125016aeb479266720ff4'
+ ---> Running in a737df76cbee
+Removing intermediate container a737df76cbee
+ ---> 9a61f417d91d
+Step 27/29 : ENV BLOCKS_CHUNK_SIZE='1000'
+ ---> Running in 79c87a64510b
+Removing intermediate container 79c87a64510b
+ ---> 1180c94f12ca
+Step 28/29 : ENTRYPOINT ["/aquarius/docker-entrypoint.sh"]
+ ---> Running in 21284c692efe
+Removing intermediate container 21284c692efe
+ ---> 0dcd63c00dbc
+Step 29/29 : EXPOSE 5000
+ ---> Running in 426bec27269c
+Removing intermediate container 426bec27269c
+ ---> 741226ecd738
+Successfully built 741226ecd738
+Successfully tagged algocean/aquarius:latest
+Sending build context to Docker daemon  20.99MB
+Step 1/15 : FROM ubuntu:20.04
+ ---> 3bc6e9f30f51
+Step 2/15 : LABEL maintainer="Ocean Protocol <devops@oceanprotocol.com>"
+ ---> Using cache
+ ---> 60421c135aff
+Step 3/15 : RUN apt-get update &&       apt-get -y install build-essential python3 git bash curl
+ ---> Using cache
+ ---> f0804e4db2c3
+Step 4/15 : RUN curl -sL https://deb.nodesource.com/setup_16.x -o /tmp/nodesource_setup.sh
+ ---> Using cache
+ ---> bf332f1a5252
+Step 5/15 : RUN bash /tmp/nodesource_setup.sh
+ ---> Using cache
+ ---> bc99c14d36cb
+Step 6/15 : RUN apt install nodejs
+ ---> Using cache
+ ---> ecc69286d8e6
+Step 7/15 : COPY . /ocean-contracts
+ ---> Using cache
+ ---> 9c19645d4da1
+Step 8/15 : WORKDIR /ocean-contracts
+ ---> Using cache
+ ---> 788a1ab31a09
+Step 9/15 : RUN npm install --no-optional && npm cache clean --force
+ ---> Using cache
+ ---> d7536512af19
+Step 10/15 : ENV SLEEP_FOR_GANACHE=10
+ ---> Using cache
+ ---> fe6157359f7e
+Step 11/15 : RUN cp hardhat.config.barge.js hardhat.config.js
+ ---> Using cache
+ ---> aacd957ad403
+Step 12/15 : ENV NETWORK=barge
+ ---> Using cache
+ ---> c4c38c98a770
+Step 13/15 : ENV NETWORK_RPC_URL=127.0.0.1:8545
+ ---> Using cache
+ ---> c06f5c724050
+Step 14/15 : RUN npx hardhat compile
+ ---> Using cache
+ ---> 83f30c420dfc
+Step 15/15 : ENTRYPOINT ["/ocean-contracts/scripts/deploy_docker.sh"]
+ ---> Using cache
+ ---> e163f8abda66
+Successfully built e163f8abda66
+Successfully tagged algocean/contracts:latest
+Sending build context to Docker daemon   78.6MB
+Step 1/15 : FROM ubuntu:20.04
+ ---> 3bc6e9f30f51
+Step 2/15 : ARG VERSION
+ ---> Using cache
+ ---> 370d168e4b41
+Step 3/15 : RUN apt-get update &&    apt-get install --no-install-recommends -y    gcc    python3.8    python3-pip    python3.8-dev    gettext-base
+ ---> Running in 843893515d06
+Get:1 http://security.ubuntu.com/ubuntu focal-security InRelease [114 kB]
+Get:2 http://archive.ubuntu.com/ubuntu focal InRelease [265 kB]
+Get:3 http://security.ubuntu.com/ubuntu focal-security/main amd64 Packages [2102 kB]
+Get:4 http://archive.ubuntu.com/ubuntu focal-updates InRelease [114 kB]
+Get:5 http://archive.ubuntu.com/ubuntu focal-backports InRelease [108 kB]
+Get:6 http://archive.ubuntu.com/ubuntu focal/universe amd64 Packages [11.3 MB]
+Get:7 http://security.ubuntu.com/ubuntu focal-security/universe amd64 Packages [890 kB]
+Get:8 http://security.ubuntu.com/ubuntu focal-security/multiverse amd64 Packages [27.5 kB]
+Get:9 http://security.ubuntu.com/ubuntu focal-security/restricted amd64 Packages [1474 kB]
+Get:10 http://archive.ubuntu.com/ubuntu focal/multiverse amd64 Packages [177 kB]
+Get:11 http://archive.ubuntu.com/ubuntu focal/main amd64 Packages [1275 kB]
+Get:12 http://archive.ubuntu.com/ubuntu focal/restricted amd64 Packages [33.4 kB]
+Get:13 http://archive.ubuntu.com/ubuntu focal-updates/multiverse amd64 Packages [30.2 kB]
+Get:14 http://archive.ubuntu.com/ubuntu focal-updates/universe amd64 Packages [1184 kB]
+Get:15 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 Packages [2558 kB]
+Get:16 http://archive.ubuntu.com/ubuntu focal-updates/restricted amd64 Packages [1584 kB]
+Get:17 http://archive.ubuntu.com/ubuntu focal-backports/main amd64 Packages [55.1 kB]
+Get:18 http://archive.ubuntu.com/ubuntu focal-backports/universe amd64 Packages [27.4 kB]
+Fetched 23.4 MB in 3s (8374 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  binutils binutils-common binutils-x86-64-linux-gnu ca-certificates cpp cpp-9
+  gcc-9 gcc-9-base libasan5 libatomic1 libbinutils libc-dev-bin libc6-dev
+  libcc1-0 libcrypt-dev libctf-nobfd0 libctf0 libexpat1 libexpat1-dev
+  libgcc-9-dev libgomp1 libisl22 libitm1 liblsan0 libmpc3 libmpdec2 libmpfr6
+  libpython3-stdlib libpython3.8 libpython3.8-dev libpython3.8-minimal
+  libpython3.8-stdlib libquadmath0 libreadline8 libsqlite3-0 libssl1.1
+  libtsan0 libubsan1 linux-libc-dev mime-support openssl python-pip-whl
+  python3 python3-distutils python3-lib2to3 python3-minimal
+  python3-pkg-resources python3-setuptools python3-wheel python3.8-minimal
+  readline-common zlib1g-dev
+Suggested packages:
+  binutils-doc cpp-doc gcc-9-locales gcc-multilib make manpages-dev autoconf
+  automake libtool flex bison gdb gcc-doc gcc-9-multilib gcc-9-doc glibc-doc
+  python3-doc python3-tk python3-venv python-setuptools-doc python3.8-venv
+  python3.8-doc binfmt-support readline-doc
+Recommended packages:
+  manpages manpages-dev file xz-utils build-essential python3-dev
+The following NEW packages will be installed:
+  binutils binutils-common binutils-x86-64-linux-gnu ca-certificates cpp cpp-9
+  gcc gcc-9 gcc-9-base gettext-base libasan5 libatomic1 libbinutils
+  libc-dev-bin libc6-dev libcc1-0 libcrypt-dev libctf-nobfd0 libctf0 libexpat1
+  libexpat1-dev libgcc-9-dev libgomp1 libisl22 libitm1 liblsan0 libmpc3
+  libmpdec2 libmpfr6 libpython3-stdlib libpython3.8 libpython3.8-dev
+  libpython3.8-minimal libpython3.8-stdlib libquadmath0 libreadline8
+  libsqlite3-0 libssl1.1 libtsan0 libubsan1 linux-libc-dev mime-support
+  openssl python-pip-whl python3 python3-distutils python3-lib2to3
+  python3-minimal python3-pip python3-pkg-resources python3-setuptools
+  python3-wheel python3.8 python3.8-dev python3.8-minimal readline-common
+  zlib1g-dev
+0 upgraded, 57 newly installed, 0 to remove and 2 not upgraded.
+Need to get 48.9 MB of archives.
+After this operation, 211 MB of additional disk space will be used.
+Ign:1 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libssl1.1 amd64 1.1.1f-1ubuntu2.16
+Ign:2 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-minimal amd64 3.8.10-0ubuntu1~20.04.5
+Ign:3 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libexpat1 amd64 2.2.9-1ubuntu0.4
+Ign:4 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 python3.8-minimal amd64 3.8.10-0ubuntu1~20.04.5
+Err:5 http://archive.ubuntu.com/ubuntu focal/main amd64 python3-minimal amd64 3.8.2-0ubuntu2
+  Could not resolve 'archive.ubuntu.com'
+Err:6 http://archive.ubuntu.com/ubuntu focal/main amd64 mime-support all 3.64ubuntu1
+  Could not resolve 'archive.ubuntu.com'
+Err:7 http://archive.ubuntu.com/ubuntu focal/main amd64 libmpdec2 amd64 2.4.2-3
+  Could not resolve 'archive.ubuntu.com'
+Err:8 http://archive.ubuntu.com/ubuntu focal/main amd64 readline-common all 8.0-4
+  Could not resolve 'archive.ubuntu.com'
+Err:9 http://archive.ubuntu.com/ubuntu focal/main amd64 libreadline8 amd64 8.0-4
+  Could not resolve 'archive.ubuntu.com'
+Ign:10 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libsqlite3-0 amd64 3.31.1-4ubuntu0.3
+Ign:11 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-stdlib amd64 3.8.10-0ubuntu1~20.04.5
+Ign:12 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 python3.8 amd64 3.8.10-0ubuntu1~20.04.5
+Err:13 http://archive.ubuntu.com/ubuntu focal/main amd64 libpython3-stdlib amd64 3.8.2-0ubuntu2
+  Could not resolve 'archive.ubuntu.com'
+Err:14 http://archive.ubuntu.com/ubuntu focal/main amd64 python3 amd64 3.8.2-0ubuntu2
+  Could not resolve 'archive.ubuntu.com'
+Ign:15 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 openssl amd64 1.1.1f-1ubuntu2.16
+Ign:16 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 ca-certificates all 20211016~20.04.1
+Err:17 http://archive.ubuntu.com/ubuntu focal/main amd64 python3-pkg-resources all 45.2.0-1
+  Could not resolve 'archive.ubuntu.com'
+Err:18 http://archive.ubuntu.com/ubuntu focal/main amd64 gettext-base amd64 0.19.8.1-10build1
+  Could not resolve 'archive.ubuntu.com'
+Ign:19 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 binutils-common amd64 2.34-6ubuntu1.3
+Ign:20 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libbinutils amd64 2.34-6ubuntu1.3
+Ign:21 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libctf-nobfd0 amd64 2.34-6ubuntu1.3
+Ign:22 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libctf0 amd64 2.34-6ubuntu1.3
+Ign:23 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 binutils-x86-64-linux-gnu amd64 2.34-6ubuntu1.3
+Ign:24 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 binutils amd64 2.34-6ubuntu1.3
+Ign:25 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 gcc-9-base amd64 9.4.0-1ubuntu1~20.04.1
+Err:26 http://archive.ubuntu.com/ubuntu focal/main amd64 libisl22 amd64 0.22.1-1
+  Could not resolve 'archive.ubuntu.com'
+Err:27 http://archive.ubuntu.com/ubuntu focal/main amd64 libmpfr6 amd64 4.0.2-1
+  Could not resolve 'archive.ubuntu.com'
+Err:28 http://archive.ubuntu.com/ubuntu focal/main amd64 libmpc3 amd64 1.1.0-1
+  Could not resolve 'archive.ubuntu.com'
+Ign:29 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 cpp-9 amd64 9.4.0-1ubuntu1~20.04.1
+Err:30 http://archive.ubuntu.com/ubuntu focal/main amd64 cpp amd64 4:9.3.0-1ubuntu2
+  Could not resolve 'archive.ubuntu.com'
+Ign:31 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libcc1-0 amd64 10.3.0-1ubuntu1~20.04
+Ign:32 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libgomp1 amd64 10.3.0-1ubuntu1~20.04
+Ign:33 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libitm1 amd64 10.3.0-1ubuntu1~20.04
+Ign:34 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libatomic1 amd64 10.3.0-1ubuntu1~20.04
+Ign:35 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libasan5 amd64 9.4.0-1ubuntu1~20.04.1
+Ign:36 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 liblsan0 amd64 10.3.0-1ubuntu1~20.04
+Ign:37 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libtsan0 amd64 10.3.0-1ubuntu1~20.04
+Ign:38 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libubsan1 amd64 10.3.0-1ubuntu1~20.04
+Ign:39 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libquadmath0 amd64 10.3.0-1ubuntu1~20.04
+Ign:40 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libgcc-9-dev amd64 9.4.0-1ubuntu1~20.04.1
+Ign:41 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 gcc-9 amd64 9.4.0-1ubuntu1~20.04.1
+Err:42 http://archive.ubuntu.com/ubuntu focal/main amd64 gcc amd64 4:9.3.0-1ubuntu2
+  Could not resolve 'archive.ubuntu.com'
+Err:43 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libc-dev-bin amd64 2.31-0ubuntu9.9
+  Could not resolve 'archive.ubuntu.com'
+Ign:44 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 linux-libc-dev amd64 5.4.0-125.141
+Err:45 http://archive.ubuntu.com/ubuntu focal/main amd64 libcrypt-dev amd64 1:4.4.10-10ubuntu4
+  Could not resolve 'archive.ubuntu.com'
+Err:46 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libc6-dev amd64 2.31-0ubuntu9.9
+  Could not resolve 'archive.ubuntu.com'
+Ign:47 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libexpat1-dev amd64 2.2.9-1ubuntu0.4
+Ign:48 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8 amd64 3.8.10-0ubuntu1~20.04.5
+Ign:49 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-dev amd64 3.8.10-0ubuntu1~20.04.5
+Err:50 http://archive.ubuntu.com/ubuntu focal-updates/universe amd64 python-pip-whl all 20.0.2-5ubuntu1.6
+  Could not resolve 'archive.ubuntu.com'
+Ign:51 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 python3-lib2to3 all 3.8.10-0ubuntu1~20.04
+Ign:52 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 python3-distutils all 3.8.10-0ubuntu1~20.04
+Err:53 http://archive.ubuntu.com/ubuntu focal/main amd64 python3-setuptools all 45.2.0-1
+  Could not resolve 'archive.ubuntu.com'
+Err:54 http://archive.ubuntu.com/ubuntu focal/universe amd64 python3-wheel all 0.34.2-1
+  Could not resolve 'archive.ubuntu.com'
+Err:55 http://archive.ubuntu.com/ubuntu focal-updates/universe amd64 python3-pip all 20.0.2-5ubuntu1.6
+  Could not resolve 'archive.ubuntu.com'
+Ign:56 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 zlib1g-dev amd64 1:1.2.11.dfsg-2ubuntu1.3
+Ign:57 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 python3.8-dev amd64 3.8.10-0ubuntu1~20.04.5
+Get:1 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libssl1.1 amd64 1.1.1f-1ubuntu2.16 [1321 kB]
+Get:2 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-minimal amd64 3.8.10-0ubuntu1~20.04.5 [717 kB]
+Get:3 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libexpat1 amd64 2.2.9-1ubuntu0.4 [74.4 kB]
+Get:4 http://security.ubuntu.com/ubuntu focal-updates/main amd64 python3.8-minimal amd64 3.8.10-0ubuntu1~20.04.5 [1905 kB]
+Get:10 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libsqlite3-0 amd64 3.31.1-4ubuntu0.3 [549 kB]
+Get:11 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-stdlib amd64 3.8.10-0ubuntu1~20.04.5 [1675 kB]
+Get:12 http://security.ubuntu.com/ubuntu focal-updates/main amd64 python3.8 amd64 3.8.10-0ubuntu1~20.04.5 [387 kB]
+Get:15 http://security.ubuntu.com/ubuntu focal-updates/main amd64 openssl amd64 1.1.1f-1ubuntu2.16 [621 kB]
+Get:16 http://security.ubuntu.com/ubuntu focal-updates/main amd64 ca-certificates all 20211016~20.04.1 [144 kB]
+Get:19 http://security.ubuntu.com/ubuntu focal-updates/main amd64 binutils-common amd64 2.34-6ubuntu1.3 [207 kB]
+Get:20 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libbinutils amd64 2.34-6ubuntu1.3 [474 kB]
+Get:21 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libctf-nobfd0 amd64 2.34-6ubuntu1.3 [47.4 kB]
+Get:22 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libctf0 amd64 2.34-6ubuntu1.3 [46.6 kB]
+Get:23 http://security.ubuntu.com/ubuntu focal-updates/main amd64 binutils-x86-64-linux-gnu amd64 2.34-6ubuntu1.3 [1613 kB]
+Get:24 http://security.ubuntu.com/ubuntu focal-updates/main amd64 binutils amd64 2.34-6ubuntu1.3 [3380 B]
+Get:25 http://security.ubuntu.com/ubuntu focal-updates/main amd64 gcc-9-base amd64 9.4.0-1ubuntu1~20.04.1 [19.4 kB]
+Get:29 http://security.ubuntu.com/ubuntu focal-updates/main amd64 cpp-9 amd64 9.4.0-1ubuntu1~20.04.1 [7500 kB]
+Get:31 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libcc1-0 amd64 10.3.0-1ubuntu1~20.04 [48.8 kB]
+Get:32 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libgomp1 amd64 10.3.0-1ubuntu1~20.04 [102 kB]
+Get:33 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libitm1 amd64 10.3.0-1ubuntu1~20.04 [26.2 kB]
+Get:34 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libatomic1 amd64 10.3.0-1ubuntu1~20.04 [9284 B]
+Get:35 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libasan5 amd64 9.4.0-1ubuntu1~20.04.1 [2751 kB]
+Get:36 http://security.ubuntu.com/ubuntu focal-updates/main amd64 liblsan0 amd64 10.3.0-1ubuntu1~20.04 [835 kB]
+Get:37 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libtsan0 amd64 10.3.0-1ubuntu1~20.04 [2009 kB]
+Get:38 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libubsan1 amd64 10.3.0-1ubuntu1~20.04 [784 kB]
+Get:39 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libquadmath0 amd64 10.3.0-1ubuntu1~20.04 [146 kB]
+Get:40 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libgcc-9-dev amd64 9.4.0-1ubuntu1~20.04.1 [2359 kB]
+Get:41 http://security.ubuntu.com/ubuntu focal-updates/main amd64 gcc-9 amd64 9.4.0-1ubuntu1~20.04.1 [8274 kB]
+Get:44 http://security.ubuntu.com/ubuntu focal-updates/main amd64 linux-libc-dev amd64 5.4.0-125.141 [1100 kB]
+Get:47 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libexpat1-dev amd64 2.2.9-1ubuntu0.4 [117 kB]
+Get:48 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8 amd64 3.8.10-0ubuntu1~20.04.5 [1625 kB]
+Get:49 http://security.ubuntu.com/ubuntu focal-updates/main amd64 libpython3.8-dev amd64 3.8.10-0ubuntu1~20.04.5 [3951 kB]
+Get:51 http://security.ubuntu.com/ubuntu focal-updates/main amd64 python3-lib2to3 all 3.8.10-0ubuntu1~20.04 [76.3 kB]
+Get:52 http://security.ubuntu.com/ubuntu focal-updates/main amd64 python3-distutils all 3.8.10-0ubuntu1~20.04 [141 kB]
+Get:56 http://security.ubuntu.com/ubuntu focal-updates/main amd64 zlib1g-dev amd64 1:1.2.11.dfsg-2ubuntu1.3 [155 kB]
+Get:57 http://security.ubuntu.com/ubuntu focal-updates/main amd64 python3.8-dev amd64 3.8.10-0ubuntu1~20.04.5 [514 kB]
+Fetched 42.3 MB in 16s (2680 kB/s)
+[91mE: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/python3-minimal_3.8.2-0ubuntu2_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/m/mime-support/mime-support_3.64ubuntu1_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/m/mpdecimal/libmpdec2_2.4.2-3_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/r/readline/readline-common_8.0-4_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/r/readline/libreadline8_8.0-4_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/libpython3-stdlib_3.8.2-0ubuntu2_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/python3_3.8.2-0ubuntu2_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/s/setuptools/python3-pkg-resources_45.2.0-1_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/g/gettext/gettext-base_0.19.8.1-10build1_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/i/isl/libisl22_0.22.1-1_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/m/mpfr4/libmpfr6_4.0.2-1_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/m/mpclib3/libmpc3_1.1.0-1_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/cpp_9.3.0-1ubuntu2_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/gcc_9.3.0-1ubuntu2_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc-dev-bin_2.31-0ubuntu9.9_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/libx/libxcrypt/libcrypt-dev_4.4.10-10ubuntu4_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6-dev_2.31-0ubuntu9.9_amd64.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/universe/p/python-pip/python-pip-whl_20.0.2-5ubuntu1.6_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/s/setuptools/python3-setuptools_45.2.0-1_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/universe/w/wheel/python3-wheel_0.34.2-1_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/universe/p/python-pip/python3-pip_20.0.2-5ubuntu1.6_all.deb  Could not resolve 'archive.ubuntu.com'
+E: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?
+[0mThe command '/bin/sh -c apt-get update &&    apt-get install --no-install-recommends -y    gcc    python3.8    python3-pip    python3.8-dev    gettext-base' returned a non-zero code: 100

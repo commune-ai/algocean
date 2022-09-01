@@ -39,3 +39,6 @@ pull:
 	
 kill_all:
 	docker kill $(docker ps -q) 
+
+jupyter:
+	docker exec -it ocean_backend_1 bash -c "jupyter lab --allow-root --ip=0.0.0.0 --port=8888"

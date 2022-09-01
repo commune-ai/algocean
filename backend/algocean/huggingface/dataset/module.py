@@ -229,7 +229,7 @@ class DatasetModule(BaseModule, Dataset):
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(dataset)
+                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
                 state_path_map[split] = split_state
 
         elif mode == 'ipfs':
@@ -800,9 +800,10 @@ if __name__ == '__main__':
     from algocean.utils import *
 
     module = DatasetModule(load_state=True)
-    st.write(module.create_asset(force_create=False))
+    module.save( )
+    # st.write(module.create_asset(force_create=False))
     # module.create_asset(force_create=False)
-    st.write(module.services[0].__dict__)
+    # st.write(module.services[0].__dict__)
 
     # module.streamlit()
 

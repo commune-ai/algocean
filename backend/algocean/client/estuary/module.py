@@ -826,7 +826,8 @@ if __name__ == '__main__':
 
     module = EstuaryModule()
     module.describe(streamlit=True, sidebar=True)
-    st.write(module.save_dataset(path='wikitext', name='wikitext-103-v1', split='test',  mode='🤗'))
+    dataset = load_dataset(path='wikitext', name='wikitext-103-v1', split='train').shard(40,1)
+    st.write(module.save_dataset(dataset=dataset,  mode='🤗'))
     # cid = 'bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy'
     # st.write(module.info(cid=cid))
     # # st.write(module.view_data_cid(pin))
