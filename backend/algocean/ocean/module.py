@@ -281,22 +281,21 @@ class OceanModule(BaseModule):
 
         datanft =self.get_datanft(datanft)
         query_text = f'nft.address:{datanft.address}'
-            
-        timer = Timer(start=True)
 
-        while timer.elapsed_time() < timeout:
-            try:
-                time.sleep(0.1)
-                st.write(timer.elapsed_time())
-                assets = self.search(text=query_text, return_type='asset')
-                assert len(assets)==1, f'This asset from datanft: {datanft.address} does not exist'
-                assert isinstance(assets[0], Asset), f'The asset is suppose to be an Asset My guy'
-                return assets[0]
-            except Exception as e:
-                if handle_error:
-                    return None
-                else:
-                    raise(e)
+        with Timer() as timer:
+            while timer.elapsed < timeout:
+                try:
+                    time.sleep(0.1)
+                    st.write(timer.elapsed)
+                    assets = self.search(text=query_text, return_type='asset')
+                    assert len(assets)==1, f'This asset from datanft: {datanft.address} does not exist'
+                    assert isinstance(assets[0], Asset), f'The asset is suppose to be an Asset My guy'
+                    return assets[0]
+                except Exception as e:
+                    if handle_error:
+                        return None
+                    else:
+                        raise(e)
         
 
 

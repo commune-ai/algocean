@@ -212,13 +212,15 @@ class ActorModule:
         return functions
 
     @classmethod
-    def functions(cls, return_type='str', **kwargs):
-        functions =  get_functions(obj=cls, **kwargs)
+    def functions(cls, obj=None, return_type='str', **kwargs):
+        if obj == None:
+            obj = cls
+        functions =  get_functions(obj=obj, **kwargs)
         if return_type in ['str', 'string']:
             return functions
         
         elif return_type in ['func', 'fn','functions']:
-            return [getattr(cls, f) for f in functions]
+            return [getattr(obj, f) for f in functions]
         else:
             raise NotImplementedError
 
@@ -230,7 +232,7 @@ class ActorModule:
 
         assert is_class(obj)
 
-        fn_list = cls.functions(return_type='fn', **kwargs)
+        fn_list = cls.functions(return_type='fn', obj=obj, **kwargs)
         
         fn_dict =  {f.__name__:f for f in fn_list}
         if streamlit:
@@ -286,3 +288,9 @@ class ActorModule:
     time = timeit
     # timer
     timer = Timer
+
+    @classmethod
+    def describe_module_schema(cls, obj=None, **kwargs):
+        if obj == None:
+            obj = cls
+        return get_module_function_schema(obj, **kwargs)

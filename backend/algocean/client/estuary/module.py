@@ -849,7 +849,7 @@ if __name__ == '__main__':
         if return_type == 'list':
             return [dataset.shard(shards, s) for s in range(shards)]
         elif return_type == 'dict':
-             return {f'shard_{s}':dataset.shard(shards, s) for s in range(shards)}
+             return DatasetDict({f'shard_{s}':dataset.shard(shards, s) for s in range(shards)})
 
         else:
             raise NotImplemented

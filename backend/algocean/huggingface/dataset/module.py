@@ -132,7 +132,6 @@ class DatasetModule(BaseModule, Dataset):
         check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
 
 
-        st.write(kwargs )
         if len(kwargs) == 0:
             kwargs = self.config.get('dataset')
 
@@ -152,7 +151,7 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
-    def list_datasets(self, include_configs=False, limit=100, handle_error=False, test=True):
+    def list_datasets(self, include_configs=False, limit=100, handle_error=False, test=False):
         
         if test:
             return TEST_DATASET_OPTIONS
@@ -162,10 +161,9 @@ class DatasetModule(BaseModule, Dataset):
             datasets_list = self.client.local.get_json(cache_path, handle_error=True)
         except FileNotFound as e:
             pass
-        st.write('bro')
         
         if datasets_list == None:
-            datasets_list = datasets.list_datasets()[:limit]
+            datasets_list = datasets.list_datasets(with_community_datasets=True, with_details=True)[:limit]
 
         if include_configs:
             tmp_datasets_list = []
@@ -434,7 +432,6 @@ class DatasetModule(BaseModule, Dataset):
 
     def get_service(self, name):
         for service in self.services:
-            st.write(service.name, name)
             if service.name == name:
                 return service
         return None
@@ -509,7 +506,6 @@ class DatasetModule(BaseModule, Dataset):
     def asset(self):
         assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} AND metadata.author:{self.wallet.address}')
         
-        st.write(self.dataset_name, assets)
         if len(assets) == 0:
             return None
         
@@ -584,7 +580,6 @@ class DatasetModule(BaseModule, Dataset):
                 did = self.asset.did
 
         # /Users/salvatore/Documents/commune/algocean/backend/bruh/datafile.did:op:6871a1482db7ded64e4c91c8dba2e075384a455db169bf72f796f16dc9c2b780,0
-        # st.write(destination)
         # og_path = self.client.local.ls(os.path.join(destination, 'datafile.'+did+f',{file_index}'))
         # new_path = os.path.join(destination, split, file_name )
         # self.client.local.makedirs(os.path.dirname(new_path), exist_ok=True)
@@ -650,7 +645,6 @@ class DatasetModule(BaseModule, Dataset):
         if len(configs) == 0:
             configs =  [dataset_builder('default').info.__dict__]
             configs[0]['name'] = 'default'
-            # st.write(configs)
 
         if return_type.startswith('dict'):
             configs = {config['name']: config for config in configs}
@@ -757,6 +751,22 @@ class DatasetModule(BaseModule, Dataset):
         asset.add_service(service)
         self.algocean.ocean.asset.update(asset)
 
+    @staticmethod
+    def shard( dataset, shards=10, return_type='list'):
+        '''
+        return type options are list or dict
+        '''
+
+
+        if return_type == 'list':
+            return [dataset.shard(shards, s) for s in range(shards)]
+        elif return_type == 'dict':
+             return DatasetDict({f'shard_{s}':dataset.shard(shards, s) for s in range(shards)})
+
+        else:
+            raise NotImplemented
+
+
 
 
     def strealit_sidebar(self):
@@ -800,28 +810,15 @@ if __name__ == '__main__':
     from algocean.utils import *
 
     module = DatasetModule(load_state=True)
-    module.save( )
+    # st.write(module.functions())
+    st.write(module.list_datasets())
+    # st.write(module.dataset)
+    module.shard(module.dataset['train'])
+    # module.save( )
+
+    st.write(module.dataset.num_rows)
     # st.write(module.create_asset(force_create=False))
-    # module.create_asset(force_create=False)
+    # # module.create_asset(force_create=False)
     # st.write(module.services[0].__dict__)
-
-    # module.streamlit()
-
-
-    # module.save()
-    # st.write(module.url_data[1])
-    # st.write(module.info) 
-
-    # st.write(module.services[0].name)
-    # st.write(module.add_service())
-    # st.write(module.additional_information('service'))
-    # st.write(module.download())
-    # st.write(module.additional_information)
-    # st.write(module.my_assets[0].__dict__)
-    # st.sidebar.write(module.services[0].__dict__)
-    # st.write(module.search_assets('services.0'))
-    # st.write(module.list_datasets())
-    # st.write(module.load_dataset(path=module.list_datasets()[0])['train']._info.__dict__)
-
 
     

@@ -17,7 +17,6 @@ class BaseModule(ActorModule):
         self.get_submodules()
 
     def get_clients(self, config=None):
-        print(config, 'CONFIG')
         if config != None:
             return self.get_object('client.module.ClientModule')(config={})
             
@@ -25,7 +24,6 @@ class BaseModule(ActorModule):
         if config == None:
 
             assert self.default_cfg_path != None
-            print(self.default_cfg_path, 'BRO')
             config = self.config_loader.load(path=self.default_cfg_path)
         return config
     

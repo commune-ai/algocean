@@ -5,6 +5,7 @@ from copy import deepcopy
 import json
 import os
 from typing import *
+import pandas as pd
 import pickle
 LocalFileSystem.root_market = '/'
 class LocalModule(LocalFileSystem):
@@ -64,6 +65,9 @@ class LocalModule(LocalFileSystem):
             # Using a JSON string
             with self.open(path, 'w') as outfile:
                 outfile.write(data)
+        elif isinstance(data, pd.DataFrame):
+            with open(path, 'w') as outfile:
+                data.to_json(outfile)
 
     def get_json(self, path, handle_error = False):
         try:

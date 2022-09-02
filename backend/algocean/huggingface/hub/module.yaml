@@ -1,0 +1,4 @@
+
+module: huggingface.hub.HubModule
+
+client: {}

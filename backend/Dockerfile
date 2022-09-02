@@ -33,3 +33,4 @@ ADD ./ipfsspec /app/ipfsspec
 RUN python3.8 -m pip install -e ./ipfsspec
 RUN python3.8 -m pip install jupyterlab
 RUN alias python=python3.8
+RUN python3.8 -m pip install plotly
