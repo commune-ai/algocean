@@ -111,16 +111,26 @@ class HubModule(BaseModule, HfApi):
     
  
     @cache(path='/tmp/datasets.json', mode='local')
-    def list_datasets(self,return_type = 'pandas', *args, **kwargs):
+    def list_datasets(self,return_type = 'dict', filter_fn=None, *args, **kwargs):
         
 
         datasets = self.hf_api.list_datasets(*args,**kwargs)
         
+
+        datasets = list(map(lambda x: x.__dict__, datasets))
+        if filter_fn != None and callable(filter_fn):
+            datasets = list(filter(filter_fn, datasets))
+    
+
         if return_type in 'dict':
-            datasets = list(map(lambda x: x.__dict__, datasets))
+            pass
         elif return_type in ['pandas', 'pd']:
-            datasets = list(map(lambda x: x.__dict__, datasets))
-            datasets = pd.DataFrame(datasets)
+            df = pd.DataFrame(datasets)
+            df['num_tags'] = df['tags'].apply(len)
+            df['tags'] = df['tags'].apply(lambda tags: {tag.split(':')[0]:tag.split(':')[1] for tag in tags  }).tolist()
+            for tag_field in ['task_categories']:
+                df[tag_field] = df['tags'].apply(lambda tag:tag.get(tag_field) )
+            return df
         else:
             raise NotImplementedError
 
@@ -150,14 +160,6 @@ class HubModule(BaseModule, HfApi):
     @property
     def datasets(self):
         df = pd.DataFrame(self.list_datasets(return_type='dict'))
-        df['num_tags'] = df['tags'].apply(len)
-        st.write(len(df))
-        
-        df['tags'] = df['tags'].apply(lambda tags: {tag.split(':')[0]:tag.split(':')[1] for tag in tags  }).tolist()
-        
-        for tag_field in ['task_categories']:
-            df[tag_field] = df['tags'].apply(lambda tag:tag.get(tag_field) )
-
         return df
 
     @property

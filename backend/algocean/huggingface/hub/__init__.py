@@ -1,1 +1,1 @@
-from .module import DatasetModule
+from .module import HubModule

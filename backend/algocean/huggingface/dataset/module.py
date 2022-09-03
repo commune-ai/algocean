@@ -13,7 +13,7 @@ import ray
 from algocean.utils import dict_put
 from datasets.utils.py_utils import asdict, unique_values
 import datetime
-
+import pyarrow
 
 from ocean_lib.models.data_nft import DataNFT
 import fsspec
@@ -63,21 +63,39 @@ class DatasetModule(BaseModule, Dataset):
 
     
     dataset = {}
-    def __init__(self, config=None, load_state=True):
+    def __init__(self, config:dict=None, override:dict={}):
         BaseModule.__init__(self, config=config)
         self.algocean = OceanModule()
         self.web3 = self.algocean.web3
         self.ocean = self.algocean.ocean
+        self.override_config(override)
+        self.hub = self.get_object('huggingface.hub.module.HubModule')()
+        self.load_state(**self.config.get('dataset'))
 
-
-
-        if load_state:
-            self.load_state(**self.config.get('dataset'))
-
+    def override_config(self,override:dict={}):
+        for k,v in override.items():
+            dict_put(self.config, k, v)
     def load_builder(self, path):
         self.dataset_factory = self.load_dataset_factory(path=path)
         self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
+               
+
+    def list_datasets(self, filter_fn=None, *args, **kwargs):
         
+        kwargs['return_type'] = 'pandas'
+        
+        df = self.hub.list_datasets(*args, **kwargs)
+        if filter_fn != None:
+            if isinstance(filter_fn, str):
+                filter_fn = eval(f'lambda r : {filter_fn}')
+            assert(callable(filter_fn))
+
+            df = self.hub.filter_df(df=df, fn=filter_fn)
+        df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
+        
+        df = df.sort_values('downloads', ascending=False)
+        return df    
+
     def load_state(self, path, name=None, split=['train'] ,**kwargs):
         
         self.load_builder(path=path)
@@ -85,6 +103,7 @@ class DatasetModule(BaseModule, Dataset):
             name = self.list_configs(path = path, return_type='dict.keys')[0]
 
         self.config['dataset'] = dict(path=path, name=name, split=split)
+        
 
         self.dataset = self.load_dataset(**self.config['dataset'])
 
@@ -151,37 +170,6 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
-    def list_datasets(self, include_configs=False, limit=100, handle_error=False, test=False):
-        
-        if test:
-            return TEST_DATASET_OPTIONS
-        cache_path = '/tmp/list_datasets.json'
-        datasets_list = None
-        try:
-            datasets_list = self.client.local.get_json(cache_path, handle_error=True)
-        except FileNotFound as e:
-            pass
-        
-        if datasets_list == None:
-            datasets_list = datasets.list_datasets(with_community_datasets=True, with_details=True)[:limit]
-
-        if include_configs:
-            tmp_datasets_list = []
-            for d in datasets_list:
-                try:
-                    for d_cfg in self.list_configs(path=d, return_type='dict.keys'):
-                        tmp_datasets_list.append(f'{d}.{d_cfg}')
-                except Exception as e:
-                    if handle_error:  
-                        print(d, 'FAILED')
-                        pass
-                    else:
-                        raise e
-            
-            datasets_list =  tmp_datasets_list
-        self.client.local.put_json(data=datasets_list,path= cache_path)
-                
-        return datasets_list
 
     def get_info(self, to_dict =True):
 
@@ -276,7 +264,7 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def path(self):
-        return self.config['dataset']['path']
+        return self.config['dataset']['path'].replace('/', '_')
 
     builder_name = dataset_name = path
 
@@ -375,6 +363,7 @@ class DatasetModule(BaseModule, Dataset):
         else:
             raise NotImplementedError
 
+
         return info_dict
 
     def dispense_tokens(self,token=None, wallet=None):
@@ -445,7 +434,7 @@ class DatasetModule(BaseModule, Dataset):
         metadata['author'] = self.algocean.wallet.address
         metadata['license'] = self.info.get('license', "CC0: PublicDomain")
         metadata['categories'] = []
-        metadata['tags'] = []
+        metadata['tags'] = [f'{k}:{v}' for k,v in self.tags.items()]
         metadata['additionalInformation'] = self.additional_information('asset')
         metadata['type'] = 'dataset'
 
@@ -508,8 +497,10 @@ class DatasetModule(BaseModule, Dataset):
         
         if len(assets) == 0:
             return None
-        
-        return assets[0]
+        indices = list(map(int, list(np.argsort([a.metadata['created'] for a in assets]))))
+        # get the most recent created asset
+        len(assets)
+        return assets[indices[-1]]
 
     @property
     def datanft(self):
@@ -635,7 +626,10 @@ class DatasetModule(BaseModule, Dataset):
             if path != self.path:
                 dataset_builder = self.load_dataset_builder(path)
             else:
-                dataset_builder = self.dataset_builder
+                if hasattr(self, 'dataset_builder'):
+                    dataset_builder = self.dataset_builder
+                else:
+                    dataset_builder = self.load_dataset_builder(path)
         else:
             dataset_builder = self.dataset_builder
 
@@ -703,32 +697,63 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def config_name(self):
-        return self.info['config_name']
-
+        return self.config['dataset']['name']
+    
+    @property
+    def raw_info(self):
+        raw_info = self.list_configs(path=self.path)[self.config_name]
+        st.write(raw_info)
+        return raw_info
     subtype = flavor = config_name
 
 
 
     @property
     def info(self):
-        info = deepcopy(self.dataset[self.splits[0]].info.__dict__)
+        info = self.dataset[self.splits[0]].info.__dict__
         assert 'splits' in info
         split_info = {}
-        for split in self.splits:
-            
-            split_info[split] = info['splits'][split].__dict__
-            split_info[split]['file_info'] = self.split_file_info[split]
+        # for split in self.splits:
+        #     split_info[split] = info['splits'][split].__dict__
+        #     split_info[split]['file_info'] = self.split_file_info[split]
         
         info['splits'] = split_info
+        if 'task_templates' in info:
+            if info['task_templates'] == None:
+                info['task_templates'] = []
+            
+            for i in range(len(info['task_templates'])):
+                info['task_templates'][i] = info['task_templates'][i].__dict__
+                label_schemas = info['task_templates'][i].get('label_schema', {})
+                info['task_templates'][i]['label_schema'] = {k:v.__dict__ for k,v in label_schemas.items()}
+                
 
+        def json_compatible( x):
+            try:
+                json.dumps(x)
+                return True
 
-        feature_info = {}
-        for feature in info['features'].keys():
-            feature_info[feature] = info['features'][feature].__dict__
-            if 'pa_type' in feature_info[feature]:
-                feature_info[feature]['pa_type'] =  str(feature_info[feature]['pa_type'])
+            except TypeError as e:
+                return False   
         
-        info['features'] = feature_info
+        feature_info = {}
+        def filter_features(input_dict):
+            if isinstance(input_dict, dict):
+                for k,v in input_dict.items():
+                    
+                    if not json_compatible(v):
+                        if isinstance(v,pyarrow.lib.DataType):
+                            input_dict[k] = repr(v)
+                        elif type(v) in [dict, list, tuple, set]:
+                            continue
+                        else:
+                            input_dict[k] = v.__dict__
+
+            return  input_dict
+
+        
+       
+        info['features'] = dict_fn(info['features'], filter_features)
 
         
         info['version'] = str(info['version'])
@@ -751,6 +776,10 @@ class DatasetModule(BaseModule, Dataset):
         asset.add_service(service)
         self.algocean.ocean.asset.update(asset)
 
+    @property
+    def id(self):
+        return f"{self.path}/{self.config_name}"
+    
     @staticmethod
     def shard( dataset, shards=10, return_type='list'):
         '''
@@ -795,13 +824,56 @@ class DatasetModule(BaseModule, Dataset):
                 self.create_asset()
 
 
-        # st.write(self.config)
 
-        # st.write(self.asset.__dict__)
     def streamlit(self):
         self.strealit_sidebar()
 
+    _tags = {}
+    @property
+    def tags(self):
+        tags = self.get_tags(dataset=self.path, return_type='dict')
+        return {**tags, **self._tags}
+    
+    def remove_tags(self, tags:list):
+        for tag in tags:
+            assert isinstance(tag,str), f'{tag} is not valid fam'
+            self._tags.pop(tag)
+
+    
+    def add_tags(self, tags:dict):
+        self._tags.update(tags)
         
+
+
+    def get_tags(self, dataset:str='wikitext', return_type='dict'):
+        if dataset == None:
+            dataset = self.path
+        rows = self.list_datasets(filter_fn=f' r["id"] ==  "{dataset}"')
+
+
+        if len(rows) == 0:
+            tags = {}
+        else:
+            assert len(rows) == 1, len(rows)
+            tags = rows.iloc[0]['tags']
+
+        if return_type == 'dict':
+            return tags
+        elif return_type == 'list':
+            return [f'{k}:{v}' for k,v in tags.items()]
+        else:
+            raise NotImplementedError(f"return_type:{return_type} is not supported")
+        
+
+
+    def get_task(self, dataset:str='wikitext'):
+        if dataset == None:
+            dataset = self.path
+        rows = self.list_datasets(filter_fn=f' r["id"] ==  "{dataset}"')
+        assert len(rows) == 1, len(rows)
+        return rows.iloc[0]['task_categories']
+    
+
 
 
 if __name__ == '__main__':
@@ -809,15 +881,32 @@ if __name__ == '__main__':
     import numpy as np
     from algocean.utils import *
 
-    module = DatasetModule(load_state=True)
-    # st.write(module.functions())
-    st.write(module.list_datasets())
-    # st.write(module.dataset)
-    module.shard(module.dataset['train'])
-    # module.save( )
 
-    st.write(module.dataset.num_rows)
-    # st.write(module.create_asset(force_create=False))
+
+       
+    module = DatasetModule(override={'load_dataset': False})
+
+    df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
+    
+    dataset_list = list(df['id'][:10])
+    for dataset in dataset_list:
+        override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
+        module = DatasetModule(override=override,)
+        module_info = module.info
+        st.write(module_info)
+        st.write(json.dumps(module_info))
+        # st.write(module.config.get('dataset'))
+        # st.write(module.additional_information())
+        # st.write(module.create_asset(force_create=False))
+
+
+  
+
+    # st.write(module.asset.metadata)
+    
+    # st.write(module.services[0].__dict__)
+    # st.write(module.get_tags(return_type='list'))
+    # st.write(module.get_task())
     # # module.create_asset(force_create=False)
     # st.write(module.services[0].__dict__)
 
