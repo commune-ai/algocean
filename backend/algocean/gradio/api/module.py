@@ -11,7 +11,7 @@ import socket
 from multiprocessing import Process
 from algocean.utils import SimpleNamespace
 from algocean.utils import *
-from algocean.thread import PriorityThreadPoolExecutor
+# from algocean.thread import PriorityThreadPoolExecutor
 
 
 class bcolor:
@@ -64,7 +64,7 @@ class GradioModule(BaseModule):
         self.num_ports = self.config.get('num_ports', 10)
         self.port_range = self.config.get('port_range', [7860, 7865])
         
-        self.thread_manager = PriorityThreadPoolExecutor()
+        # self.thread_manager = PriorityThreadPoolExecutor()
         self.process_manager = ProcessManager()
 
     @property
@@ -80,7 +80,7 @@ class GradioModule(BaseModule):
         # self.module2port[module]
         return True
 
-    def rm_module(self, port:str=10, output_example=['bro']):
+    def rm_module(self, port:str=10, output_example={'bro': True}):
         visable.remove(current)
         return jsonify({"executed" : True,
                         "ports" : current['port']})
@@ -204,9 +204,12 @@ class GradioModule(BaseModule):
                 except TypeError as e:
                     cfg = {}
 
-                module_path = cfg.get('module')
-                if isinstance(module_path, str):
-                    modules.append(module_path)
+
+                module_path = root.lstrip(os.environ['PWD']).replace('/', '.')
+                module_path = '.'.join(module_path.split('.')[1:])
+                if isinstance(cfg.get('module'), str):
+                    module_name = cfg.get('module').split('.')[-1]
+                    modules.append(f"{module_path}.module.{module_name}")
                 elif module_path == None: 
                     failed_modules.append(root)
 
@@ -216,30 +219,33 @@ class GradioModule(BaseModule):
         return list(self.get_module_schemas().keys())
 
     @staticmethod
-    def get_module_function_schema(module, gradio_only):
-        return get_module_function_schema(module)
+    def get_module_function_schema(module):
+        if isinstance(module,str):
+            module = get_object(module)
+        module_schema = get_module_function_schema(module)
+        return module_schema
         
-
-
     @staticmethod
     def schema2gradio(fn_schema):
         gradio_schema = {}
         fn_example = fn_schema['example']
         gradio_schema['example'] = fn_example
 
-
         for m in ['input', 'output']:
             gradio_schema[m] = []
-            for k,v_type in fn_schema[m].items():
-                v = fn_example[m][k] 
+            for k,v in fn_example[m].items():
+                v_type = type(v).__name__
+                
                 if v_type == 'int':
                     gradio_schema[m] += [gradio.Number(value=v, label=k)]
-                elif v_type == 'text':
+                elif v_type == 'str':
                     gradio_schema[m] += [gradio.Textbox(value=v, label=k)]
+                elif v_type == 'bool':
+                    gradio_schema[m] += [gradio.Checkbox(value=v, label=k)]
                 elif v_type == 'dict':
                     gradio_schema[m] += [gradio.JSON(value=v, label=k)]
                 else:
-                    raise NotImplementedError
+                    raise NotImplementedError(v_type)
 
 
         return gradio_schema
@@ -266,7 +272,7 @@ class GradioModule(BaseModule):
 
         for module_path in module_paths:
 
-            module_fn_schemas = get_function_schemas(module_path)
+            module_fn_schemas = get_module_function_schema(module_path)
 
             if len(module_fn_schemas)>0:
                 module_schema_map[module_path] = module_fn_schemas
@@ -347,12 +353,35 @@ register = GradioModule.register
 
 
 @app.get("/module/list")
-async def module_list():
+async def module_list(path_map:bool=False):
     module = GradioModule.get_instance()
-    modules = module.get_modules()
+    module_list = module.get_modules()
+    if path_map:
+        module_path_map = {}
+        for module in module_list:
+            dict_put(module_path_map ,module.split('.')[:-1], module.split('.')[-1])
+        return module_path_map
+    else:
+        return module_list
+
+@app.get("/module/schemas")
+async def module_schemas():
+    module = GradioModule.get_instance()
+    modules = module.get_module_schemas()
     return modules
 
-import threading
+
+@app.get("/module/schema")
+async def module_schema(module:str, gradio:bool=True):
+
+
+    if gradio:
+        self = GradioModule.get_instance()
+        module_schema = self.get_gradio_function_schemas(module)
+    else:
+        module_schema = GradioModule.get_module_function_schema(module)
+    return module_schema
+
 
 @app.get("/module/start")
 async def module_start(module:str=None, ):

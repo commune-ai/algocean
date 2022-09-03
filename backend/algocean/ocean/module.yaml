@@ -1,5 +1,5 @@
 
-module: ocean.OceanModule
+module: ocean.module.OceanModule
 wallet:
   alice: TEST_PRIVATE_KEY1
   bob: TEST_PRIVATE_KEY2

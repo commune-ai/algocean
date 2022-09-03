@@ -411,31 +411,6 @@ def dict_fn(input, fn=lambda x: x.shape[0]):
         input[k] = dict_fn(input=v, fn=fn)
     return input
 
-def dict_put(input_dict,keys, value ):
-    """
-    insert keys that are dot seperated (key1.key2.key3) recursively into a dictionary
-    """
-    
-    if isinstance(keys, str):
-        keys = keys.split('.')
-    else:
-        assert isinstance(keys, list)
-    
-    key = keys[0]
-    if len(keys) == 1:
-        assert isinstance(input_dict,dict), f"{keys}, {input_dict}"
-        input_dict[key] = value
-
-    elif len(keys) > 1:
-        if key not in input_dict:
-            input_dict[key] = {}
-        dict_put(input_dict=input_dict[key],
-                             keys=keys[1:],
-                             value=value)
-
-    return input_dict
-
-
 def dict_delete(input_dict,keys ):
     """
     insert keys that are dot seperated (key1.key2.key3) recursively into a dictionary
@@ -492,6 +467,23 @@ def dict_get(input_dict,keys, default_value=False):
     except Exception as e:
         return default_value
     
+def dict_put(input_dict,keys, value ):
+    """
+    insert keys that are dot seperated (key1.key2.key3) recursively into a dictionary
+    """
+    if isinstance(keys, str):
+        keys = keys.split('.')
+    key = keys[0]
+    if len(keys) == 1:
+        if  isinstance(input_dict,dict):
+            input_dict[key] = value
+
+    elif len(keys) > 1:
+        if key not in input_dict:
+            input_dict[key] = {}
+        dict_put(input_dict=input_dict[key],
+                             keys=keys[1:],
+                             value=value)
 
 def dict_put(input_dict,keys, value ):
     """
@@ -501,8 +493,8 @@ def dict_put(input_dict,keys, value ):
         keys = keys.split('.')
     key = keys[0]
     if len(keys) == 1:
-        assert isinstance(input_dict,dict)
-        input_dict[key] = value
+        if  isinstance(input_dict,dict):
+            input_dict[key] = value
 
     elif len(keys) > 1:
         if key not in input_dict:

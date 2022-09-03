@@ -1,6 +1,7 @@
 import inspect
 from typing import Union
 
+
 def get_parents(obj):
     cls = resolve_class(obj)
     return list(cls.__mro__[1:-1])
@@ -36,6 +37,8 @@ def get_functions(obj, include_parents=False):
 
 
 def get_function_defaults(fn, include_null = False, mode=['input','output'],output_example_key='output_example'):
+    if  not callable(fn):
+        return None
     param_dict = dict(inspect.signature(fn)._parameters)
     function_defaults = {}
     assert isinstance(mode, list)
@@ -75,7 +78,8 @@ def get_function_schema(fn=None, include_self=True, defaults_dict=None, **kwargs
     if defaults_dict == None:
         assert fn != None
         defaults_dict = get_function_defaults(fn=fn, **kwargs)
-
+        if defaults_dict == None:
+            defaults_dict = {}
     function_schema = {}   
 
 
@@ -111,13 +115,19 @@ def is_fn_schema_complete(fn_schema):
 def get_module_function_schema(module, completed_only=False):
     cls = resolve_class(module)
     cls_function_names = get_functions(cls)
+    print(get_parent_functions(cls), get_parents(cls), 'cls_function_names', module)
     schema_dict = {}
     for cls_function_name in cls_function_names:
         fn = getattr(cls, cls_function_name)
-        fn_schema = get_function_schema(fn)
+        if not callable(fn) or isinstance(fn, type):
+            continue
+        try:
+            fn_schema = get_function_schema(fn)
+        except ValueError:
+            fn_schema = {'output': {}, 'input': {}}
         if not is_fn_schema_complete(fn_schema) and completed_only:
             continue
-        schema_dict[cls_function_name] = get_function_schema(fn)
+        schema_dict[cls_function_name] = fn_schema
 
     return schema_dict
 
@@ -166,10 +176,12 @@ def get_full_functions(module=None, module_fn_schemas:dict=None):
         assert module != None
         module_fn_schemas = get_module_function_schema(module) 
     filtered_module_fn_schemas = {}
+    print(module_fn_schemas, 'WHADUP')
     for fn_key, fn_schema in module_fn_schemas.items():
         
-        if 'self' in fn_schema['input']:
-            fn_schema['input'].pop('self')
+
+        fn_schema['input'].pop('self')
+
         if is_full_function(fn_schema):
             filtered_module_fn_schemas[fn_key] = fn_schema
 

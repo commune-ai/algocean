@@ -9,19 +9,28 @@ from algocean.utils import *
 
 
 
-class GradioClientModule(BaseModule):
+class ClientModule(BaseModule):
     default_cfg_path =  'gradio.client.module'
+    def bro(self, fam='bro', output_example={'bro': True}):
+        pass
 
-
-
+from algocean.utils import *
 
 
 
 if __name__ == "__main__":
-    import streamlit as st
 
-    module = GradioClientModule()
-    module.client.__dict__
+    import streamlit as st
+    module = ClientModule()
+    output_dict = {}
+    module_list  = module.client.rest.get(endpoint='module/list', params={'path_map':False})
+
+    st.write(module_list)
+    # module_schemas  = module.client.rest.get(endpoint='module/schemas')
+    # module_schemas  = module.client.rest.get(endpoint='module/schema')
+
+    # st.write(output_dict)
+    st.write(module.client.rest.get(endpoint='module/schema', params={'module': 'gradio.client.module.ClientModule','gradio':True}))
 
 
     

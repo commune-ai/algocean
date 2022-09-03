@@ -1,5 +1,4 @@
-module: gradio.client.module.GradioModule
-name: GradioModule
+module: ClientModule
 
 client: {}
 
