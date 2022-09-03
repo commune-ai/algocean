@@ -215,7 +215,7 @@ class DatasetModule(BaseModule, Dataset):
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
+                split_state = self.client.estuary.save_dataset(dataset)
                 state_path_map[split] = split_state
 
         elif mode == 'ipfs':
@@ -702,7 +702,7 @@ class DatasetModule(BaseModule, Dataset):
     @property
     def raw_info(self):
         raw_info = self.list_configs(path=self.path)[self.config_name]
-        st.write(raw_info)
+        # st.write(raw_info)
         return raw_info
     subtype = flavor = config_name
 
@@ -710,23 +710,14 @@ class DatasetModule(BaseModule, Dataset):
 
     @property
     def info(self):
-        info = self.dataset[self.splits[0]].info.__dict__
+        info = deepcopy(self.dataset[self.splits[0]].info.__dict__)
         assert 'splits' in info
         split_info = {}
-        # for split in self.splits:
-        #     split_info[split] = info['splits'][split].__dict__
-        #     split_info[split]['file_info'] = self.split_file_info[split]
+        for split in self.splits:
+            split_info[split] = info['splits'][split].__dict__
+            split_info[split]['file_info'] = self.split_file_info[split]
         
-        info['splits'] = split_info
-        if 'task_templates' in info:
-            if info['task_templates'] == None:
-                info['task_templates'] = []
-            
-            for i in range(len(info['task_templates'])):
-                info['task_templates'][i] = info['task_templates'][i].__dict__
-                label_schemas = info['task_templates'][i].get('label_schema', {})
-                info['task_templates'][i]['label_schema'] = {k:v.__dict__ for k,v in label_schemas.items()}
-                
+        info['splits'] = split_info    
 
         def json_compatible( x):
             try:
@@ -739,22 +730,34 @@ class DatasetModule(BaseModule, Dataset):
         feature_info = {}
         def filter_features(input_dict):
             if isinstance(input_dict, dict):
-                for k,v in input_dict.items():
-                    
-                    if not json_compatible(v):
-                        if isinstance(v,pyarrow.lib.DataType):
-                            input_dict[k] = repr(v)
-                        elif type(v) in [dict, list, tuple, set]:
-                            continue
-                        else:
+                keys = list(input_dict.keys())
+            elif isinstance(input_dict, list):
+                keys = list(range(len(input_dict)))
+            else:
+                return input_dict
+            for k in keys:
+                v = input_dict[k]
+                if not json_compatible(v):
+                    if isinstance(v,pyarrow.lib.DataType):
+                        input_dict[k] = repr(v)
+                    elif type(v) in [dict, list, tuple, set]:
+                        continue
+                    else:
+                        if hasattr(v, '__dict__'):
                             input_dict[k] = v.__dict__
+                        elif hasattr(v, '__repr__'):
+                            input_dict[k] =  v.__dict__
+                        else:
+                            raise NotImplementedError(v)
+                            
 
             return  input_dict
 
         
        
         info['features'] = dict_fn(info['features'], filter_features)
-
+        info['task_templates'] = dict_fn({'obj': info['task_templates']}, filter_features)['obj']
+        info['task_templates'] = []
         
         info['version'] = str(info['version'])
         return info
@@ -891,13 +894,13 @@ if __name__ == '__main__':
     dataset_list = list(df['id'][:10])
     for dataset in dataset_list:
         override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
-        module = DatasetModule(override=override,)
-        module_info = module.info
-        st.write(module_info)
-        st.write(json.dumps(module_info))
-        # st.write(module.config.get('dataset'))
-        # st.write(module.additional_information())
-        # st.write(module.create_asset(force_create=False))
+       
+        try:
+            module = DatasetModule(override=override,)
+            module.create_asset(force_create=False)
+        except ImportError as e:
+            st.write('IMPORT ERROR', dataset)
+
 
 
   
