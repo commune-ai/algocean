@@ -294,3 +294,14 @@ class ActorModule:
         if obj == None:
             obj = cls
         return get_module_function_schema(obj, **kwargs)
+
+    def override_config(self,override:dict={}):
+        for k,v in override.items():
+            dict_put(self.config, k, v)
+    
+    
+    @staticmethod
+    def import_object(path):
+        module = '.'.join(path.split('.')[:-1])
+        object_name = path.split('.')[-1]
+        return getattr(import_module(module), object_name)

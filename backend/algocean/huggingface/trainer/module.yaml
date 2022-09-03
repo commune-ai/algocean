@@ -1,15 +1,47 @@
 
-module: huggingface.HFModule
+module: TrainerModule
 
-model: null
-dataset: null
-tokenizer: null
+dataset: 
+  path: "yelp_review_full"
+  split: ['train', 'test']
+metric: 'accuracy'
+
+# submodules: 
+#   algocean: get_cfg(ocean.module)
+pipeline: 
+  module: transformers.AutoTokenizer
+  init:
+    fn: from_pretrained 
+    kwargs:
+      pretrained_model_name_or_path: 'bert-base-cased'
+
+  params:
+    
+    padding: max_length
+    truncation: True 
+
+epochs: 1
 
 
-metrics: []
 
-actor:
-  name: local_copy(module)
-  refresh: False
+optimizer: 
+  module: torch.optim.AdamW
+  params:
+    lr: 0.00005
+scheduler: {}
+model: 
+  module: transformers.AutoModelForSequenceClassification
+  init:
+    fn: from_pretrained 
+    kwargs:
+      pretrained_model_name_or_path: "bert-base-cased"
+      num_labels : 5
 
-client: get_cfg(client.manager)
+  params:
+    
+    padding: max_length
+    truncation: True 
+
+
+
+client: {}

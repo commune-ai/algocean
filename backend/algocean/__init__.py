@@ -13,12 +13,21 @@ class BaseModule(ActorModule):
                 config = None
 
         self.config = self.get_config(config=config)
-        self.client = self.get_clients(self.config.get('client'))
+        self.client = self.get_clients(config=self.config.get('client'))
         self.get_submodules()
 
-    def get_clients(self, config=None):
-        if config != None:
-            return self.get_object('client.module.ClientModule')(config={})
+    def get_clients(self, config={}):
+        client_module_class = self.get_object('client.module.ClientModule')
+        # if isinstance(self, client_module_class):
+        #     return 
+        if isinstance(config, type(None)):
+            return 
+        elif isinstance(config, dict) :
+            return client_module_class(config=config)
+        elif isinstance(config, client_module_class):
+            return config 
+        else:
+            raise NotImplementedError
             
     def get_config(self, config=None):
         if config == None:
