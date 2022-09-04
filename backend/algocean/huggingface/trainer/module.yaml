@@ -21,8 +21,13 @@ pipeline:
     truncation: True 
 
 epochs: 1
+batch_size: 8
 
-
+schedular:
+  module: transformers.get_scheduler
+  params:
+    name: linear
+    num_warmup_steps: 0
 
 optimizer: 
   module: torch.optim.AdamW
