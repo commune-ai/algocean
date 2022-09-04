@@ -1,37 +1,39 @@
-##
-## Copyright 2021 Ocean Protocol Foundation
-## SPDX-License-Identifier: Apache-2.0
-##
-FROM ubuntu:20.04
+# Use nvidia/cuda image
+FROM nvidia/cuda:11.2.1-base-ubuntu20.04
 
-ARG VERSION
 
-RUN apt-get update && \
-   apt-get install --no-install-recommends -y \
-   gcc \
-   python3.8 \
-   python3-pip \
-   python3.8-dev \
-   gettext-base
+ENV PATH="/root/miniconda3/bin:${PATH}"
+ARG PATH="/root/miniconda3/bin:${PATH}"
+RUN apt-get update
 
-RUN python3.8 -m pip install --upgrade pip
+RUN apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+
+RUN wget \
+    https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && mkdir /root/.conda \
+    && bash Miniconda3-latest-Linux-x86_64.sh -b \
+    && rm -f Miniconda3-latest-Linux-x86_64.sh 
+RUN conda --version
+
+RUN mkdir app
+WORKDIR app
+RUN apt update
+RUN apt install -y git
+
+
 WORKDIR /app
 
 # Install dependencies:
 COPY requirements.txt .
-RUN python3.8 -m pip install -r requirements.txt
+# Install dependencies:
+COPY environment.yaml .
+ADD ./ocean.py /app/ocean.py
+ADD ./ipfspy /app/ipfspy
+ADD ./ipfsspec /app/ipfsspec
+RUN conda env create -f ./environment.yaml
+RUN conda init
+# RUN conda activate algocean
 
 # add BITTENSOR commune fork
-ADD ./ocean.py /app/ocean.py
-RUN python3.8 -m pip install -e ./ocean.py
 
-# add ipfspy commune fork
-ADD ./ipfspy /app/ipfspy
-RUN python3.8 -m pip install -e ./ipfspy
-# add ipfsspec commune fork
-ADD ./ipfsspec /app/ipfsspec
-RUN python3.8 -m pip install -e ./ipfsspec
-RUN python3.8 -m pip install jupyterlab
-RUN alias python=python3.8
-RUN python3.8 -m pip install plotly 
-RUN pip install sklearn
+
