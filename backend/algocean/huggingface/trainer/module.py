@@ -20,7 +20,7 @@ from tqdm.auto import tqdm
 from ocean_lib.models.data_nft import DataNFT
 import fsspec
 import os
-from ipfsspec.asyn import AsyncIPFSFileSystem
+# from ipfsspec.asyn import AsyncIPFSFileSystem
 from fsspec import register_implementation
 import asyncio
 import io

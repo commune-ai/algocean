@@ -4,7 +4,8 @@ module: TrainerModule
 dataset: 
   path: "yelp_review_full"
   split: ['train', 'test']
-metric: 'accuracy'
+
+
 
 # submodules: 
 #   algocean: get_cfg(ocean.module)
@@ -20,6 +21,7 @@ pipeline:
     padding: max_length
     truncation: True 
 
+metric: 'accuracy'
 epochs: 1
 batch_size: 8
 

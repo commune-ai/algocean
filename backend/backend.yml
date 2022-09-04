@@ -6,7 +6,6 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
-      shm_size: '4gb'
       
     ports:
       - 8501-8506:8501-8506 # for the user streamlit app
@@ -32,7 +31,16 @@ services:
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
     env_file: 
       - .env
-    command: bash -c "./scripts/startup.sh; tail -F anything"
+    command: bash -c "./scripts/startup.sh; conda activate algocean; tail -F anything"
+
+    deploy:
+      resources:
+         reservations:
+           devices:
+           - driver: nvidia
+             count: 'all'
+             capabilities: [gpu]
+
 
 networks:
   backend:
