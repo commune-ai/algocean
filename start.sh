@@ -189,14 +189,14 @@ COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
 
 # aquarius
-# COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
-COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
+COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
+# COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
 
 
 # provider
-COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
+# COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
 
 
 # run ipfs node for provider and graph
@@ -205,8 +205,8 @@ COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
 
 
 # deploy contracts
-COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
+# COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
 
 # COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
 
@@ -367,9 +367,9 @@ while :; do
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
             echo "${PROJECT_NAME}"
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+            # eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d 
             break
     esac
     shift
