@@ -336,6 +336,8 @@ while :; do
         --backend)
             printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
 
+            echo PROJECT_NAME
+
             export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans
@@ -347,7 +349,7 @@ while :; do
             printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
 
             export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
-            eval docker kill ${PROJECT_NAME}_backend_1; docker rm ${PROJECT_NAME}_backend_1;
+            # eval docker kill ${PROJECT_NAME}_backend_1; docker rm ${PROJECT_NAME}_backend_1;
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
             shift
             break
@@ -365,7 +367,9 @@ while :; do
             printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
-            
+            echo "${PROJECT_NAME}"
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
             break
     esac

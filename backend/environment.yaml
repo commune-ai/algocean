@@ -10,4 +10,4 @@ dependencies:
     -  -r requirements.txt
     -  -e ./ocean.py
     -  -e ./ipfsspec
-    -  -e ./ipfspy
+    # -  -e ./ipfspy

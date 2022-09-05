@@ -20,7 +20,6 @@ services:
       - ./ocean.py/ocean_lib:/app/ocean.py/ocean_lib
       - ~/.ocean:/.ocean
       - ${OCEAN_ARTIFACTS_FOLDER}:/ocean-contracts/artifacts/
-
     networks:
       backend:
         ipv4_address: 172.15.0.9
@@ -31,15 +30,15 @@ services:
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
     env_file: 
       - .env
-    command: bash -c "./scripts/startup.sh; conda activate algocean; tail -F anything"
+    command: bash -c "chmod +x ./scripts/*; conda init bash;./scripts/startup.sh; conda activate algocean; tail -F anything"
 
-    deploy:
-      resources:
-         reservations:
-           devices:
-           - driver: nvidia
-             count: 'all'
-             capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #      reservations:
+    #        devices:
+    #        - driver: nvidia
+    #          count: 'all'
+    #          capabilities: [gpu]
 
 
 networks:
