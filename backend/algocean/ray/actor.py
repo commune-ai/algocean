@@ -282,7 +282,7 @@ class ActorModule:
             with Timer(**timer_kwargs) as t:
                 result = fn(*args, **kwargs)
                 results.append(result)
-                elapsed_times.append(t.elapsed_time(return_type=time_type))
+                elapsed_times.append(t.elapsed_time)
         return dict(mean=np.mean(elapsed_times), std=np.std(elapsed_times), trials=trials, results=[])
 
     time = timeit

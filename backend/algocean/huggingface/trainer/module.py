@@ -53,12 +53,16 @@ class TrainerModule(BaseModule):
         self.load_state()
 
     def load_state(self):
-        self.load_dataset()
-        self.load_model()
-        self.load_optimizer()
-        self.load_metric()
-        self.load_schedular()
-        
+        if self.config.get('model_only'):
+            self.load_model()
+            pass
+        else:
+            self.load_model()
+            self.load_dataset()
+            self.load_optimizer()
+            self.load_metric()
+            self.load_schedular()
+            
     def load_dataset(self):
         dataset_class = self.get_object('huggingface.dataset.module.DatasetModule')
         override = dict(dataset=self.config.get('dataset'), load_dataset=True, client=self.client)
@@ -138,7 +142,12 @@ class TrainerModule(BaseModule):
     def shuffle(self):
         return self.config.get('shuffle', True)
     
+    @property
+    def wallet(self):
+        account = self.algocean.wallet
+        return account
 
+    account = wallet
     def get_dataloaders(self):
         self.dataloader = {}
         for split in self.dataset.keys():
@@ -153,25 +162,210 @@ class TrainerModule(BaseModule):
         progress_bar = tqdm(range(self.num_training_steps))
         self.model.train()
         for epoch in range(self.num_epochs):
-            for batch in self.dataloader['train']:
-                st.write({k: v.shape for k, v in batch.items()})
+            for i, batch in enumerate(self.dataloader['train']):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
-                st.write(outputs)
                 loss = outputs.loss
                 loss.backward()
+                st.write(f"EPOCH: {epoch} Batch: {i} loss: {loss}")
                 self.optimizer.step()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
                 # progress_bar.update(1)
 
 
+    @staticmethod
+    def obj2str(data):
+        data_str = None
+        if isinstance(data, dict):
+            data_str =  json.dumps(data)
+        if isinstance(data, list):
+            data_str = json.dumps(data)
+        elif type(data) in [bool, int]:
+            data_str = str(data)
+        elif type(data) in [str]:
+            data_str = data
+        else:
+            raise NotImplementedError
+        
+        return data_str
+
+    def hash(self, data, web3=None):
+        if web3 == None:
+            web3 = self.web3
+        
+        data_str = self.obj2str(data=data) 
+        
+        return web3.keccak(text=data_str)
+        
+
+
+    def sign_message(self, data, account=None, web3=None):
+    
+        from hexbytes.main import HexBytes
+        from eth_account.messages import encode_defunct
+
+
+        if web3 == None:
+            web3 = self.web3
+
+        if account == None:
+            account = self.account
+
+
+        
+        msg = encode_defunct(text=data)
+        msg = web3.eth.account.sign_message(msg, private_key=account.private_key )
+        return_dict =  msg._asdict()
+        for k,v in return_dict.items():
+            if isinstance(v, HexBytes):
+                return_dict[k] =  v.hex()
+
+        return return_dict
+
+    def get_sample(self, split='train', **kwargs):
+        return next(iter(self.dataloader[split]))
+
+    
+    def get_onnx(self):
+        dummy_model_input = self.get_sample()
+        dummy_model_input.pop('labels')
+        self.model = self.model.to('cpu')
+        torch.onnx.export(
+                        self.model, 
+                        tuple(dummy_model_input.values()), 
+                        f="torch-model.onnx",  
+                        input_names=['input_ids', 'attention_mask'], 
+                        output_names=['logits'], 
+                        dynamic_axes={'input_ids': {0: 'batch_size', 1: 'sequence'}, 
+                                    'attention_mask': {0: 'batch_size', 1: 'sequence'}, 
+                                    'logits': {0: 'batch_size', 1: 'sequence'}}, 
+                        do_constant_folding=True, 
+                        opset_version=13, 
+                    )
+''' PyTorch backend '''
+
+import json
+import os
+
+class ModelFactory:
+    ''' PyTorch backend model factory '''
+    def serialize(self, model):
+        ''' Serialize PyTorch model to JSON message '''
+        import torch # pylint: disable=import-outside-toplevel
+        metadata = {}
+        metadata_file = os.path.join(os.path.dirname(__file__), 'onnx-metadata.json')
+        with open(metadata_file, 'r', encoding='utf-8') as file:
+            for item in json.load(file):
+                name = 'onnx::' + item['name']
+                metadata[name] = item
+
+        json_model = {}
+        json_model['signature'] = 'netron:pytorch'
+        json_model['format']  = 'TorchScript'
+        json_model['graphs'] = []
+        json_graph = {}
+        json_graph['arguments'] = []
+        json_graph['nodes'] = []
+        json_graph['inputs'] = []
+        json_graph['outputs'] = []
+        json_model['graphs'].append(json_graph)
+        data_type_map = dict([
+            [ torch.float16, 'float16'], # pylint: disable=no-member
+            [ torch.float32, 'float32'], # pylint: disable=no-member
+            [ torch.float64, 'float64'], # pylint: disable=no-member
+            [ torch.int32, 'int32'], # pylint: disable=no-member
+            [ torch.int64, 'int64'], # pylint: disable=no-member
+        ])
+        arguments_map = {}
+        def argument(value):
+            if not value in arguments_map:
+                json_argument = {}
+                json_argument['name'] = str(value.unique()) + '>' + str(value.node().kind())
+                if value.isCompleteTensor():
+                    json_tensor_shape = {
+                        'dimensions': value.type().sizes()
+                    }
+                    json_argument['type'] = {
+                        'dataType': data_type_map[value.type().dtype()],
+                        'shape': json_tensor_shape
+                    }
+                if value.node().kind() == "prim::Param":
+                    json_argument['initializer'] = {}
+                arguments = json_graph['arguments']
+                arguments_map[value] = len(arguments)
+                arguments.append(json_argument)
+            return arguments_map[value]
+
+        for input_value in model.inputs():
+            json_graph['inputs'].append({
+                'name': input_value.debugName(),
+                'arguments': [ argument(input_value) ]
+            })
+        for output_value in model.outputs():
+            json_graph['outputs'].append({
+                'name': output_value.debugName(),
+                'arguments': [ argument(output_value) ]
+            })
+        for node in model.nodes():
+            kind = node.kind()
+            json_type = {
+                'name': kind
+            }
+            json_node = {
+                'type': json_type,
+                'inputs': [],
+                'outputs': [],
+                'attributes': []
+            }
+            json_graph['nodes'].append(json_node)
+            for name in node.attributeNames():
+                value = node[name]
+                json_attribute = {
+                    'name': name,
+                    'value': value
+                }
+                if torch.is_tensor(value):
+                    json_node['inputs'].append({
+                        'name': name,
+                        'arguments': []
+                    })
+                else:
+                    json_node['attributes'].append(json_attribute)
+
+            for input_value in node.inputs():
+                json_parameter = {
+                    'name': 'x',
+                    'arguments': [ argument(input_value) ]
+                }
+                json_node['inputs'].append(json_parameter)
+
+            for output_value in node.outputs():
+                json_node['outputs'].append({
+                    'name': 'x',
+                    'arguments': [ argument(output_value) ]
+                })
+
+        text = json.dumps(json_model, ensure_ascii=False)
+        return text.encode('utf-8')
+
 
 if __name__ == '__main__':
     import streamlit as st
     import numpy as np
     from algocean.utils import *
-    module = TrainerModule()
+    module = TrainerModule(override={'model_only':False})
 
-    module.train()
-    
+    web3 = module.web3
+    st.write(module.account)
+    st.write(module.get_sample())
+    st.write(module.get_onnx())
+    # import web3
+    # data = {k:v.tolist() for k,v in module.model.state_dict().items()}
+    # data = {k: data[k] for k in list(data.keys())[:10]}
+    # ModelFactory().serialize(module.model)
+    # st.write(module.model)
+    # st.write(module.hash(data = data))
+    # st.write( module.sign_message(data=data))
+    # module.train()
+    # st.write(module.model.state_dict().keys())
