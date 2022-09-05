@@ -10,6 +10,8 @@ from copy import deepcopy
 from algocean import BaseModule
 import torch
 import ray
+import json
+import os
 from algocean.utils import dict_put
 from datasets.utils.py_utils import asdict, unique_values
 import datetime
@@ -243,23 +245,19 @@ class TrainerModule(BaseModule):
                         do_constant_folding=True, 
                         opset_version=13, 
                     )
-''' PyTorch backend '''
 
-import json
-import os
-
-class ModelFactory:
     ''' PyTorch backend model factory '''
-    def serialize(self, model):
+    def serialize(self, model=None):
         ''' Serialize PyTorch model to JSON message '''
-        import torch # pylint: disable=import-outside-toplevel
-        metadata = {}
-        metadata_file = os.path.join(os.path.dirname(__file__), 'onnx-metadata.json')
-        with open(metadata_file, 'r', encoding='utf-8') as file:
-            for item in json.load(file):
-                name = 'onnx::' + item['name']
-                metadata[name] = item
+        # metadata = {}
+        # metadata_file = os.path.join(os.path.dirname(__file__), 'onnx-metadata.json')
+        # with open(metadata_file, 'r', encoding='utf-8') as file:
+        #     for item in json.load(file):
+        #         name = 'onnx::' + item['name']
+        #         metadata[name] = item
 
+        if model == None:
+            model = self.model
         json_model = {}
         json_model['signature'] = 'netron:pytorch'
         json_model['format']  = 'TorchScript'
@@ -358,8 +356,16 @@ if __name__ == '__main__':
 
     web3 = module.web3
     st.write(module.account)
-    st.write(module.get_sample())
-    st.write(module.get_onnx())
+    children = []
+    for m in module.model.children():
+        
+        children += [m]
+    
+    # for m in children[0].children():
+    #     st.write(m.inputs)
+        
+    # st.write(module.get_onnx())
+
     # import web3
     # data = {k:v.tolist() for k,v in module.model.state_dict().items()}
     # data = {k: data[k] for k in list(data.keys())[:10]}

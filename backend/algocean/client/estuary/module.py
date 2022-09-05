@@ -856,7 +856,7 @@ if __name__ == '__main__':
 
 
 
-    kwargs = dict(path='wikitext', name='wikitext-103-v1', split='train')
+    kwargs = dict(path='glue', name='cola', split='train')
     dataset =  load_dataset(**kwargs)
 
     for dataset_shard in shard_dataset(dataset=dataset, shards=10):

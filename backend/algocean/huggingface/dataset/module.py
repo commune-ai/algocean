@@ -215,7 +215,7 @@ class DatasetModule(BaseModule, Dataset):
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(dataset)
+                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
                 state_path_map[split] = split_state
 
         elif mode == 'ipfs':
@@ -890,14 +890,14 @@ if __name__ == '__main__':
     module = DatasetModule(override={'load_dataset': False})
 
     df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
-    
+    # # st.write(df)
     dataset_list = list(df['id'][:10])
     for dataset in dataset_list:
         override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
        
         try:
             module = DatasetModule(override=override,)
-            module.create_asset(force_create=False)
+            st.write(module.create_asset(force_create=False))
         except ImportError as e:
             st.write('IMPORT ERROR', dataset)
 
