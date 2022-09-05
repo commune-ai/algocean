@@ -174,13 +174,12 @@ COMPOSE_FILES=""
 
 # deploy from barge
 
-COMPOSE_FILES+=" -f ${BACKEND_DIR}/backend.yml"
-
+COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml"
 
 
 COMPOSE_FILES+=" -f ${COMPOSE_DIR}/network_volumes.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
 
 
 # deploy locally from source
@@ -196,7 +195,7 @@ COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
 
 
 # provider
-COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
+COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
 
 
@@ -370,7 +369,7 @@ while :; do
             echo "${PROJECT_NAME}"
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d
             break
     esac
     shift
