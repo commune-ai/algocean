@@ -189,7 +189,7 @@ COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
 
 # aquarius
-COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
+# COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
 COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
 # COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
 
@@ -369,7 +369,7 @@ while :; do
             echo "${PROJECT_NAME}"
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans
             break
     esac
     shift
