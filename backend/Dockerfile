@@ -31,7 +31,9 @@ ADD ./ocean.py /app/ocean.py
 ADD ./ipfspy /app/ipfspy
 ADD ./ipfsspec /app/ipfsspec
 RUN conda env create -f ./environment.yaml
-RUN conda init
+RUN echo "source activate algocean" > ~/.bashrc
+ENV PATH /opt/conda/envs/algocean/bin:$PATH
+RUN /bin/bash -c "source activate algocean"
 # RUN conda activate algocean
 
 # add BITTENSOR commune fork

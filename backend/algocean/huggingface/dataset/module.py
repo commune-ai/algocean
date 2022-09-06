@@ -25,7 +25,7 @@ import io
 from algocean.ocean import OceanModule
 from algocean.utils import *
 
-
+import ipfsspec
 from transformers import AutoModel, AutoTokenizer
 from datasets import load_dataset, Dataset, load_dataset_builder
 

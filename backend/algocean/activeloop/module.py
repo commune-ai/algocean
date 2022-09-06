@@ -1,95 +1,41 @@
 import hub
-import streamlit as st
+import os, sys
+sys.path.append(os.environ['PWD'])
+
 from typing import List,Optional
 from dataclasses import dataclass,field
 import json
 from pathlib import Path
-import os
 import numpy as np
+from algocean import BaseModule
 
 
 
-@hub.compute
-def filter_labels(sample_in, labels_list):
-
-    return sample_in.labels.data()['text'][0] in labels_list
-
-def max_array_length(arr_max, arr_to_compare):  # helper for __str__
-    for i in range(len(arr_max)):
-        str_length = len(arr_to_compare[i])
-        if arr_max[i] < str_length:
-            arr_max[i] = str_length
-    return arr_max
-
-
-def summary_dataset(dataset):
-
-    metadata = {}
-    tensor_dict = dataset.tensors
-
-    for tensor_name in tensor_dict:
-
-        metadata[tensor_name] = {}
-
-        tensor_object = tensor_dict[tensor_name]
-
-        tensor_htype = tensor_object.htype
-        if tensor_htype == None:
-            tensor_htype = "None"
-
-        shape = tensor_object.shape
-        tensor_shape = str(tensor_object.shape_interval if None in shape else shape)
-
-        tensor_compression = tensor_object.meta.sample_compression
-        if tensor_compression == None:
-            tensor_compression = "None"
-
-        tensor_dtype = tensor_object.dtype
-        if  tensor_dtype == None:
-            tensor_dtype = "None"
-
-        #Working - Improvement to resolve - ValueError: dictionary update sequence element #0 has length 10; 2 is required
-        if tensor_name == "labels":
-
-            label_distr = np.unique(tensor_object.data()["value"],return_counts=True)
-            metadata[tensor_name].update({"label_distribution":label_distr})
-
-        metadata[tensor_name].update({"htype":tensor_htype})
-        metadata[tensor_name].update({"shape":tensor_shape})
-        metadata[tensor_name].update({"compression":tensor_compression})
-        metadata[tensor_name].update({"dtype":tensor_dtype})
-
-
-    return metadata
 
 
 
 
 @dataclass
-class ActiveLoopDS:
+class ActiveLoopModule(BaseModule):
     src:str
     api_key:str= field(init=False,repr=False,default="")
     path:Optional[str]=None
     train:Optional[str]=None
     test:Optional[str]=None
 
-    def load_ds(self,splits=["train","test"],filter=False,token=None):
+    def __init__(self, config=None, override={}):
+        BaseModule.__init__(self, config=config)
+        self.override_config(override)
 
-        if "train" in splits:
+    
+    def load(self,splits=["train","test"],filter=False,token=None):
 
-            split_ds = "-".join([self.path,"train"])
 
-            url = "/".join([self.src,split_ds])
-
-            self.train = hub.load(url,token=self.api_key)
-
-        if "test" in splits:
-
-            split_ds = "-".join([self.path,"test"])
-
-            url = "/".join([self.src,split_ds])
-
-            self.test = hub.load(url,token=self.api_key)
+        for split in splits:
+            if split in ['train', 'test']:
+                split_ds = "-".join([self.path,split])
+                url = "/".join([self.src,split_ds])
+                setattr(self, split,hub.load(url,token=self.api_key))
 
     def automatic_ds(self):
 
@@ -158,12 +104,64 @@ class ActiveLoopDS:
                 #Append data to the tensors
                 ds.append({'images': hub.read(file), 'labels': np.uint32(label_num)})
 
+    @hub.compute
+    def filter_labels(sample_in, labels_list):
+
+        return sample_in.labels.data()['text'][0] in labels_list
+
+    def max_array_length(arr_max, arr_to_compare):  # helper for __str__
+        for i in range(len(arr_max)):
+            str_length = len(arr_to_compare[i])
+            if arr_max[i] < str_length:
+                arr_max[i] = str_length
+        return arr_max
+
+
+    def summary_dataset(dataset):
+
+        metadata = {}
+        tensor_dict = dataset.tensors
+
+        for tensor_name in tensor_dict:
+
+            metadata[tensor_name] = {}
+
+            tensor_object = tensor_dict[tensor_name]
+
+            tensor_htype = tensor_object.htype
+            if tensor_htype == None:
+                tensor_htype = "None"
+
+            shape = tensor_object.shape
+            tensor_shape = str(tensor_object.shape_interval if None in shape else shape)
+
+            tensor_compression = tensor_object.meta.sample_compression
+            if tensor_compression == None:
+                tensor_compression = "None"
+
+            tensor_dtype = tensor_object.dtype
+            if  tensor_dtype == None:
+                tensor_dtype = "None"
+
+            #Working - Improvement to resolve - ValueError: dictionary update sequence element #0 has length 10; 2 is required
+            if tensor_name == "labels":
+
+                label_distr = np.unique(tensor_object.data()["value"],return_counts=True)
+                metadata[tensor_name].update({"label_distribution":label_distr})
+
+            metadata[tensor_name].update({"htype":tensor_htype})
+            metadata[tensor_name].update({"shape":tensor_shape})
+            metadata[tensor_name].update({"compression":tensor_compression})
+            metadata[tensor_name].update({"dtype":tensor_dtype})
+
+
+        return metadata
 
 
 
 
 if __name__ == '__main__':
-
+    import streamlit as st
     # from metadata import DatasetMetdata
     import os
 
@@ -171,15 +169,13 @@ if __name__ == '__main__':
                                         "coco","imagenet","cifar10",
                                         "cifar100"])
 
-    AL = ActiveLoopDS("hub://activeloop",path=ds_select)
+    AL = ActiveLoopModule("hub://activeloop",path=ds_select)
     AL.load_ds()
 
     st.write("Active Loop Train Dataset")
     st.write(AL)
 
     info = AL.train.info
-
-    st.write(dict(info))
 
 
 

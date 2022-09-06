@@ -190,13 +190,12 @@ COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
 
 # aquarius
 COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
-# COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
-
+COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
 
 # provider
-# COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
+COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
+# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
 
 
 # run ipfs node for provider and graph
@@ -343,6 +342,13 @@ while :; do
             shift
             break
             ;;
+        --build)
+        
+        eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+
+        shift
+        break
+        ;;
 
         --restart-backend)
             printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
