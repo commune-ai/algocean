@@ -38,7 +38,7 @@ from datasets import load_dataset, Dataset, load_dataset_builder, load_metric
 
 class TrainerModule(BaseModule):
     default_cfg_path = 'huggingface.trainer.module'
-
+    __file__ = __file__
     datanft = None
     default_token_name='token' 
     last_saved = None
@@ -54,7 +54,10 @@ class TrainerModule(BaseModule):
         self.hub = self.get_object('huggingface.hub.module.HubModule')()
         self.load_state()
 
+
     def load_state(self):
+        if self.config.get('load_state', False):
+            pass
         if self.config.get('model_only'):
             self.load_model()
             pass
@@ -70,12 +73,18 @@ class TrainerModule(BaseModule):
         override = dict(dataset=self.config.get('dataset'), load_dataset=True, client=self.client)
         self.dataset = dataset_class(override=override).dataset
         self.load_pipeline()
+        for split in self.dataset.keys():
+            self.dataset[split] = self.dataset[split].shard(20,1)
+
         self.dataloaders = self.get_dataloaders()
         # st.write(self.dataset.dataset)
 
     def split(self, split):
         return self.dataset[split]
 
+    @property
+    def splits(self):
+        return list(self.dataset.keys())
 
     def load_pipeline(self):
         kwargs = self.config.get('pipeline')
@@ -84,14 +93,37 @@ class TrainerModule(BaseModule):
         self.pipeline = pipeline
         
         def pipeline_function(examples):
-            return pipeline(examples["text"], padding="max_length", truncation=True)
+            return pipeline(examples['sentence'], **kwargs.get('params'))
         
         for split, dataset in self.dataset.items():
             dataset = dataset.map(pipeline_function, batched=True)
-            dataset = dataset.remove_columns(["text"])
-            dataset = dataset.rename_column("label", "labels")    
-            dataset.set_format('torch')
+            dataset = dataset.remove_columns(kwargs['features']['remove'])
+            for k, v in kwargs['features']['map'].items():
+                dataset = dataset.rename_column(k, v) 
+
+           
+            dataset.set_format(kwargs['format'])
             self.dataset[split] = dataset
+        self.meta_keys =  kwargs['features'].get('meta', [])
+        self.input_keys =  kwargs['features'].get('input', [])
+        if len(self.input_keys) == 0:
+            non_sample_keys = kwargs['features']['remove'] + kwargs['features']['meta']
+            self.input_keys = [k for k in self.sample_example if k not in non_sample_keys]
+
+
+    def resolve_split(self, split=None):
+        if split == None:
+            split = self.splits[0]
+        assert isinstance(split, str)
+        return split
+        
+    @property
+    def sample_example(self):
+        return self.sample()
+
+    def sample(self, split=None, idx=0):
+        split = self.resolve_split(split)
+        return self.dataset[split][idx]
     
     @property
     def device(self):
@@ -160,21 +192,50 @@ class TrainerModule(BaseModule):
         get_scheduler = self.import_object(kwargs['module'])
         self.scheduler = get_scheduler( optimizer=self.optimizer, num_training_steps=self.num_training_steps, **kwargs['params'])
 
+    @property
+    def batches_per_epoch(self):
+        return self.config.get('batches_per_epoch')
+
+
+    def step(self, split='train',nograd=False, include_meta=True):
+
+        if split == 'train':
+            batch = next(iter(self.dataloader['train']))
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            # st.write(self.model.forward)
+            st.write(get_function_schema(self.model))
+            outputs = self.model(**{k:batch[k] for k in self.input_keys})
+            loss = outputs.loss
+            loss.backward()
+            self.optimizer.step()
+            self.scheduler.step()
+            self.optimizer.zero_grad()
+            
+            
+            if include_meta:
+                metadata_batch = {k:batch[k] for k in self.meta_keys }
+
+                # st.write(metadata_batch)
+                st.write(dir(outputs))
+                outputs = {**outputs.__dict__, **metadata_batch}
+
+        elif split != 'train' or nograd == True:
+            with torch.nograd():
+                batch = next(self.dataloader[split])
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                loss = outputs.loss
+
+        return outputs
+
     def train(self):
         progress_bar = tqdm(range(self.num_training_steps))
         self.model.train()
         for epoch in range(self.num_epochs):
-            for i, batch in enumerate(self.dataloader['train']):
-                batch = {k: v.to(self.device) for k, v in batch.items()}
-                outputs = self.model(**batch)
-                loss = outputs.loss
-                loss.backward()
-                st.write(f"EPOCH: {epoch} Batch: {i} loss: {loss}")
-                self.optimizer.step()
-                self.scheduler.step()
-                self.optimizer.zero_grad()
-                # progress_bar.update(1)
 
+            for i in range(self.batches_per_epoch):
+                output_dict = self.step(split=True)
+                st.write(f"EPOCH: {epoch} Batch: {i} loss: {output_dict['loss']}")
 
     @staticmethod
     def obj2str(data):
@@ -226,17 +287,25 @@ class TrainerModule(BaseModule):
         return return_dict
 
     def get_sample(self, split='train', **kwargs):
+        st.write(len(self.dataloader[split]))
         return next(iter(self.dataloader[split]))
 
-    
-    def get_onnx(self):
+    @property
+    def default_onnx_path(self):
+        default_onnx_path = f"/tmp/onnx/{__file__}/torch-model.onnx"
+        self.client.local.makedirs(os.path.dirname(default_onnx_path),True)
+        return default_onnx_path
+    def save_onnx(self, path=None):
         dummy_model_input = self.get_sample()
         dummy_model_input.pop('labels')
         self.model = self.model.to('cpu')
+        if path == None:
+            path = self.default_onnx_path
+            
         torch.onnx.export(
                         self.model, 
                         tuple(dummy_model_input.values()), 
-                        f="torch-model.onnx",  
+                        f=path,  
                         input_names=['input_ids', 'attention_mask'], 
                         output_names=['logits'], 
                         dynamic_axes={'input_ids': {0: 'batch_size', 1: 'sequence'}, 
@@ -246,8 +315,17 @@ class TrainerModule(BaseModule):
                         opset_version=13, 
                     )
 
+        self.saved_onnx_path = path
+
+
+    def load_onnx(self, path=None):
+        if path == None:
+            path = self.default_onnx_path
+        import onnx
+        return onnx.load(path)
+
     ''' PyTorch backend model factory '''
-    def serialize(self, model=None):
+    def serialize(self, model=None, path=None):
         ''' Serialize PyTorch model to JSON message '''
         # metadata = {}
         # metadata_file = os.path.join(os.path.dirname(__file__), 'onnx-metadata.json')
@@ -258,6 +336,8 @@ class TrainerModule(BaseModule):
 
         if model == None:
             model = self.model
+
+
         json_model = {}
         json_model['signature'] = 'netron:pytorch'
         json_model['format']  = 'TorchScript'
@@ -344,22 +424,56 @@ class TrainerModule(BaseModule):
                     'arguments': [ argument(output_value) ]
                 })
 
-        text = json.dumps(json_model, ensure_ascii=False)
-        return text.encode('utf-8')
 
+        # text = json.dumps(json_model, ensure_ascii=False)
+        # return text.encode('utf-8')
+        if isinstance(path, str):
+            text = json.dumps(json_model, ensure_ascii=False)
+            return text.encode('utf-8')
+        return json_model
+    def follow_grad(grad_fn):
+
+        '''
+        TODO: NOT READY
+        '''
+        while True:
+            try:
+                if len(grad_fn.next_functions)>1:
+                    for next_grad_fn in grad_fn.next_functions:
+                        follow_grad(next_grad_fn)
+                    continue
+                elif len(grad_fn.next_functions)==1:
+                    tmp_grad_fn = grad_fn.next_functions[0][0]
+                else:
+                    raise IndexError
+                st.write(tmp_grad_fn.name())
+                grad_fn = tmp_grad_fn
+
+            except IndexError as e :
+                break
 
 if __name__ == '__main__':
     import streamlit as st
     import numpy as np
     from algocean.utils import *
-    module = TrainerModule(override={'model_only':False})
 
-    web3 = module.web3
-    st.write(module.account)
-    children = []
-    for m in module.model.children():
+    module = TrainerModule(override={'model_only':False, 'load_state': True})
+    grad_fn = module.step()['loss'].grad_fn
+
+    
+    follow_grad(grad_fn)
+    # # # st.write(module.save_onnx())
+    # # onnx_model = module.load_onnx()
+    # # st.write(module.model.bert)
+    # st.write(module.hub.list_models())
+    # web3 = module.web3
+    # st.write(module.account)
+    # children = []
+    # for m in module.model.named_parameters():
         
-        children += [m]
+    #     children += [m]
+    #     st.write(m[0], m[1].shape)
+    # json_model = module.get_onnx()
     
     # for m in children[0].children():
     #     st.write(m.inputs)

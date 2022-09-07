@@ -99,6 +99,15 @@ class ActorModule:
     def import_module(key):
         return import_module(key)
 
+    @staticmethod
+    def import_object(key):
+        module_path = '.'.join(key.split('.')[:-1])
+        module = import_module(module_path)
+        object_name = key.split('.')[-1]
+        obj = getattr(module, object_name)
+        return obj
+
+
     @classmethod
     def deploy(cls, config=None, actor=False , override={}, local_var_dict={}):
         """
@@ -310,3 +319,10 @@ class ActorModule:
         module = '.'.join(path.split('.')[:-1])
         object_name = path.split('.')[-1]
         return getattr(import_module(module), object_name)
+
+    @classmethod
+    def module_path(cls, include_root=True):
+        path =  os.path.dirname(cls.__file__).replace(os.getenv('PWD')+'/', '')
+        if include_root == False:
+            path = '/'.join(path.split('/')[1:])
+        return path

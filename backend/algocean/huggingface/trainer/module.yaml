@@ -2,24 +2,35 @@
 module: TrainerModule
 
 dataset: 
-  path: "yelp_review_full"
-  split: ['train', 'test']
+  path: sst2
+  split: 
+    train: train[:5%]
+    valid: test[:5%]
 
-
+batches_per_epoch: 10
 
 # submodules: 
 #   algocean: get_cfg(ocean.module)
 pipeline: 
-  module: transformers.AutoTokenizer
+  module: transformers.DistilBertTokenizer
   init:
     fn: from_pretrained 
     kwargs:
-      pretrained_model_name_or_path: 'bert-base-cased'
+      pretrained_model_name_or_path: 'distilbert-base-uncased'
+  params: 
+    # return_tensors: pt
+    padding: True
+    truncation: True
+    max_length: 10
 
-  params:
+  features: 
+    meta: ['idx']
+    remove: ['sentence']
+    map: 
+      label: labels
     
-    padding: max_length
-    truncation: True 
+  format: torch
+
 
 metric: 'accuracy'
 epochs: 1
@@ -37,15 +48,14 @@ optimizer:
     lr: 0.00005
 scheduler: {}
 model: 
-  module: transformers.AutoModelForSequenceClassification
+  module: transformers.DistilBertForSequenceClassification
   init:
     fn: from_pretrained 
     kwargs:
-      pretrained_model_name_or_path: "bert-base-cased"
-      num_labels : 5
+      pretrained_model_name_or_path: distilbert-base-uncased
+      ignore_mismatched_sizes: True
 
   params:
-    
     padding: max_length
     truncation: True 
 

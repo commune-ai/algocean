@@ -107,29 +107,31 @@ class HubModule(BaseModule, HfApi):
         self.hf_api = HfApi(self.config.get('hub'))
 
 
-
-    
  
     @cache(path='/tmp/datasets.json', mode='local')
     def list_datasets(self,return_type = 'dict', filter_fn=None, *args, **kwargs):
         
 
         datasets = self.hf_api.list_datasets(*args,**kwargs)
-        
+        filter_fn = self.resolve_filter_fn(filter_fn=filter_fn)
 
-        datasets = list(map(lambda x: x.__dict__, datasets))
-        if filter_fn != None and callable(filter_fn):
-            datasets = list(filter(filter_fn, datasets))
-    
 
         if return_type in 'dict':
-            pass
+            
+            datasets = list(map(lambda x: x.__dict__, datasets))
+            if filter_fn != None and callable(filter_fn):
+                datasets = list(filter(filter_fn, datasets))
+
         elif return_type in ['pandas', 'pd']:
+
             df = pd.DataFrame(datasets)
+            df = self.filter_df(df=df, fn=filter_fn)
             df['num_tags'] = df['tags'].apply(len)
             df['tags'] = df['tags'].apply(lambda tags: {tag.split(':')[0]:tag.split(':')[1] for tag in tags  }).tolist()
             for tag_field in ['task_categories']:
                 df[tag_field] = df['tags'].apply(lambda tag:tag.get(tag_field) )
+            df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
+            df = df.sort_values('downloads', ascending=False)
             return df
         else:
             raise NotImplementedError
@@ -137,15 +139,40 @@ class HubModule(BaseModule, HfApi):
     
         return datasets
     
-    @cache(path='/tmp/models.json', mode='local')
-    def list_models(self,return_type = 'pandas', *args, **kwargs):
-        models = self.hf_api.list_models(*args,**kwargs)
+
+    @staticmethod
+    def resolve_filter_fn(filter_fn):
+        if filter_fn != None:
+            if callable(filter_fn):
+                fn = filter_fn
+
+            if isinstance(fn, str):
+                filter_fn = eval(f'lambda r : {filter_fn}')
         
+            assert(callable(filter_fn))
+        return filter_fn
+
+
+
+    @cache(path='/tmp/models.json', mode='local')
+    def list_models(self,return_type = 'pandas',filter_fn=None, *args, **kwargs):
+        models = self.hf_api.list_models(*args,**kwargs)
+       
+        filter_fn = self.resolve_filter_fn(filter_fn=filter_fn)
+
+
         if return_type in 'dict':
             models = list(map(lambda x: x.__dict__, models))
+            if filter_fn != None and callable(filter_fn):
+                models = list(filter(filter_fn, models))
+
         elif return_type in ['pandas', 'pd']:
+
             models = list(map(lambda x: x.__dict__, models))
             models = pd.DataFrame(models)
+            if filter_fn != None and callable(filter_fn):
+                models = self.filter_df(df=models, fn=filter_fn)
+
         else:
             raise NotImplementedError
 
@@ -221,7 +248,22 @@ if __name__ == '__main__':
     st.write(module.pipeline_tags)
     st.write(module.task_categories)
 
+    from transformers import ViTFeatureExtractor, ViTForImageClassification
+    from PIL import Image
+    import requests
 
+    url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
+    image = Image.open(requests.get(url, stream=True).raw)
+
+    feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224')
+    model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
+
+    inputs = feature_extractor(images=image, return_tensors="pt")
+    outputs = model(**inputs)
+    logits = outputs.logits
+    # model predicts one of the 1000 ImageNet classes
+    predicted_class_idx = logits.argmax(-1).item()
+    print("Predicted class:", model.config.id2label[predicted_class_idx])
 
 
     st.write(px.histogram(x=module.datasets.query('num_tags>=0 & num_tags<10')['num_tags']))

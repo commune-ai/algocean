@@ -442,6 +442,8 @@ class DatasetModule(BaseModule, Dataset):
         metadata["updated"] = current_datetime
 
         return metadata
+    
+    
     @property
     def split_info(self):
         return self.info['splits']

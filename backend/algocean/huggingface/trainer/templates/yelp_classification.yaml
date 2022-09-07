@@ -1,0 +1,53 @@
+
+module: TrainerModule
+
+dataset: 
+  path: "yelp_review_full"
+  split: ['train', 'test']
+
+batches_per_epoch: 10
+
+# submodules: 
+#   algocean: get_cfg(ocean.module)
+pipeline: 
+  module: transformers.AutoTokenizer
+  init:
+    fn: from_pretrained 
+    kwargs:
+      pretrained_model_name_or_path: 'bert-base-cased'
+
+  params:
+    padding: max_length
+    truncation: True 
+
+metric: 'accuracy'
+epochs: 1
+batch_size: 8
+
+schedular:
+  module: transformers.get_scheduler
+  params:
+    name: linear
+    num_warmup_steps: 0
+
+optimizer: 
+  module: torch.optim.AdamW
+  params:
+    lr: 0.00005
+scheduler: {}
+model: 
+  module: transformers.AutoModelForSequenceClassification
+  init:
+    fn: from_pretrained 
+    kwargs:
+      pretrained_model_name_or_path: "bert-base-cased"
+      num_labels : 5
+
+  params:
+    
+    padding: max_length
+    truncation: True 
+
+
+
+client: {}
