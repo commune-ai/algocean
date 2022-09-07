@@ -16,6 +16,7 @@ pipeline:
     kwargs:
       pretrained_model_name_or_path: 'bert-base-cased'
 
+  
   params:
     padding: max_length
     truncation: True 

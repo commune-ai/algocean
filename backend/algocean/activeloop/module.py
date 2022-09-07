@@ -9,30 +9,34 @@ from pathlib import Path
 import numpy as np
 from algocean import BaseModule
 import datetime
+import hub
 @dataclass
 class ActiveLoopModule(BaseModule):
-    src:str
-    api_key:str= field(init=False,repr=False,default="")
+    src:str='hub://activeloop'
     path:Optional[str]=None
     default_cfg_path = 'activeloop'
+    default_splits = ['train']
 
     def __init__(self, config=None, override={}, **kwargs):
-        BaseModule.__init__(self, config=config)
-
+        BaseModule.__init__(self, config=config,override=override)
+        
+        self.override_config(override=override)
 
         self.algocean = self.get_object('ocean.OceanModule')()
         self.web3 = self.algocean.web3
         self.ocean = self.algocean.ocean
-        self.hub = self.import_module('hub')
-        self.load_state(**kwargs)
+        self.hub = hub
 
+        st.write(self.config)
 
-    def load_state(self,  **kwargs):
-        self.splits = self.config.get('splits', kwargs.get('splits'))
-        self._api_key = self.config.get('api_key', kwargs.get('api_key'))
-        self.src = self.config.get('src', kwargs.get('src'))
+        self.splits = self.config.get('splits', kwargs.get('splits', self.default_splits))
+        self._api_key = self.config.get('api_key', kwargs.get('api_key', None))
+        self.src = self.config.get('src', kwargs.get('src', self.src))
         self.path = self.config.get('path', kwargs.get('path'))
         self.load_dataset()
+        self.config['metadata'] = self.metadata
+
+
     @property
     def api_key(self):
         return self._api_key
@@ -136,6 +140,10 @@ class ActiveLoopModule(BaseModule):
         return info
 
     @property
+    def feature_names(self):
+        return list(self.features_info.keys())
+
+    @property
     def features_info(self):
 
         metadata = {}
@@ -172,15 +180,9 @@ class ActiveLoopModule(BaseModule):
             metadata[tensor_name].update({"htype":tensor_htype})
             metadata[tensor_name].update({"shape":tensor_shape})
             metadata[tensor_name].update({"compression":tensor_compression})
-            metadata[tensor_name].update({"dtype":tensor_dtype})
+            metadata[tensor_name].update({"dtype":str(tensor_dtype)})
 
         return metadata
-
-    def list_datasets(self, filter_fn=None, *args, **kwargs):
-        raise NotImplementedError
-
-
-
 
 
     def resolve_state_path(self, path:str=None):
@@ -616,17 +618,94 @@ class ActiveLoopModule(BaseModule):
     def get_task(self, dataset:str='wikitext'):
         raise NotImplementedError
 
+    @staticmethod
+    def dataset_splits(dataset):
+        datasets = ActiveLoopModule.datasets(return_type='dict')
+        
+        return datasets[dataset]['splits']
+
+    @staticmethod
+    def datasets(return_type='dict'):
+
+        ds_list =  [ds for ds in hub.list('activeloop')]
+        ds_split_dict = {}
+
+        for ds in ds_list:
+            if len( ds.split('-')) != 2:
+                continue
+            ds, split = ds.split('-')
+            ds = ds.replace('activeloop/', '')
+            if ds not in ds_split_dict:
+                ds_split_dict[ds] = {'splits': [split]}
+            else:
+                ds_split_dict[ds]['splits'].append(split)
+
+        if return_type== 'list':
+            return list(ds_split_dict.keys())
+        elif return_type== 'dict': 
+            return ds_split_dict
+        else:
+            raise NotImplementedError
+
+    __file__ = __file__
+    @property
+    def local_tmp_dir(self):
+        return f'/tmp/{self.module_path()}/{self.path}'
+
+
+    def save_local_config(self):
+        path = os.path.join(self.local_tmp_dir, 'config.json')
+        self.client.local.put_json(data=self.config, path=path )
+
+    def load_local_config(self):
+        path = os.path.join(self.local_tmp_dir, 'config.json')
+        config = self.client.local.get_json(path=path )
+        return config
+
+    def load_local(self):
+        config = self.load_local_config()
+        st.write(config)
+
+    def save_local(self, chunks=10):
+        
+        self.save_local_config()
+
+        for split in self.splits:
+            split_dir = os.path.join(self.local_tmp_dir, split)
+            self.client.local.makedirs(split_dir, True)
+            dataset = self.dataset[split]
+            
+            for feature, feature_tensor in dataset.tensors.items():
+                feature_tensor_chunks = np.array_split(feature_tensor, chunks, axis=1)
+                for chunk_id, feature_tensor_chunk in enumerate(feature_tensor_chunks):
+                    feature_path = os.path.join(split_dir,f"{feature}-{chunk_id}.npy")
+                    st.write(feature_path)
+                    np.save(feature_path, feature_tensor_chunk, allow_pickle=False, fix_imports=True)
+
+    # def load_local(self):
+    #     config = self.load_local_config()
+    #     for split in config['splits']:
+
+
+
 
 if __name__ == '__main__':
     import streamlit as st
     # from metadata import DatasetMetdata
     import os
+    datasets_dict = ActiveLoopModule.datasets('dict')
+    dataset_options = list(datasets_dict.keys())
+    ds2index = {ds:i for i,ds in enumerate(dataset_options)}
+    ds = st.sidebar.selectbox('Select a Dataset',dataset_options, ds2index['mnist'] )
+    ds_splits = datasets_dict[ds]['splits']
+    ds_splits = st.sidebar.multiselect('Select Splits', ds_splits, ds_splits)
+    st.write(ds)
+    module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
 
-    ds_select = st.selectbox("Active Loop Datasets",["fashion-mnist","mnist",
-                                        "coco","imagenet","cifar10",
-                                        "cifar100"])
-
-    module = ActiveLoopModule(src="hub://activeloop",path=ds_select)
 
     st.write("Active Loop Train Dataset")
-    st.write(module.metadata)
+    # st.write(module.features_info)
+    st.write(module.load_local())
+    # st.write(module.client.local.glob(module.local_tmp_dir+'/train/images-*'))
+
+

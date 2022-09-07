@@ -80,18 +80,8 @@ class DatasetModule(BaseModule, Dataset):
 
     def list_datasets(self, filter_fn=None, *args, **kwargs):
         
-        kwargs['return_type'] = 'pandas'
-        
-        df = self.hub.list_datasets(*args, **kwargs)
-        if filter_fn != None:
-            if isinstance(filter_fn, str):
-                filter_fn = eval(f'lambda r : {filter_fn}')
-            assert(callable(filter_fn))
-
-            df = self.hub.filter_df(df=df, fn=filter_fn)
-        df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
-        
-        df = df.sort_values('downloads', ascending=False)
+        kwargs['return_type'] = 'pandas'  
+        df = self.hub.list_datasets(filter_fn=filter_fn, *args, **kwargs)
         return df    
 
     def load_state(self, path, name=None, split=['train'] ,**kwargs):
