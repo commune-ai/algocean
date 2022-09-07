@@ -64,7 +64,7 @@ class DatasetModule(BaseModule, Dataset):
     
     dataset = {}
     def __init__(self, config:dict=None, override:dict={}):
-        BaseModule.__init__(self, config=config)
+        BaseModule.__init__(self, config=config, override=override)
         self.algocean = OceanModule()
         self.web3 = self.algocean.web3
         self.ocean = self.algocean.ocean
@@ -72,9 +72,7 @@ class DatasetModule(BaseModule, Dataset):
         self.hub = self.get_object('huggingface.hub.module.HubModule')()
         self.load_state(**self.config.get('dataset'))
 
-    def override_config(self,override:dict={}):
-        for k,v in override.items():
-            dict_put(self.config, k, v)
+
     def load_builder(self, path):
         self.dataset_factory = self.load_dataset_factory(path=path)
         self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
@@ -155,6 +153,7 @@ class DatasetModule(BaseModule, Dataset):
             kwargs = self.config.get('dataset')
 
         split = kwargs.get('split', ['train'])
+        
         if isinstance(split, str):
             split = [split]
         if isinstance(split, list):
@@ -884,26 +883,24 @@ if __name__ == '__main__':
     import numpy as np
     from algocean.utils import *
 
-
-
        
     module = DatasetModule(override={'load_dataset': False})
 
     df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
+   
+    module.create_asset()
+    st.write(module.asset.__dict__)
     # # st.write(df)
-    dataset_list = list(df['id'][:10])
-    for dataset in dataset_list:
-        override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
+    # dataset_list = list(df['id'][:10])
+    # for dataset in dataset_list:
+    #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
        
-        try:
-            module = DatasetModule(override=override,)
-            st.write(module.create_asset(force_create=False))
-        except ImportError as e:
-            st.write('IMPORT ERROR', dataset)
+    #     try:
+    #         module = DatasetModule(override=override,)
+    #         st.write(module.create_asset(force_create=False))
+    #     except ImportError as e:
+    #         st.write('IMPORT ERROR', dataset)
 
-
-
-  
 
     # st.write(module.asset.metadata)
     

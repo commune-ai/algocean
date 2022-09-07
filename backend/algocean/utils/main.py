@@ -546,3 +546,10 @@ def dict_equal(*args):
 #             v= input[k]
 #             linear_dict['.'.join(key_path)] = input
         
+
+def import_object(key):
+    module_path = '.'.join(key.split('.')[:-1])
+    module = import_module(module_path)
+    object_name = key.split('.')[-1]
+    obj = getattr(module, object_name)
+    return obj

@@ -5,8 +5,8 @@ from algocean.ray.actor import ActorModule
 class BaseModule(ActorModule):
     client = None
     default_cfg_path = None
-    def __init__(self, config=None):
-        ActorModule.__init__(self,config=config)
+    def __init__(self, config=None, override={}):
+        ActorModule.__init__(self,config=config, override=override)
         self.config_loader = ConfigLoader()
         if config!=None:
             if len(config) == 0:

@@ -21,21 +21,32 @@ RUN apt update
 RUN apt install -y git
 
 
+
 WORKDIR /app
 
 # Install dependencies:
 COPY requirements.txt .
 # Install dependencies:
 COPY environment.yaml .
-ADD ./ocean.py /app/ocean.py
-ADD ./ipfspy /app/ipfspy
-ADD ./ipfsspec /app/ipfsspec
+
 RUN conda env create -f ./environment.yaml
 RUN echo "source activate algocean" > ~/.bashrc
 ENV PATH /opt/conda/envs/algocean/bin:$PATH
 RUN /bin/bash -c "source activate algocean"
-# RUN conda activate algocean
+RUN apt install -y gcc
+RUN /bin/bash -c "pip install -r requirements.txt"
 
+ADD ./ocean.py /app/ocean.py
+RUN /bin/bash -c "pip install -e ./ocean.py"
+ADD ./ipfspy /app/ipfspy
+RUN /bin/bash -c "pip install -e ./ipfspy"
+
+ADD ./ipfsspec /app/ipfsspec
+RUN /bin/bash -c "pip install -e ./ipfsspec"
+RUN /bin/bash -c "pip install hub"
+
+
+# RUN conda activate algocean
 # add BITTENSOR commune fork
 
 

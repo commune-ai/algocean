@@ -9,33 +9,46 @@ from pathlib import Path
 import numpy as np
 from algocean import BaseModule
 
-
-
-
-
-
-
 @dataclass
 class ActiveLoopModule(BaseModule):
     src:str
     api_key:str= field(init=False,repr=False,default="")
     path:Optional[str]=None
-    train:Optional[str]=None
-    test:Optional[str]=None
+    default_cfg_path = 'activeloop'
 
-    def __init__(self, config=None, override={}):
+    def __init__(self, config=None, override={}, **kwargs):
         BaseModule.__init__(self, config=config)
-        self.override_config(override)
-
-    
-    def load(self,splits=["train","test"],filter=False,token=None):
 
 
-        for split in splits:
-            if split in ['train', 'test']:
-                split_ds = "-".join([self.path,split])
-                url = "/".join([self.src,split_ds])
-                setattr(self, split,hub.load(url,token=self.api_key))
+        self.algocean = self.get_object('ocean.OceanModule')
+        self.web3 = self.algocean.web3
+        self.ocean = self.algocean.ocean
+        self.hub = self.import_module('hub')
+        self.load_state(**kwargs)
+
+
+    def load_state(self,  **kwargs):
+        self.splits = self.config.get('splits', kwargs.get('splits'))
+        self._api_key = self.config.get('api_key', kwargs.get('api_key'))
+        self.src = self.config.get('src', kwargs.get('src'))
+        self.path = self.config.get('path', kwargs.get('path'))
+        self.load_dataset()
+    @property
+    def api_key(self):
+        return self._api_key
+
+    @api_key.setter
+    def api_key(self, key=None):
+        self._api_key = key
+        return self.api_key
+
+    def load_dataset(self):
+
+        self.dataset = {}
+        for split in self.splits:
+            split_ds = "-".join([self.path,split])
+            url = "/".join([self.src,split_ds])
+            self.dataset[split] = self.hub.load(url,token=self.api_key)
 
     def automatic_ds(self):
 
@@ -72,29 +85,13 @@ class ActiveLoopModule(BaseModule):
         return metadata_dict
 
 
-    def _parse_metadata(self,metadata):
-
-        metadata_dict = {}
-
-
-        select_fields = ["chunk_compression","sample_compression","dtype","htype","length","max_chunk_size","max_shape","min_shape","name","class_names"]
-
-
-        parse_topkey = {k: v for k, v in metadata.items() if k is not None and not k.startswith("_")}
-
-        for k_top in parse_topkey:
-            
-            metadata_dict.update({k_top:{k: v for k, v in parse_topkey[k_top].items() if k in select_fields}})
-
-        return metadata_dict
-
-
     def create_tensors(self,labels:list,htype:list,compression:list,class_names:list):
 
         for label,htype,compression,class_names in zip(labels,htype,compression,class_names):
             ds.create_tensor(label,htype=htype, sample_compression =compression)
 
-    def populate_ds(self):
+    def populate(self, split='train', file_list =None):
+        ds = self.dataset[split]
         with ds:
             # Iterate through the files and append to hub dataset
             for file in files_list:
@@ -104,11 +101,13 @@ class ActiveLoopModule(BaseModule):
                 #Append data to the tensors
                 ds.append({'images': hub.read(file), 'labels': np.uint32(label_num)})
 
-    @hub.compute
-    def filter_labels(sample_in, labels_list):
 
+    @hub.compute
+    @staticmethod
+    def filter_labels(sample_in, labels_list):
         return sample_in.labels.data()['text'][0] in labels_list
 
+    @staticmethod
     def max_array_length(arr_max, arr_to_compare):  # helper for __str__
         for i in range(len(arr_max)):
             str_length = len(arr_to_compare[i])
@@ -116,10 +115,18 @@ class ActiveLoopModule(BaseModule):
                 arr_max[i] = str_length
         return arr_max
 
+    @property
+    def info(self):
+        info = {}
+        info['features'] = self.features_info
 
-    def summary_dataset(dataset):
+        return info
+
+    @property
+    def features_info(self):
 
         metadata = {}
+        dataset = self.dataset[self.splits[0]]
         tensor_dict = dataset.tensors
 
         for tensor_name in tensor_dict:
@@ -131,9 +138,6 @@ class ActiveLoopModule(BaseModule):
             tensor_htype = tensor_object.htype
             if tensor_htype == None:
                 tensor_htype = "None"
-
-            shape = tensor_object.shape
-            tensor_shape = str(tensor_object.shape_interval if None in shape else shape)
 
             tensor_compression = tensor_object.meta.sample_compression
             if tensor_compression == None:
@@ -147,7 +151,10 @@ class ActiveLoopModule(BaseModule):
             if tensor_name == "labels":
 
                 label_distr = np.unique(tensor_object.data()["value"],return_counts=True)
-                metadata[tensor_name].update({"label_distribution":label_distr})
+                metadata[tensor_name].update({"label_distribution": dict(zip(label_distr[0].tolist(), label_distr[1].tolist()))})
+
+            shape = tensor_object[:1].shape
+            tensor_shape = (tensor_object.shape_interval if None in shape else shape)[1:]
 
             metadata[tensor_name].update({"htype":tensor_htype})
             metadata[tensor_name].update({"shape":tensor_shape})
@@ -169,20 +176,17 @@ if __name__ == '__main__':
                                         "coco","imagenet","cifar10",
                                         "cifar100"])
 
-    AL = ActiveLoopModule("hub://activeloop",path=ds_select)
-    AL.load_ds()
+    module = ActiveLoopModule(src="hub://activeloop",path=ds_select)
+    module.load()
 
     st.write("Active Loop Train Dataset")
-    st.write(AL)
+    st.write(module)
 
-    info = AL.train.info
+    info = module.dataset['train'].info
 
 
 
-    w = summary_dataset(AL.train)
-
-    st.write(w)
-
+    st.write(module.metadata)
 
 
     #WIP
@@ -201,3 +205,695 @@ if __name__ == '__main__':
     # md = AL_manual.get_dataset_metadata("animals_hub",parse=False)
     # st.write("UnParsed Manual Metadata")
     # st.write(md)
+
+
+
+import os, sys
+sys.path.append(os.environ['PWD'])
+import datasets 
+import datetime
+import transformers
+from copy import deepcopy
+from typing import Union, List
+from copy import deepcopy
+from algocean import BaseModule
+import torch
+import ray
+from algocean.utils import dict_put
+from datasets.utils.py_utils import asdict, unique_values
+import datetime
+import pyarrow
+
+from ocean_lib.models.data_nft import DataNFT
+import fsspec
+import os
+from ipfsspec.asyn import AsyncIPFSFileSystem
+from fsspec import register_implementation
+import asyncio
+import io
+from algocean.ocean import OceanModule
+from algocean.utils import *
+
+import ipfsspec
+from transformers import AutoModel, AutoTokenizer
+from datasets import load_dataset, Dataset, load_dataset_builder
+
+
+
+TEST_DATASET_OPTIONS = ['glue','wikitext', 'blimp' ]
+def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False):
+    '''
+    params:
+        kwargs: dictionary of key word arguments
+        defaults: list or dictionary of keywords->types
+    '''
+    try:
+        assert isinstance(kwargs, dict)
+        if isinstance(defaults, list):
+            for k in defaults:
+                assert k in defaults
+        elif isinstance(defaults, dict):
+            for k,k_type in defaults.items():
+                assert isinstance(kwargs[k], k_type)
+    except Exception as e:
+        if return_bool:
+            return False
+        
+        else:
+            raise e
+
+
+class DatasetModule(BaseModule, Dataset):
+    default_cfg_path = 'huggingface.dataset.module'
+    datanft = None
+    default_token_name='token' 
+    last_saved = None
+
+    dataset = {}
+    def __init__(self, config:dict=None, override:dict={}):
+        BaseModule.__init__(self, config=config, override=override)
+        self.algocean = self.get_object('ocean.OceanModule')
+        self.web3 = self.algocean.web3
+        self.ocean = self.algocean.ocean
+        self.hub = self.get_object('huggingface.hub.module.HubModule')()
+        self.load_state(**self.config.get('dataset'))
+
+    def override_config(self,override:dict={}):
+        for k,v in override.items():
+            dict_put(self.config, k, v)
+    def load_builder(self, path):
+        self.dataset_factory = self.load_dataset_factory(path=path)
+        self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
+               
+
+    def list_datasets(self, filter_fn=None, *args, **kwargs):
+        
+        kwargs['return_type'] = 'pandas'
+        
+        df = self.hub.list_datasets(*args, **kwargs)
+        if filter_fn != None:
+            if isinstance(filter_fn, str):
+                filter_fn = eval(f'lambda r : {filter_fn}')
+            assert(callable(filter_fn))
+
+            df = self.hub.filter_df(df=df, fn=filter_fn)
+        df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
+        
+        df = df.sort_values('downloads', ascending=False)
+        return df    
+
+    def load_state(self, path, name=None, split=['train'] ,**kwargs):
+        
+        self.load_builder(path=path)
+        if name == None:
+            name = self.list_configs(path = path, return_type='dict.keys')[0]
+
+        self.config['dataset'] = dict(path=path, name=name, split=split)
+        
+
+        self.dataset = self.load_dataset(**self.config['dataset'])
+
+    @staticmethod
+    def is_load_dataset_config(kwargs):
+        '''
+        check if dataset config is a valid kwargs for load_dataset
+        '''
+        key_type_tuples = [('path',str)]
+        for k, k_type in key_type_tuples:
+            if not isinstance(kwargs.get(k, k_type)):
+                return False
+        return True
+
+        return  'path' in kwargs
+
+    @staticmethod
+    def load_dataset_builder( path:str=None, factory_module_path:str=None):
+        if factory_module_path == None:
+            assert isinstance(path, str)
+            factory_module = datasets.load.dataset_module_factory(path)
+            factory_module_path = factory_module.module_path
+
+        dataset_builder = datasets.load.import_main_class(factory_module_path)
+        return dataset_builder
+
+    @staticmethod
+    def load_dataset_factory( path:str):
+        return datasets.load.dataset_module_factory(path)
+
+
+        
+    def load_dataset(self, **kwargs):
+        '''
+        path: path to the model in the hug
+        name: name of the config / flavor of the dataset
+        split: the split of the model
+        
+        '''
+        if kwargs.get('name') == None:
+            assert kwargs.get('path') != None
+            name = self.list_configs(path = kwargs['path'], return_type='dict.keys')[0]
+
+        # ensure the checks pass
+        check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
+
+
+        if len(kwargs) == 0:
+            kwargs = self.config.get('dataset')
+
+        split = kwargs.get('split', ['train'])
+        
+        if isinstance(split, str):
+            split = [split]
+        if isinstance(split, list):
+            kwargs['split'] = {s:s for s in split}
+
+
+
+        return  load_dataset(**kwargs )
+    
+    def get_split(self, split='train'):
+        return self.dataset[split]
+
+
+
+
+
+    def get_info(self, to_dict =True):
+
+        def get_info_fn(ds, to_dict=to_dict):
+            ds_info = deepcopy(ds.info)
+            if to_dict:
+                ds_info = asdict(ds_info)
+            return ds_info
+        
+        if isinstance(self.dataset, list):
+            ds_info = list(map(get_info_fn, self.dataset))
+        elif isinstance(self.dataset, dict):
+            ds_info =  get_info_fn(list(self.dataset.values())[0])
+        elif isinstance(self.dataset, Dataset):
+            ds_info  = get_info_fn(ds=self.dataset)
+        
+        return ds_info
+
+
+    info = property(get_info)
+
+    def resolve_state_path(self, path:str=None):
+        if path == None:
+            path = self.config.get('state_path', None)
+        
+        return path
+        
+    # @property
+    # def builder_configs(self):
+    #     return {v.name:v for v in module.dataset_builder.BUILDER_CONFIGS}
+
+    @property
+    def state_path_map(self):
+        state_path_map = self.config.get('state_path_map')
+        if state_path_map == None:
+            state_path_map = self.save()
+        return state_path_map
+
+
+
+    def save(self,mode:str='estuary'):
+
+        if mode == 'estuary':
+            state_path_map = {}
+            for split, dataset in self.dataset.items():
+                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
+                state_path_map[split] = split_state
+
+        elif mode == 'ipfs':
+            state_path_map = {}
+            for split, dataset in self.dataset.items():
+                cid = self.client.ipfs.save_dataset(dataset)
+                state_path_map[split] = self.client.ipfs.info(cid)
+
+        elif mode == 'pinata':
+            raise NotImplementedError
+
+        else:
+            raise NotImplementedError
+
+        self.config['state_path_map'] = state_path_map
+
+        self.last_saved = datetime.datetime.utcnow().timestamp()
+    
+        return state_path_map
+
+
+
+
+    def load(self, path:dict=None, mode:str='ipfs'):
+        path = self.resolve_state_path(path=path)
+        if mode == 'ipfs':
+            dataset = {}
+            for split, cid in path.items():
+                dataset[split] = self.client.ipfs.load_dataset(cid)
+            self.dataset = datasets.DatasetDict(dataset)
+        else:
+            raise NotImplementedError
+
+        return self.dataset
+
+
+    def load_pipeline(self, *args, **kwargs):
+        
+        if len(args) + len(kwargs) == 0:
+            kwargs = self.cfg.get('pipeline')
+            assert type(kwargs) != None 
+            if type(kwargs)  == str:
+                transformer.AutoTokenizer.from_pretrained(kwargs) 
+        else:
+            raise NotImplementedError
+
+    @property
+    def path(self):
+        return self.config['dataset']['path'].replace('/', '_')
+
+    builder_name = dataset_name = path
+
+
+    @property
+    def url_files_metadata(self):
+        pass
+
+    @property
+    def url_files(self):
+    
+        url_files = []
+        file_index = 0
+        cid2index = {}
+        for split, split_configs in self.state_path_map.items():
+            
+
+            for split_config in split_configs:
+                cid = split_config['cid']
+
+                if cid not in cid2index:
+                    url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
+                    cid2index[cid] = file_index
+                    file_index += 1
+            
+
+        return url_files
+   
+
+
+
+
+    @property
+    def split_file_info(self):
+
+        file_index = 0
+        url_files = []
+        split_url_files_info = {}
+        cid2index = {}
+        url_files = deepcopy(self.url_files)
+        for split, split_file_configs in self.state_path_map.items():
+            split_url_files_info[split] = []
+      
+            for file_config in split_file_configs:
+                
+                cid = file_config['cid']
+                filename = file_config['name']
+                filetype = file_config['type']
+                filesize = file_config['size']
+
+
+                file_index = None
+                for i in range(len(url_files)):
+                    if url_files[i].hash == cid:
+                        file_index = i
+                        break  
+                    
+                assert file_index != None
+
+                split_url_files_info[split].append(dict(
+                    name=filename ,
+                    type=filetype,
+                    size = filesize,
+                    file_index=file_index,
+                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
+                ))
+
+
+
+        # url_files = 
+
+        return split_url_files_info
+    
+    
+
+
+    
+
+    def additional_information(self, mode='service'):
+
+        info_dict = {
+            'organization': 'activeloop',
+            'package': {
+                        'name': 'hub',
+                        'version': str(import_module('hub').__version__)
+                        },
+            # 'info': {'configs': self.configs}, 
+        }
+
+        if mode == 'service':
+            info_dict['info'] = self.info
+        elif mode == 'asset':
+            info_dict['info'] = self.info
+        else:
+            raise NotImplementedError
+
+
+        return info_dict
+
+    def dispense_tokens(self,token=None, wallet=None):
+        wallet = self.algocean.get_wallet(wallet)
+        if token == None:
+            token =self.default_token_name
+        self.algocean.get_datatoken(datanft=self.datanft, datatoken=self.default_token_name)
+        self.algocean.dispense_tokens(datatoken=token,
+                                      datanft=self.datanft)
+
+
+    def assets(self):
+        return self.algocean.get_assets()
+
+
+    def create_service(self,
+                        name: str= None,
+                        service_type: str= 'access',
+                        files:list = None,
+                        timeout = 180000,
+                        price_mode = 'free',
+                        **kwargs):
+
+
+        datanft = self.datanft
+        if datanft == None:
+            datanft = self.algocean.create_datanft(name=self.dataset_name)
+        datatoken = self.algocean.create_datatoken(datanft = self.datanft , name=kwargs.get('datatoken', self.default_token_name))
+        if price_mode =='free':
+            self.algocean.create_dispenser(datatoken=datatoken,datanft=self.datanft)
+        else:
+            raise NotImplementedError
+
+        if name == None:
+            name = self.config_name
+        if files == None:
+            files = self.url_files
+        name = '.'.join([name, service_type])
+
+        service = self.get_service(name)
+        if service != None:
+            return service
+        else:
+            return self.algocean.create_service(name=name,
+                                                timeout=timeout,
+                                                datatoken=datatoken,
+                                                datanft = datanft,
+                                                service_type=service_type, 
+                                                description= self.info['description'],
+                                                files=files,
+                                                additional_information=self.additional_information('service')) 
+
+    def get_service(self, name):
+        for service in self.services:
+            if service.name == name:
+                return service
+        return None
+
+
+    @property
+    def metadata(self):
+        metadata ={}
+
+        metadata['name'] = self.config.get('path')
+        metadata['description'] = self.info['description']
+        metadata['author'] = self.algocean.wallet.address
+        metadata['license'] = self.info.get('license', "CC0: PublicDomain")
+        metadata['categories'] = self.info.get('categories', [])
+        metadata['tags'] = [f'{k}:{v}' for k,v in self.tags.items()]
+        metadata['additionalInformation'] = self.additional_information('asset')
+        metadata['type'] = 'dataset'
+        current_datetime = datetime.datetime.now().isoformat()
+        metadata["created"]=  current_datetime
+        metadata["updated"] = current_datetime
+
+        return metadata
+    @property
+    def split_info(self):
+        return self.info['splits']
+
+    @property
+    def features(self):
+        return self.info['features']
+
+    @property
+    def datatokens(self):
+        return self.get_datatokens(asset=self.asset)
+
+
+    @property
+    def wallet(self):
+        return self.algocean.wallet
+
+    @property
+    def services(self):
+        if self.asset == None:
+            return []
+        return self.asset.services
+
+
+    @property
+    def all_assets(self):
+        assets =  self.algocean.search(text=f'')
+        if len(assets) == 0:
+            return self.create_asset()
+        
+        return assets[0]
+
+    def search_assets(self, search='metadata'):
+        return self.algocean.search(text=search)
+
+
+    @property
+    def my_assets(self):
+        return self.algocean.search(text=f'metadata.author:{self.wallet.address}')
+
+    @property
+    def asset(self):
+        assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} AND metadata.author:{self.wallet.address}')
+        
+        if len(assets) == 0:
+            return None
+        indices = list(map(int, list(np.argsort([a.metadata['created'] for a in assets]))))
+        # get the most recent created asset
+        len(assets)
+        return assets[indices[-1]]
+
+    @property
+    def datanft(self):
+        if not hasattr(self,'_datanft'):
+            datanft =  self.algocean.get_datanft(self.asset.nft['address'])
+            if datanft == None:
+                datanft = self.algocean.create_datanft(name=self.dataset_name)
+            
+            assert isinstance(datanft, DataNFT)
+            self._datanft = datanft
+
+
+        return self._datanft 
+
+    @datanft.setter
+    def datanft(self, value):
+        self._datanft = value
+
+    @staticmethod
+    def get_cid_hash(file):
+        cid =  os.path.basename(file).split('.')[0]
+        cid_hash = module.algocean.web3.toHex((module.algocean.web3.keccak(text=cid)))
+        return cid_hash
+
+    def get_service(self, service):
+        services = self.services
+        if isinstance(service, int):
+            service = services[service]
+        
+        elif isinstance(service, str):
+            services = [s for s in services if s.name == service]
+            # assert len(services)==1, f'{service} is not in {services}'
+            if len(services)>0:
+                service = services[0]
+            else:
+                service=None
+        else:
+            return services[0]
+            raise NotImplementedError
+        
+        return service
+
+        
+    def download(self, service=None, destination='bruh/'):
+        
+        if service == None:
+            service = self.get_service(service)
+        datatoken = self.algocean.get_datatoken(service.datatoken)
+        
+        if datatoken.balanceOf(self.wallet.address)< self.ocean.to_wei(1):
+            self.dispense_tokens()
+
+
+        module.algocean.download_asset(asset=self.asset, service=service,destination=destination )
+        
+
+        
+        for split,split_files_info in service.additional_information['file_info'].items():
+            for file_info in split_files_info:
+                file_index = file_info['file_index']
+                file_name = file_info['name']
+                did = self.asset.did
+
+        # /Users/salvatore/Documents/commune/algocean/backend/bruh/datafile.did:op:6871a1482db7ded64e4c91c8dba2e075384a455db169bf72f796f16dc9c2b780,0
+        # og_path = self.client.local.ls(os.path.join(destination, 'datafile.'+did+f',{file_index}'))
+        # new_path = os.path.join(destination, split, file_name )
+        # self.client.local.makedirs(os.path.dirname(new_path), exist_ok=True)
+        # self.client.local.cp(og_path, new_path)
+
+        files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
+                
+            
+    def create_asset(self, price_mode='free', services=None, force_create = False):
+
+        asset = self.asset
+        if asset != None and force_create==False:
+            return asset
+        self.datanft = self.algocean.create_datanft(name=self.dataset_name)
+
+        metadata = self.metadata
+        if services==None:
+            services = self.create_service(price_mode=price_mode)
+
+
+
+        if price_mode == 'free':
+            self.dispense_tokens()
+
+        if not isinstance(services, list):
+            services = [services]
+
+        
+            
+
+        return self.algocean.create_asset(datanft=self.datanft, metadata=metadata, services=services)
+
+
+
+
+    def load(self, path:dict=None, mode:str='ipfs'):
+        path = self.resolve_state_path(path=path)
+        if mode == 'ipfs':
+            dataset = {}
+            for split, cid in path.items():
+                dataset[split] = self.client.ipfs.load_dataset(cid)
+            self.dataset = datasets.DatasetDict(dataset)
+        else:
+            raise NotImplementedError
+
+        return self.dataset
+
+
+
+    @property
+    def splits(self):
+        return list(self.dataset.keys())
+
+
+
+    @property
+    def info(self):
+
+        
+
+
+        
+
+    def add_service(self):
+        asset = self.asset
+        service = self.create_service()
+        asset.add_service(service)
+        self.algocean.ocean.asset.update(asset)
+
+    @property
+    def id(self):
+        return f"{self.path}/{self.config_name}"
+    
+    @staticmethod
+    def shard( dataset, shards=10, return_type='list'):
+        raise NotImplementedError
+
+
+
+    def strealit_sidebar(self):
+
+        # self.load_state(**self.config.get('dataset'))
+        
+
+        with st.sidebar.form('Get Dataset'):
+
+
+            dataset = st.selectbox('Select a Dataset', self.list_datasets(),0)
+            self.load_builder(dataset)    
+
+            config_dict = self.list_configs(dataset, return_type='dict')
+            config_name = st.selectbox('Select a Config', list(config_dict.keys()), 0)
+
+            config = config_dict[config_name]
+            dataset_config = dict(path=dataset, name=config)
+
+            submitted = st.form_submit_button("load")
+
+            if submitted:
+                self.config['dataset'] = dict(path=dataset, name=config_name, split=['train'])
+                # st.write(self.config['dataset'])
+                self.load_state(**self.config['dataset'])
+                self.create_asset()
+
+
+
+    def streamlit(self):
+        self.strealit_sidebar()
+
+    _tags = {}
+    @property
+    def tags(self):
+        tags = self.config.get('tags', [])
+        
+        if isinstance(tags, list):
+            if isinstance(tags[0], str):
+                tags = {t.split(':')[0]: t.split(':')[1] for t in tags}
+        elif:
+            raise NotImplementedError
+
+
+
+        return {**tags, **self._tags}
+    
+    def remove_tags(self, tags:list):
+        for tag in tags:
+            assert isinstance(tag,str), f'{tag} is not valid fam'
+            self._tags.pop(tag)
+
+    
+    def add_tags(self, tags:dict):
+        self._tags.update(tags)
+        
+
+
+
+    def get_task(self, dataset:str='wikitext'):
+        raise NotImplementedError

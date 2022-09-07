@@ -11,11 +11,12 @@ from importlib import import_module
 class ActorModule: 
     config_loader = ConfigLoader(load_config=False)
     default_cfg_path = None
-    def __init__(self, config=None):
+    def __init__(self, config=None, override={}):
 
         self.config = self.resolve_config(config=config)
+        self.override_config(override=override)
         self.start_timestamp = datetime.datetime.utcnow().timestamp()
-
+        
     def resolve_config(self, config, override={}, local_var_dict={}, recursive=True):
         if config == None:
             config = getattr(self,'config',  None)
@@ -23,10 +24,13 @@ class ActorModule:
             assert isinstance(self.default_cfg_path, str)
             config = self.default_cfg_path
 
+        
         config = self.load_config(config=config, 
                              override=override, 
                             local_var_dict=local_var_dict,
                             recursive=True)
+
+        
 
         return config
 
@@ -296,6 +300,7 @@ class ActorModule:
         return get_module_function_schema(obj, **kwargs)
 
     def override_config(self,override:dict={}):
+        assert isinstance(override, dict), type(override)
         for k,v in override.items():
             dict_put(self.config, k, v)
     

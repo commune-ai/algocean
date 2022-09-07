@@ -1,1 +1,3 @@
 api_key: ACTIVELOOP_API_KEY
+
+splits: ['train', 'test']

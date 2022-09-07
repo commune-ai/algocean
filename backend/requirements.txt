@@ -118,7 +118,6 @@ notebook==6.4.12
 notebook-shim==0.1.0
 numpy==1.23.1
 ocean-contracts==1.0.0
--e /app/ocean.py
 orjson==3.7.11
 packaging==21.3
 pandas==1.4.3
