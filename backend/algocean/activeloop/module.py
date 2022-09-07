@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import numpy as np
 from algocean import BaseModule
-
+import datetime
 @dataclass
 class ActiveLoopModule(BaseModule):
     src:str
@@ -20,7 +20,7 @@ class ActiveLoopModule(BaseModule):
         BaseModule.__init__(self, config=config)
 
 
-        self.algocean = self.get_object('ocean.OceanModule')
+        self.algocean = self.get_object('ocean.OceanModule')()
         self.web3 = self.algocean.web3
         self.ocean = self.algocean.ocean
         self.hub = self.import_module('hub')
@@ -41,6 +41,19 @@ class ActiveLoopModule(BaseModule):
     def api_key(self, key=None):
         self._api_key = key
         return self.api_key
+
+    def split_info(self, split='train'):
+        return self.split_info[split]
+ 
+    @property
+    def splits_info(self):
+        split_info = {split:{} for split in self.splits}
+        for split in self.splits:
+            split_info[split]['name']=split
+            split_info[split]['samples']=len(self.dataset[split])
+        
+        return split_info
+
 
     def load_dataset(self):
 
@@ -117,9 +130,9 @@ class ActiveLoopModule(BaseModule):
 
     @property
     def info(self):
-        info = {}
+        info = {**self.raw_info}
         info['features'] = self.features_info
-
+        info['splits'] = self.splits_info
         return info
 
     @property
@@ -161,242 +174,14 @@ class ActiveLoopModule(BaseModule):
             metadata[tensor_name].update({"compression":tensor_compression})
             metadata[tensor_name].update({"dtype":tensor_dtype})
 
-
         return metadata
 
-
-
-
-if __name__ == '__main__':
-    import streamlit as st
-    # from metadata import DatasetMetdata
-    import os
-
-    ds_select = st.selectbox("Active Loop Datasets",["fashion-mnist","mnist",
-                                        "coco","imagenet","cifar10",
-                                        "cifar100"])
-
-    module = ActiveLoopModule(src="hub://activeloop",path=ds_select)
-    module.load()
-
-    st.write("Active Loop Train Dataset")
-    st.write(module)
-
-    info = module.dataset['train'].info
-
-
-
-    st.write(module.metadata)
-
-
-    #WIP
-    st.write("Manual Dataset, still work in progress")
-    # AL_manual = ActiveLoopDS(src="app/animals",path="./animals_hub")
-    # manual_ds = AL_manual.automatic_ds()
-    #
-    # st.write(AL_manual)
-    #
-    # st.write(summary_dataset(manual_ds))
-    #
-    # md_parsed = AL_manual.get_dataset_metadata("animals_hub",parse=True)
-    # st.write("Parsed Manual Metadata")
-    # st.wrtie(md_parsed)
-    #
-    # md = AL_manual.get_dataset_metadata("animals_hub",parse=False)
-    # st.write("UnParsed Manual Metadata")
-    # st.write(md)
-
-
-
-import os, sys
-sys.path.append(os.environ['PWD'])
-import datasets 
-import datetime
-import transformers
-from copy import deepcopy
-from typing import Union, List
-from copy import deepcopy
-from algocean import BaseModule
-import torch
-import ray
-from algocean.utils import dict_put
-from datasets.utils.py_utils import asdict, unique_values
-import datetime
-import pyarrow
-
-from ocean_lib.models.data_nft import DataNFT
-import fsspec
-import os
-from ipfsspec.asyn import AsyncIPFSFileSystem
-from fsspec import register_implementation
-import asyncio
-import io
-from algocean.ocean import OceanModule
-from algocean.utils import *
-
-import ipfsspec
-from transformers import AutoModel, AutoTokenizer
-from datasets import load_dataset, Dataset, load_dataset_builder
-
-
-
-TEST_DATASET_OPTIONS = ['glue','wikitext', 'blimp' ]
-def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False):
-    '''
-    params:
-        kwargs: dictionary of key word arguments
-        defaults: list or dictionary of keywords->types
-    '''
-    try:
-        assert isinstance(kwargs, dict)
-        if isinstance(defaults, list):
-            for k in defaults:
-                assert k in defaults
-        elif isinstance(defaults, dict):
-            for k,k_type in defaults.items():
-                assert isinstance(kwargs[k], k_type)
-    except Exception as e:
-        if return_bool:
-            return False
-        
-        else:
-            raise e
-
-
-class DatasetModule(BaseModule, Dataset):
-    default_cfg_path = 'huggingface.dataset.module'
-    datanft = None
-    default_token_name='token' 
-    last_saved = None
-
-    dataset = {}
-    def __init__(self, config:dict=None, override:dict={}):
-        BaseModule.__init__(self, config=config, override=override)
-        self.algocean = self.get_object('ocean.OceanModule')
-        self.web3 = self.algocean.web3
-        self.ocean = self.algocean.ocean
-        self.hub = self.get_object('huggingface.hub.module.HubModule')()
-        self.load_state(**self.config.get('dataset'))
-
-    def override_config(self,override:dict={}):
-        for k,v in override.items():
-            dict_put(self.config, k, v)
-    def load_builder(self, path):
-        self.dataset_factory = self.load_dataset_factory(path=path)
-        self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
-               
-
     def list_datasets(self, filter_fn=None, *args, **kwargs):
-        
-        kwargs['return_type'] = 'pandas'
-        
-        df = self.hub.list_datasets(*args, **kwargs)
-        if filter_fn != None:
-            if isinstance(filter_fn, str):
-                filter_fn = eval(f'lambda r : {filter_fn}')
-            assert(callable(filter_fn))
-
-            df = self.hub.filter_df(df=df, fn=filter_fn)
-        df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
-        
-        df = df.sort_values('downloads', ascending=False)
-        return df    
-
-    def load_state(self, path, name=None, split=['train'] ,**kwargs):
-        
-        self.load_builder(path=path)
-        if name == None:
-            name = self.list_configs(path = path, return_type='dict.keys')[0]
-
-        self.config['dataset'] = dict(path=path, name=name, split=split)
-        
-
-        self.dataset = self.load_dataset(**self.config['dataset'])
-
-    @staticmethod
-    def is_load_dataset_config(kwargs):
-        '''
-        check if dataset config is a valid kwargs for load_dataset
-        '''
-        key_type_tuples = [('path',str)]
-        for k, k_type in key_type_tuples:
-            if not isinstance(kwargs.get(k, k_type)):
-                return False
-        return True
-
-        return  'path' in kwargs
-
-    @staticmethod
-    def load_dataset_builder( path:str=None, factory_module_path:str=None):
-        if factory_module_path == None:
-            assert isinstance(path, str)
-            factory_module = datasets.load.dataset_module_factory(path)
-            factory_module_path = factory_module.module_path
-
-        dataset_builder = datasets.load.import_main_class(factory_module_path)
-        return dataset_builder
-
-    @staticmethod
-    def load_dataset_factory( path:str):
-        return datasets.load.dataset_module_factory(path)
-
-
-        
-    def load_dataset(self, **kwargs):
-        '''
-        path: path to the model in the hug
-        name: name of the config / flavor of the dataset
-        split: the split of the model
-        
-        '''
-        if kwargs.get('name') == None:
-            assert kwargs.get('path') != None
-            name = self.list_configs(path = kwargs['path'], return_type='dict.keys')[0]
-
-        # ensure the checks pass
-        check_kwargs(kwargs=kwargs, defaults=['split', 'name', 'path' ])
-
-
-        if len(kwargs) == 0:
-            kwargs = self.config.get('dataset')
-
-        split = kwargs.get('split', ['train'])
-        
-        if isinstance(split, str):
-            split = [split]
-        if isinstance(split, list):
-            kwargs['split'] = {s:s for s in split}
-
-
-
-        return  load_dataset(**kwargs )
-    
-    def get_split(self, split='train'):
-        return self.dataset[split]
+        raise NotImplementedError
 
 
 
 
-
-    def get_info(self, to_dict =True):
-
-        def get_info_fn(ds, to_dict=to_dict):
-            ds_info = deepcopy(ds.info)
-            if to_dict:
-                ds_info = asdict(ds_info)
-            return ds_info
-        
-        if isinstance(self.dataset, list):
-            ds_info = list(map(get_info_fn, self.dataset))
-        elif isinstance(self.dataset, dict):
-            ds_info =  get_info_fn(list(self.dataset.values())[0])
-        elif isinstance(self.dataset, Dataset):
-            ds_info  = get_info_fn(ds=self.dataset)
-        
-        return ds_info
-
-
-    info = property(get_info)
 
     def resolve_state_path(self, path:str=None):
         if path == None:
@@ -444,8 +229,6 @@ class DatasetModule(BaseModule, Dataset):
         return state_path_map
 
 
-
-
     def load(self, path:dict=None, mode:str='ipfs'):
         path = self.resolve_state_path(path=path)
         if mode == 'ipfs':
@@ -458,23 +241,16 @@ class DatasetModule(BaseModule, Dataset):
 
         return self.dataset
 
-
-    def load_pipeline(self, *args, **kwargs):
-        
-        if len(args) + len(kwargs) == 0:
-            kwargs = self.cfg.get('pipeline')
-            assert type(kwargs) != None 
-            if type(kwargs)  == str:
-                transformer.AutoTokenizer.from_pretrained(kwargs) 
-        else:
-            raise NotImplementedError
+    @property
+    def raw_info(self):
+        return self.dataset[self.splits[0]].__dict__['_info'].__dict__['_info']
+    @property
+    def citation(self):
+        return self.raw_info['citation']
 
     @property
-    def path(self):
-        return self.config['dataset']['path'].replace('/', '_')
-
-    builder_name = dataset_name = path
-
+    def description(self):
+        return self.raw_info['description']
 
     @property
     def url_files_metadata(self):
@@ -499,10 +275,6 @@ class DatasetModule(BaseModule, Dataset):
             
 
         return url_files
-   
-
-
-
 
     @property
     def split_file_info(self):
@@ -545,10 +317,6 @@ class DatasetModule(BaseModule, Dataset):
 
         return split_url_files_info
     
-    
-
-
-    
 
     def additional_information(self, mode='service'):
 
@@ -556,18 +324,21 @@ class DatasetModule(BaseModule, Dataset):
             'organization': 'activeloop',
             'package': {
                         'name': 'hub',
-                        'version': str(import_module('hub').__version__)
+                        'version': str(self.hub.__version__)
                         },
             # 'info': {'configs': self.configs}, 
         }
 
         if mode == 'service':
             info_dict['info'] = self.info
+        if mode == 'service.access':
+            info_dict['info'] = self.info
+        if mode == 'service.compute':
+            info_dict['info'] = self.info  
         elif mode == 'asset':
             info_dict['info'] = self.info
         else:
             raise NotImplementedError
-
 
         return info_dict
 
@@ -579,10 +350,8 @@ class DatasetModule(BaseModule, Dataset):
         self.algocean.dispense_tokens(datatoken=token,
                                       datanft=self.datanft)
 
-
     def assets(self):
         return self.algocean.get_assets()
-
 
     def create_service(self,
                         name: str= None,
@@ -627,7 +396,6 @@ class DatasetModule(BaseModule, Dataset):
                 return service
         return None
 
-
     @property
     def metadata(self):
         metadata ={}
@@ -645,9 +413,6 @@ class DatasetModule(BaseModule, Dataset):
         metadata["updated"] = current_datetime
 
         return metadata
-    @property
-    def split_info(self):
-        return self.info['splits']
 
     @property
     def features(self):
@@ -656,7 +421,6 @@ class DatasetModule(BaseModule, Dataset):
     @property
     def datatokens(self):
         return self.get_datatokens(asset=self.asset)
-
 
     @property
     def wallet(self):
@@ -679,7 +443,6 @@ class DatasetModule(BaseModule, Dataset):
 
     def search_assets(self, search='metadata'):
         return self.algocean.search(text=search)
-
 
     @property
     def my_assets(self):
@@ -719,23 +482,6 @@ class DatasetModule(BaseModule, Dataset):
         cid_hash = module.algocean.web3.toHex((module.algocean.web3.keccak(text=cid)))
         return cid_hash
 
-    def get_service(self, service):
-        services = self.services
-        if isinstance(service, int):
-            service = services[service]
-        
-        elif isinstance(service, str):
-            services = [s for s in services if s.name == service]
-            # assert len(services)==1, f'{service} is not in {services}'
-            if len(services)>0:
-                service = services[0]
-            else:
-                service=None
-        else:
-            return services[0]
-            raise NotImplementedError
-        
-        return service
 
         
     def download(self, service=None, destination='bruh/'):
@@ -748,7 +494,7 @@ class DatasetModule(BaseModule, Dataset):
             self.dispense_tokens()
 
 
-        module.algocean.download_asset(asset=self.asset, service=service,destination=destination )
+        self.algocean.download_asset(asset=self.asset, service=service,destination=destination )
         
 
         
@@ -767,6 +513,51 @@ class DatasetModule(BaseModule, Dataset):
         files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
                 
             
+
+    def load(self, path:dict=None, mode:str='ipfs'):
+        path = self.resolve_state_path(path=path)
+        if mode == 'ipfs':
+            dataset = {}
+            for split, cid in path.items():
+                dataset[split] = self.client.ipfs.load_dataset(cid)
+            self.dataset = datasets.DatasetDict(dataset)
+        else:
+            raise NotImplementedError
+
+        return self.dataset
+ 
+    @property
+    def splits(self):
+        return self._splits
+
+
+    @splits.setter
+    def splits(self, value:list):
+        self._splits = value
+    
+    
+    def get_service(self, service):
+        services = self.services
+        if isinstance(service, int):
+            service = services[service]
+        
+        elif isinstance(service, str):
+            services = [s for s in services if s.name == service]
+            # assert len(services)==1, f'{service} is not in {services}'
+            if len(services)>0:
+                service = services[0]
+            else:
+                service=None
+        else:
+            return services[0]
+            raise NotImplementedError
+        
+        return service
+    def add_service(self):
+        asset = self.asset
+        service = self.create_service()
+        asset.add_service(service)
+        self.algocean.ocean.asset.update(asset)
     def create_asset(self, price_mode='free', services=None, force_create = False):
 
         asset = self.asset
@@ -791,46 +582,6 @@ class DatasetModule(BaseModule, Dataset):
 
         return self.algocean.create_asset(datanft=self.datanft, metadata=metadata, services=services)
 
-
-
-
-    def load(self, path:dict=None, mode:str='ipfs'):
-        path = self.resolve_state_path(path=path)
-        if mode == 'ipfs':
-            dataset = {}
-            for split, cid in path.items():
-                dataset[split] = self.client.ipfs.load_dataset(cid)
-            self.dataset = datasets.DatasetDict(dataset)
-        else:
-            raise NotImplementedError
-
-        return self.dataset
-
-
-
-    @property
-    def splits(self):
-        return list(self.dataset.keys())
-
-
-
-    @property
-    def info(self):
-
-        
-
-
-        
-
-    def add_service(self):
-        asset = self.asset
-        service = self.create_service()
-        asset.add_service(service)
-        self.algocean.ocean.asset.update(asset)
-
-    @property
-    def id(self):
-        return f"{self.path}/{self.config_name}"
     
     @staticmethod
     def shard( dataset, shards=10, return_type='list'):
@@ -838,48 +589,18 @@ class DatasetModule(BaseModule, Dataset):
 
 
 
-    def strealit_sidebar(self):
-
-        # self.load_state(**self.config.get('dataset'))
-        
-
-        with st.sidebar.form('Get Dataset'):
-
-
-            dataset = st.selectbox('Select a Dataset', self.list_datasets(),0)
-            self.load_builder(dataset)    
-
-            config_dict = self.list_configs(dataset, return_type='dict')
-            config_name = st.selectbox('Select a Config', list(config_dict.keys()), 0)
-
-            config = config_dict[config_name]
-            dataset_config = dict(path=dataset, name=config)
-
-            submitted = st.form_submit_button("load")
-
-            if submitted:
-                self.config['dataset'] = dict(path=dataset, name=config_name, split=['train'])
-                # st.write(self.config['dataset'])
-                self.load_state(**self.config['dataset'])
-                self.create_asset()
-
-
-
-    def streamlit(self):
-        self.strealit_sidebar()
-
     _tags = {}
     @property
     def tags(self):
         tags = self.config.get('tags', [])
         
         if isinstance(tags, list):
-            if isinstance(tags[0], str):
+            if len(tags) == 0:
+                tags = {}
+            elif isinstance(tags[0], str):
                 tags = {t.split(':')[0]: t.split(':')[1] for t in tags}
-        elif:
+        else:
             raise NotImplementedError
-
-
 
         return {**tags, **self._tags}
     
@@ -892,8 +613,20 @@ class DatasetModule(BaseModule, Dataset):
     def add_tags(self, tags:dict):
         self._tags.update(tags)
         
-
-
-
     def get_task(self, dataset:str='wikitext'):
         raise NotImplementedError
+
+
+if __name__ == '__main__':
+    import streamlit as st
+    # from metadata import DatasetMetdata
+    import os
+
+    ds_select = st.selectbox("Active Loop Datasets",["fashion-mnist","mnist",
+                                        "coco","imagenet","cifar10",
+                                        "cifar100"])
+
+    module = ActiveLoopModule(src="hub://activeloop",path=ds_select)
+
+    st.write("Active Loop Train Dataset")
+    st.write(module.metadata)
