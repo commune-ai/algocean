@@ -197,7 +197,7 @@ class TrainerModule(BaseModule):
         return self.config.get('batches_per_epoch')
 
 
-    def step(self, split='train',nograd=False, include_meta=True):
+    def step(self, split='train',nograd=False, proof=True, step=0):
 
         if split == 'train':
             batch = next(iter(self.dataloader['train']))
@@ -212,12 +212,7 @@ class TrainerModule(BaseModule):
             self.optimizer.zero_grad()
             
             
-            if include_meta:
-                metadata_batch = {k:batch[k] for k in self.meta_keys }
 
-                # st.write(metadata_batch)
-                st.write(dir(outputs))
-                outputs = {**outputs.__dict__, **metadata_batch}
 
         elif split != 'train' or nograd == True:
             with torch.nograd():
@@ -225,6 +220,16 @@ class TrainerModule(BaseModule):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs.loss
+
+
+        if proof:
+            output = outputs.__dict__
+            metadata_batch = {k:batch[k] for k in self.meta_keys }
+            output['meta'] = metadata_batch
+            output['weights'] = self.model.state_dict()
+            # st.write(metadata_batch)
+            st.write(dir(outputs))
+            outputs = {**outputs.__dict__, **metadata_batch}
 
         return outputs
 
@@ -458,10 +463,10 @@ if __name__ == '__main__':
     from algocean.utils import *
 
     module = TrainerModule(override={'model_only':False, 'load_state': True})
-    grad_fn = module.step()['loss'].grad_fn
+    proof = module.step()
+    st.write(proof.keys())
 
     
-    follow_grad(grad_fn)
     # # # st.write(module.save_onnx())
     # # onnx_model = module.load_onnx()
     # # st.write(module.model.bert)
