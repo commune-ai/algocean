@@ -326,3 +326,8 @@ class ActorModule:
         if include_root == False:
             path = '/'.join(path.split('/')[1:])
         return path
+
+    @staticmethod
+    def load_object(module:str, __dict__:dict, **kwargs):
+        kwargs = kwargs.get('__dict__', kwargs.get('kwargs', {}))
+        return ActorModule.import_object(module)(**kwargs)

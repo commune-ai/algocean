@@ -12,6 +12,7 @@ from multiprocessing import Process
 from algocean.utils import SimpleNamespace
 from algocean.utils import *
 # from algocean.thread import PriorityThreadPoolExecutor
+import argparse
 
 
 class bcolor:
@@ -226,7 +227,7 @@ class GradioModule(BaseModule):
         return module_schema
         
     @staticmethod
-    def schema2gradio(fn_schema):
+    def schema2gradio(fn_schema, return_type='dict'):
         gradio_schema = {}
         fn_example = fn_schema['example']
         gradio_schema['example'] = fn_example
@@ -247,22 +248,40 @@ class GradioModule(BaseModule):
                 else:
                     raise NotImplementedError(v_type)
 
+                
 
+
+        # print('GRADIO:', gradio_schema['input'][0].__dict__)
         return gradio_schema
                 
 
 
-    def get_gradio_function_schemas(self, module):
+    def get_gradio_function_schemas(self, module, return_type='gradio'):
         if isinstance(module, str):
             module = get_object(module)
         function_defaults_dict = get_module_function_defaults(module)
         function_defaults_dict = get_full_functions(module_fn_schemas=function_defaults_dict)
 
         gradio_fn_schema_dict = {}
+
         for fn, fn_defaults in function_defaults_dict.items():
             module_fn_schema = get_function_schema(defaults_dict=fn_defaults)
             module_fn_schema['example'] = fn_defaults
             gradio_fn_schema_dict[fn] = self.schema2gradio(module_fn_schema)
+
+            gradio_fn_list = []
+            if return_type in ['json', 'dict']:
+                for m in ['input', 'output']:
+                    for gradio_fn in gradio_fn_schema_dict[fn][m]:
+                        gradio_fn_list += [{'__dict__': gradio_fn.__dict__, 
+                                            'module': f'gradio.{str(gradio_fn.__class__.__name__)}'}]
+                        print('DEBUG',GradioModule.load_object(**gradio_fn_list[-1]))
+                    gradio_fn_schema_dict[fn][m] =  gradio_fn_list
+            elif return_type in ['gradio']:
+                pass
+            else:
+                raise NotImplementedError
+
 
         return gradio_fn_schema_dict
 
@@ -333,82 +352,104 @@ class GradioModule(BaseModule):
             cls.module = cls(config=config)
         return cls.module
 
-    
+
+    @classmethod
+    def argparse(cls):
+        parser = argparse.ArgumentParser(description='Gradio API and Functions')
+        parser.add_argument('--api', action=argparse.BooleanOptionalAction)
+
+        '''
+        if --no-api is chosen
+        '''
+        parser.add_argument('--module', type=str, default='nothing my guy')
+        parser.add_argument('--port', type=int, default=8000)
+        
+        return parser.parse_args()
+
+    def run_command(command:str):
+
+        process = subprocess.run(shlex.split(command), 
+                            stdout=subprocess.PIPE, 
+                            universal_newlines=True)
+        
+        return process
 
 import socket
 import argparse
 from fastapi import FastAPI
 import uvicorn
 
-app = FastAPI()
-
-@app.get("/")
-async def root():
-    module = GradioModule.get_instance()
-    print(module)
-    return {"message": "Hello World"}
-
-
-register = GradioModule.register
-
-
-@app.get("/module/list")
-async def module_list(path_map:bool=False):
-    module = GradioModule.get_instance()
-    module_list = module.get_modules()
-    if path_map:
-        module_path_map = {}
-        for module in module_list:
-            dict_put(module_path_map ,module.split('.')[:-1], module.split('.')[-1])
-        return module_path_map
-    else:
-        return module_list
-
-@app.get("/module/schemas")
-async def module_schemas():
-    module = GradioModule.get_instance()
-    modules = module.get_module_schemas()
-    return modules
-
-
-@app.get("/module/schema")
-async def module_schema(module:str, gradio:bool=True):
-
-
-    if gradio:
-        self = GradioModule.get_instance()
-        module_schema = self.get_gradio_function_schemas(module)
-    else:
-        module_schema = GradioModule.get_module_function_schema(module)
-    return module_schema
-
-
-@app.get("/module/start")
-async def module_start(module:str=None, ):
-    self = GradioModule.get_instance()
-    if module == None:
-        module = self.get_modules()[0]
-
-    # self.launch(module=module)
-
-    self.process_manager.submit(self.launch, module=module)
-    return module
-
 
 
 if __name__ == "__main__":
-    # import streamlit as st
+    
 
-    # module = GradioModule()
-    # # st.write(type(GradioModule.active_port))
-    # import json
-    # st.write(module.get_gradio_modules())
-    # st.write(module.get_module_schemas())
+    args = GradioModule.argparse()
 
 
-                
+    if args.api:
+        app = FastAPI()
+
+        @app.get("/")
+        async def root():
+            module = GradioModule.get_instance()
+            print(module)
+            return {"message": "GradioFlow MothaFucka"}
 
 
-    # st.write(module_list)
-    # st.write(get_function_schema(GradioModule.rm_module))
-    uvicorn.run("module:app", host="0.0.0.0", port=8000, reload=True, workers=2)
+        register = GradioModule.register
+
+
+        @app.get("/module/list")
+        async def module_list(path_map:bool=False):
+            module = GradioModule.get_instance()
+            module_list = module.get_modules()
+            if path_map:
+                module_path_map = {}
+                for module in module_list:
+                    dict_put(module_path_map ,module.split('.')[:-1], module.split('.')[-1])
+                return module_path_map
+            else:
+                return module_list
+
+        @app.get("/module/schemas")
+        async def module_schemas():
+            module = GradioModule.get_instance()
+            modules = module.get_module_schemas()
+            return modules
+
+
+        @app.get("/module/schema")
+        async def module_schema(module:str, gradio:bool=True):
+
+
+            if gradio:
+                self = GradioModule.get_instance()
+                module_schema = self.get_gradio_function_schemas(module, return_type='dict')
+            else:
+                module_schema = GradioModule.get_module_function_schema(module)
+            return module_schema
+
+
+        @app.get("/module/start")
+        async def module_start(module:str=None, ):
+            self = GradioModule.get_instance()
+            port = self.suggest_port()
+            if module == None:
+                module = self.get_modules()[0]
+
+            
+
+            # self.launch(module=module)
+
+            self.process_manager.submit(self.launch, module=module)
+            return module
+        
+        uvicorn.run("module:app", host="0.0.0.0", port=8000, reload=True, workers=2)
+
+    else:
+        module = GradioModule()
+        module_list = module.get_modules()
+        assert args.module in module_list, f'{args.module} is not in {module_list}'
+        module.launch(module=args.module)
+
