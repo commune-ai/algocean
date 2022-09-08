@@ -67,10 +67,12 @@ class ActiveLoopModule(BaseModule):
         for split in self.splits:
             split_ds = "-".join([self.path,split])
             url = "/".join([self.src,split_ds])
-            self.dataset[split] = self.hub.load(url,token=self.api_key)
-            st.write(self.dataset[split].info.__dict__)
+            ds = self.hub.load(url,token=self.api_key)
+            self.dataset[split] = ds
+
             
 
+    
     def automatic_ds(self):
 
         return hub.ingest(self.src, self.path)
@@ -189,11 +191,6 @@ class ActiveLoopModule(BaseModule):
         return metadata
 
 
-    def resolve_state_path(self, path:str=None):
-        if path == None:
-            path = self.config.get('state_path', None)
-        
-        return path
         
     # @property
     # def builder_configs(self):
@@ -213,7 +210,7 @@ class ActiveLoopModule(BaseModule):
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
+                split_state = self.client.estuary.save_dataset(path=)
                 state_path_map[split] = split_state
 
         elif mode == 'ipfs':
@@ -240,8 +237,8 @@ class ActiveLoopModule(BaseModule):
         if mode == 'ipfs':
             dataset = {}
             for split, cid in path.items():
-                dataset[split] = self.client.ipfs.load_dataset(cid)
-            self.dataset = datasets.DatasetDict(dataset)
+                path = self.client.ipfs.load_dataset(cid, mode='activeloop')
+            self.dataset = datasets.load_from_disk(path=path)
         else:
             raise NotImplementedError
 
@@ -249,7 +246,11 @@ class ActiveLoopModule(BaseModule):
 
     @property
     def raw_info(self):
-        return self.dataset[self.splits[0]].__dict__['_info'].__dict__['_info']
+        ds = self.dataset[self.splits[0]]
+        if isinstance(ds._info, dict):
+            return ds._info
+        else:
+            return self.dataset[self.splits[0]]._info.__dict__['_info']
     @property
     def citation(self):
         return self.raw_info['citation']
@@ -654,45 +655,61 @@ class ActiveLoopModule(BaseModule):
     __file__ = __file__
     @property
     def local_tmp_dir(self):
-        return f'/tmp/{self.module_path()}/{self.path}'
+        return f'/tmp/{self.module_path()}/{mode}/{self.path}'
 
 
-    def save_local_config(self):
-        path = os.path.join(self.local_tmp_dir, 'config.json')
-        self.client.local.put_json(data=self.config, path=path )
 
-    def load_local_config(self):
-        path = os.path.join(self.local_tmp_dir, 'config.json')
+    def load_from_disk_config(self, path):
+        path = os.path.join(path, 'config.json')
         config = self.client.local.get_json(path=path )
         return config
 
 
-    def load_local(self, chunk_limit=2):
-        config = self.load_local_config()
-        # st.write(config)
-        st.sidebar.write(config)
+    def load_from_disk(self, path=None, splits=None, chunk_limit=2):
+        
 
+
+        config = self.client.local.get_json(os.path.join(path, 'config.json') )
         dataset = {}
 
-        for split in self.splits:
-            split_feature_dict = {}
-            split_ds = "-".join([self.path,split])
-            url = "/".join([self.src,split_ds])
-            ds = hub.empty(f'{self.local_tmp_dir}/loaded/{url}', overwrite=True, token = config['api_key'])
 
-            for root_path, dirs, files in self.client.local.walk(os.path.join(self.local_tmp_dir, split)):
-                split_feature_dict[split] = {}
+        if isinstance(splits, type(None)):
+            split = self.splits
+        elif isinstance(splits, str):
+            assert split in self.splits
+        elif isinstance(splits, list):
+            pass
+
+        
+        if path  == None:
+            path = self.local_tmp_dir
+
+
+        for split in splits:
+
+
+
+
+
+            split_path = os.path.join(path, split)
+
+            ds = hub.empty(split_path, overwrite=True, token = config['api_key'])
+
+            for files in self.client.local.glob(split_path+'/**'):
                 feature_config_dict = config['info']['features']
                 for feature, feature_config in feature_config_dict.items():
                     if feature_config['compression'] == 'None':
                         feature_config['compression'] = None
+
+                    st.write(feature, split)
                     ds.create_tensor(feature, htype=feature_config['htype'], sample_compression=feature_config['compression'])
-                    feature_files = sorted([os.path.join(root_path, f) for f in files if f.startswith(feature)])
+                    feature_files = sorted([f for f in files if f.startswith(f'{split}-{feature}')])
                     for f in feature_files[:chunk_limit]:
                         tensor = np.load(f)
                         st.write(tensor.shape)
                         getattr(ds, feature).extend(tensor) 
-                    
+
+            ds._info = config.get('info', {})
             dataset[split] = ds
             # for file in files:
             #     if file.startswith('config'):
@@ -708,25 +725,53 @@ class ActiveLoopModule(BaseModule):
 
 
 
-        st.write(split_feature_dict)
-    def save_local(self, chunks=10):
-        
-        self.save_local_config()
 
-        for split in self.splits:
-            split_dir = os.path.join(self.local_tmp_dir, split)
-            self.client.local.makedirs(split_dir, True)
-            dataset = self.dataset[split]
-            
+    
+
+    def save_to_disk(self, path=None, splits=None, chunksize=1000, max_samples=1000, replace=False):
+
+
+        chunks = max_samples // chunksize
+        dir_path  = self.local_tmp_dir
+        self.client.local.makedirs(dir_path, True)
+
+        
+        if isinstance(splits, type(None)):
+            split = self.splits
+        elif isinstance(splits, str):
+            assert split in self.splits
+        elif isinstance(splits, list):
+            pass
+
+        
+        if path  == None:
+            path = self.local_tmp_dir
+
+        for split in splits:
+
+
+            split_path = os.path.join(path, split)
+
+            if replace:
+                if self.client.local.isdir(split_path):
+                    self.client.local.rm(split_path, recursive=True)
+                self.client.local.makedirs(path, True)
+            else:
+                if self.client.local.exists(split_path):
+                    continue 
+
+
+            self.client.local.put_json(path=split_path, data=self.config)
+
+            dataset = self.dataset[split][:max_samples]
             for feature, feature_tensor in dataset.tensors.items():
                 feature_tensor_chunks = np.array_split(feature_tensor, chunks, axis=0)
                 for chunk_id, feature_tensor_chunk in enumerate(feature_tensor_chunks):
-                    feature_path = os.path.join(split_dir,f"{feature}-{chunk_id}.npy")
-                    st.write(feature_path)
+                    feature_path = os.path.join(split_path,f"{feature}-{chunk_id}.npy")
                     np.save(feature_path, feature_tensor_chunk, allow_pickle=False, fix_imports=True)
 
-    # def load_local(self):
-    #     config = self.load_local_config()
+    # def load_from_disk(self):
+    #     config = self.load_from_disk_config()
     #     for split in config['splits']:
 
 
@@ -749,11 +794,12 @@ if __name__ == '__main__':
     st.write("Active Loop Train Dataset")
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
-    # st.write(module.save_local())
+    st.write(module.save_to_diskl(replace=True))
+    # st.write(len(module.dataset['train']))
     # st.write(module.metadata)
-    # st.write(module.load_local())
-    st.write(module.client.local.glob('/tmp/algocean/activeloop/mnist/loaded/hub://activeloop/mnist-train/**'))
-    # module.client.local.rm('/tmp/algocean/activeloop/mnist/test/labels.npy', recursive=True)
+    # st.write(module.load_from_disk()['train'].__dict__)
+
+    # st.write(module.client.local.glob('/tmp/algocean/activeloop/mnist/**'))
     # st.write(module.client.local.glob(module.local_tmp_dir+'/train/images-*'))
 
 

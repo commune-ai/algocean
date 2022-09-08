@@ -714,8 +714,13 @@ class EstuaryModule(BaseModule):
     ]
 
     def save_dataset(self, dataset=None, mode='🤗', **kwargs):
-        if dataset == None:
-            if mode in ['huggingface', 'hf', '🤗']:
+        
+        path = 'tmp'
+        tmp_path = self.get_temp_path()
+        
+
+        if mode in ['huggingface', 'hf', '🤗']:
+            if dataset == None:
                 load_dataset_kwargs = {}
                 
                 for k in ['path', 'name', 'split']:
@@ -724,13 +729,18 @@ class EstuaryModule(BaseModule):
                     load_dataset_kwargs[k] = v
                 dataset = load_dataset(**load_dataset_kwargs)
 
-            elif mode == 'activeloop':
+                
+                dataset = dataset.save_to_disk(tmp_path)
+
+        elif mode == 'activeloop':
+            if dataset == None:
+                path =  kwargs.get(k)
+            else:
                 raise NotImplementedError
 
-        path = 'tmp'
 
-        tmp_path = self.get_temp_path()
-        dataset = dataset.save_to_disk(tmp_path)
+
+
         cids = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
 
         # self.fs.local.rm(tmp_path,  recursive=True)
