@@ -34,7 +34,9 @@ class ActiveLoopModule(BaseModule):
         self.src = self.config.get('src', kwargs.get('src', self.src))
         self.path = self.config.get('path', kwargs.get('path'))
         self.load_dataset()
-        self.config['metadata'] = self.metadata
+        # self.config['metadata'] = self.metadata
+        self.config['info'] = self.info
+        self.config['src'] = self.src
 
 
     @property
@@ -66,6 +68,8 @@ class ActiveLoopModule(BaseModule):
             split_ds = "-".join([self.path,split])
             url = "/".join([self.src,split_ds])
             self.dataset[split] = self.hub.load(url,token=self.api_key)
+            st.write(self.dataset[split].info.__dict__)
+            
 
     def automatic_ds(self):
 
@@ -662,10 +666,49 @@ class ActiveLoopModule(BaseModule):
         config = self.client.local.get_json(path=path )
         return config
 
-    def load_local(self):
-        config = self.load_local_config()
-        st.write(config)
 
+    def load_local(self, chunk_limit=2):
+        config = self.load_local_config()
+        # st.write(config)
+        st.sidebar.write(config)
+
+        dataset = {}
+
+        for split in self.splits:
+            split_feature_dict = {}
+            split_ds = "-".join([self.path,split])
+            url = "/".join([self.src,split_ds])
+            ds = hub.empty(f'{self.local_tmp_dir}/loaded/{url}', overwrite=True, token = config['api_key'])
+
+            for root_path, dirs, files in self.client.local.walk(os.path.join(self.local_tmp_dir, split)):
+                split_feature_dict[split] = {}
+                feature_config_dict = config['info']['features']
+                for feature, feature_config in feature_config_dict.items():
+                    if feature_config['compression'] == 'None':
+                        feature_config['compression'] = None
+                    ds.create_tensor(feature, htype=feature_config['htype'], sample_compression=feature_config['compression'])
+                    feature_files = sorted([os.path.join(root_path, f) for f in files if f.startswith(feature)])
+                    for f in feature_files[:chunk_limit]:
+                        tensor = np.load(f)
+                        st.write(tensor.shape)
+                        getattr(ds, feature).extend(tensor) 
+                    
+            dataset[split] = ds
+            # for file in files:
+            #     if file.startswith('config'):
+            #         slef
+
+        return dataset
+
+        # for split in self.splits:
+        #     split_ds = "-".join([self.path,split])
+        #     url = "/".join([self.src,split_ds])
+
+        #     self.dataset[split] = self.hub.load(url,token=self.api_key)
+
+
+
+        st.write(split_feature_dict)
     def save_local(self, chunks=10):
         
         self.save_local_config()
@@ -676,7 +719,7 @@ class ActiveLoopModule(BaseModule):
             dataset = self.dataset[split]
             
             for feature, feature_tensor in dataset.tensors.items():
-                feature_tensor_chunks = np.array_split(feature_tensor, chunks, axis=1)
+                feature_tensor_chunks = np.array_split(feature_tensor, chunks, axis=0)
                 for chunk_id, feature_tensor_chunk in enumerate(feature_tensor_chunks):
                     feature_path = os.path.join(split_dir,f"{feature}-{chunk_id}.npy")
                     st.write(feature_path)
@@ -704,8 +747,13 @@ if __name__ == '__main__':
 
 
     st.write("Active Loop Train Dataset")
-    # st.write(module.features_info)
-    st.write(module.load_local())
+    # # st.write(module.features_info)
+    # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
+    # st.write(module.save_local())
+    # st.write(module.metadata)
+    # st.write(module.load_local())
+    st.write(module.client.local.glob('/tmp/algocean/activeloop/mnist/loaded/hub://activeloop/mnist-train/**'))
+    # module.client.local.rm('/tmp/algocean/activeloop/mnist/test/labels.npy', recursive=True)
     # st.write(module.client.local.glob(module.local_tmp_dir+'/train/images-*'))
 
 

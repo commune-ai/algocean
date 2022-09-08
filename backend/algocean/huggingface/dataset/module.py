@@ -842,8 +842,9 @@ class DatasetModule(BaseModule, Dataset):
     def get_tags(self, dataset:str='wikitext', return_type='dict'):
         if dataset == None:
             dataset = self.path
-        rows = self.list_datasets(filter_fn=f' r["id"] ==  "{dataset}"')
+        rows = self.list_datasets(filter_fn=lambda r: r['id'] ==  dataset)
 
+        rows = rows[rows['id'] == dataset]
 
         if len(rows) == 0:
             tags = {}
@@ -880,7 +881,7 @@ if __name__ == '__main__':
 
     df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
    
-    module.create_asset()
+    # module.create_asset()
     st.write(module.asset.__dict__)
     # # st.write(df)
     # dataset_list = list(df['id'][:10])

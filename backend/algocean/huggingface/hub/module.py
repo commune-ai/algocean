@@ -123,15 +123,16 @@ class HubModule(BaseModule, HfApi):
                 datasets = list(filter(filter_fn, datasets))
 
         elif return_type in ['pandas', 'pd']:
-
+            datasets = list(map(lambda x: x.__dict__, datasets))
             df = pd.DataFrame(datasets)
-            df = self.filter_df(df=df, fn=filter_fn)
             df['num_tags'] = df['tags'].apply(len)
             df['tags'] = df['tags'].apply(lambda tags: {tag.split(':')[0]:tag.split(':')[1] for tag in tags  }).tolist()
             for tag_field in ['task_categories']:
                 df[tag_field] = df['tags'].apply(lambda tag:tag.get(tag_field) )
             df['size_categories'] = df['tags'].apply(lambda t: t.get('size_categories'))
             df = df.sort_values('downloads', ascending=False)
+            if filter_fn != None and callable(filter_fn):
+                df = self.filter_df(df=df, fn=filter_fn)
             return df
         else:
             raise NotImplementedError
@@ -146,7 +147,7 @@ class HubModule(BaseModule, HfApi):
             if callable(filter_fn):
                 fn = filter_fn
 
-            if isinstance(fn, str):
+            if isinstance(filter_fn, str):
                 filter_fn = eval(f'lambda r : {filter_fn}')
         
             assert(callable(filter_fn))
