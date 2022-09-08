@@ -29,7 +29,7 @@ class bcolor:
 
 
 
-class ProcessManager:
+class SubProcessManager:
     def __init__(self, config=None):
         self.processes = []
 
@@ -300,6 +300,11 @@ class GradioModule(BaseModule):
         return module_schema_map
 
 
+    def meta_launch(self,module:str, port:int):
+        module_list = module.get_modules()
+        assert args.module in module_list, f'{args.module} is not in {module_list}'
+        command  = f'python algocean/gradio/api/module.py --no-api --module={module}'
+        process = self.run_command(command)
     def launch(self, interface:gradio.Interface=None, module:str=None, **kwargs):
         """
             @params:
@@ -366,6 +371,7 @@ class GradioModule(BaseModule):
         
         return parser.parse_args()
 
+    @property
     def run_command(command:str):
 
         process = subprocess.run(shlex.split(command), 
