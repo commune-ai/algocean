@@ -348,6 +348,9 @@ class ActiveLoopModule(BaseModule):
 
         if mode == 'service':
             info_dict['info'] = self.info
+            for split in self.splits:
+                info_dict['info']['splits'][split]['file_info'] = self.split_file_info[split]
+
         elif mode == 'service.access':
             info_dict['info'] = self.info
         elif mode == 'service.compute':
@@ -376,6 +379,7 @@ class ActiveLoopModule(BaseModule):
                         files:list = None,
                         timeout = 180000,
                         price_mode = 'free',
+                        force_create=True,
                         **kwargs):
 
 
@@ -395,7 +399,7 @@ class ActiveLoopModule(BaseModule):
         name = '.'.join([name, service_type])
 
         service = self.get_service(name)
-        if service != None:
+        if service != None and force_create==False:
             return service
         else:
             return self.algocean.create_service(name=name,
@@ -805,7 +809,8 @@ if __name__ == '__main__':
     st.write("Active Loop Train Dataset")
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
-    st.write(module.create_asset())
+    # st.write(module.additional_information())
+    module.create_asset(force_create=True).services[0].__dict__
 
 
 
