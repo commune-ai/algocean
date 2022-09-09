@@ -10,12 +10,14 @@ import numpy as np
 from algocean import BaseModule
 import datetime
 import hub
+from copy import deepcopy
 @dataclass
 class ActiveLoopModule(BaseModule):
     src:str='hub://activeloop'
     path:Optional[str]=None
     default_cfg_path = 'activeloop'
     default_splits = ['train']
+    default_token_name = 'token'
 
     def __init__(self, config=None, override={}, **kwargs):
         BaseModule.__init__(self, config=config,override=override)
@@ -38,7 +40,9 @@ class ActiveLoopModule(BaseModule):
         self.config['info'] = self.info
         self.config['src'] = self.src
 
-
+    @property
+    def dataset_name(self):
+        return self.path
     @property
     def api_key(self):
         return self._api_key
@@ -205,15 +209,17 @@ class ActiveLoopModule(BaseModule):
 
 
 
-    def save(self,mode:str='estuary'):
+    def save(self,mode:str='estuary', replace=False):
 
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
    
-                split_state = self.client.estuary.save_dataset(path=self.local_tmp_dir)
-                self.client.estuary.save_dir(path=self.local_tmp_dir)
-                state_path_map[split] = split_state
+                self.save_to_disk(splits=[split], replace=replace)
+                split_path = os.path.join(self.local_tmp_dir, split)
+                split_state = self.client.estuary.add(path=split_path)
+
+                state_path_map[split] = {f.replace(split_path+'/',''): cid for f,cid in split_state.items()}
 
         elif mode == 'ipfs':
             state_path_map = {}
@@ -271,11 +277,11 @@ class ActiveLoopModule(BaseModule):
         url_files = []
         file_index = 0
         cid2index = {}
-        for split, split_configs in self.state_path_map.items():
+        for split, split_file2cid in self.state_path_map.items():
             
 
-            for split_config in split_configs:
-                cid = split_config['cid']
+            for filename, cid in split_file2cid.items():
+
 
                 if cid not in cid2index:
                     url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
@@ -285,6 +291,14 @@ class ActiveLoopModule(BaseModule):
 
         return url_files
 
+
+    def hash(self, data:str, algo='keccak'):
+        if algo == 'keccak':
+            return self.algocean.web3.toHex((self.algocean.web3.keccak(text=data)))
+        else:
+            raise NotImplementedError
+
+
     @property
     def split_file_info(self):
 
@@ -293,15 +307,11 @@ class ActiveLoopModule(BaseModule):
         split_url_files_info = {}
         cid2index = {}
         url_files = deepcopy(self.url_files)
-        for split, split_file_configs in self.state_path_map.items():
+        for split, split_file2cid in self.state_path_map.items():
             split_url_files_info[split] = []
       
-            for file_config in split_file_configs:
+            for filename, cid in split_file2cid.items():
                 
-                cid = file_config['cid']
-                filename = file_config['name']
-                filetype = file_config['type']
-                filesize = file_config['size']
 
 
                 file_index = None
@@ -314,11 +324,9 @@ class ActiveLoopModule(BaseModule):
 
                 split_url_files_info[split].append(dict(
                     name=filename ,
-                    type=filetype,
-                    size = filesize,
                     file_index=file_index,
-                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
-                ))
+                    file_hash = self.hash(cid))
+                )
 
 
 
@@ -340,14 +348,14 @@ class ActiveLoopModule(BaseModule):
 
         if mode == 'service':
             info_dict['info'] = self.info
-        if mode == 'service.access':
+        elif mode == 'service.access':
             info_dict['info'] = self.info
-        if mode == 'service.compute':
+        elif mode == 'service.compute':
             info_dict['info'] = self.info  
         elif mode == 'asset':
             info_dict['info'] = self.info
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f'{mode} not supported')
 
         return info_dict
 
@@ -381,7 +389,7 @@ class ActiveLoopModule(BaseModule):
             raise NotImplementedError
 
         if name == None:
-            name = self.config_name
+            name = 'access'
         if files == None:
             files = self.url_files
         name = '.'.join([name, service_type])
@@ -539,6 +547,15 @@ class ActiveLoopModule(BaseModule):
     def splits(self):
         return self._splits
 
+    def resolve_var(self, **kwargs):
+        assert len(kwargs) == 0
+        for k,v in kwargs.items():
+            if v == None:
+                return getattr(self,k)
+            else:
+                return v
+            
+        raise Exception(f'{kwargs}, should only have one key')
 
     @splits.setter
     def splits(self, value:list):
@@ -657,7 +674,7 @@ class ActiveLoopModule(BaseModule):
     __file__ = __file__
     @property
     def local_tmp_dir(self):
-        return f'/tmp/{self.module_path()}/{mode}/{self.path}'
+        return f'/tmp/{self.module_path()}/{self.path}'
 
 
 
@@ -676,22 +693,18 @@ class ActiveLoopModule(BaseModule):
 
 
         if isinstance(splits, type(None)):
-            split = self.splits
+            splits = self.splits
         elif isinstance(splits, str):
-            assert split in self.splits
+            assert splits in self.splits
         elif isinstance(splits, list):
             pass
 
-        
+
         if path  == None:
             path = self.local_tmp_dir
 
 
         for split in splits:
-
-
-
-
 
             split_path = os.path.join(path, split)
 
@@ -703,7 +716,6 @@ class ActiveLoopModule(BaseModule):
                     if feature_config['compression'] == 'None':
                         feature_config['compression'] = None
 
-                    st.write(feature, split)
                     ds.create_tensor(feature, htype=feature_config['htype'], sample_compression=feature_config['compression'])
                     feature_files = sorted([f for f in files if f.startswith(f'{split}-{feature}')])
                     for f in feature_files[:chunk_limit]:
@@ -730,7 +742,7 @@ class ActiveLoopModule(BaseModule):
 
     
 
-    def save_to_disk(self, path=None, splits=None, chunksize=1000, max_samples=1000, replace=False):
+    def save_to_disk(self, path=None, splits=None, chunksize=1000, max_samples=1000, replace=True):
 
 
         chunks = max_samples // chunksize
@@ -739,9 +751,10 @@ class ActiveLoopModule(BaseModule):
 
         
         if isinstance(splits, type(None)):
-            split = self.splits
+            splits = self.splits
         elif isinstance(splits, str):
             assert split in self.splits
+            splis = [split]
         elif isinstance(splits, list):
             pass
 
@@ -757,13 +770,12 @@ class ActiveLoopModule(BaseModule):
             if replace:
                 if self.client.local.isdir(split_path):
                     self.client.local.rm(split_path, recursive=True)
-                self.client.local.makedirs(path, True)
+                self.client.local.makedirs(split_path, True)
             else:
                 if self.client.local.exists(split_path):
                     continue 
-
-
-            self.client.local.put_json(path=split_path, data=self.config)
+                
+            self.client.local.put_json(path=os.path.join(split_path,'config.json'), data=self.config)
 
             dataset = self.dataset[split][:max_samples]
             for feature, feature_tensor in dataset.tensors.items():
@@ -775,9 +787,6 @@ class ActiveLoopModule(BaseModule):
     # def load_from_disk(self):
     #     config = self.load_from_disk_config()
     #     for split in config['splits']:
-
-
-
 
 if __name__ == '__main__':
     import streamlit as st
@@ -793,10 +802,16 @@ if __name__ == '__main__':
     module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
 
 
-    st.writ`e("Active Loop Train Dataset")
+    st.write("Active Loop Train Dataset")
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
-    st.write(module.save_to_disk(replace=True))
+    st.write(module.create_asset())
+
+
+
+
+
+
     # st.write(len(module.dataset['train']))
     # st.write(module.metadata)
     # st.write(module.load_from_disk()['train'].__dict__)

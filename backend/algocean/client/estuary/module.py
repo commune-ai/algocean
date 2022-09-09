@@ -402,34 +402,31 @@ class EstuaryModule(BaseModule):
             file2cid[file] = self.local.add_file(path)
         return file2cid
 
-
     def add_glob(self, path:str, api_key:str=None, return_type='dict'):
         api_key = self.resolve_api_key(api_key)
         file2cid = {}
+        
         for path in self.local.glob(path):
-            #TODO: add asyncio or multi threading for call as it is IO bound
-            file2cid[path] = self.add_file(path, return_cid= True)
+            if self.local.isfile(path):
+                #TODO: add asyncio or multi threading for call as it is IO bound
+                file2cid[path] = self.add_file(path, return_cid= True)
 
         if return_type == 'dict':
             return file2cid
-        elif return_type == 'list'
+        elif return_type == 'list':
             return list(file2cid.values())
         else:
             raise NotImplementedError(f'only list and dict is supported but you did {return_type}')
     def add(self, path:str, api_key:str=None): 
         if self.local.isdir(path):
-            return self.add_dir(path=path)
+            return self.add_dir(path=path, api_key=api_key)
         elif self.local.isfile(path):
-            return self.add_file(path=path)
+            return self.add_file(path=path, api_key=api_key)
             
-        
-
-    add = add_glob
 
     def add_dir(self, path:str,api_key:str=None, **kwargs):
-        
-        assert self.local.isdir(path)
-        return self.add_glob(path=path, **kwargs)  
+        assert self.local.isdir(path), path
+        return self.add_glob(path=path+'/**', **kwargs)  
 
     def add_file(self,
         path: str, # Path to file you want to upload
@@ -448,12 +445,13 @@ class EstuaryModule(BaseModule):
             'data': open(path, 'rb'),
         }
 
-
         response = requests.post(f'{self.url["post"]}/content/add', headers=headers, files=files)
         response =  self.handle_response(response)
 
-        if cid_only:
+        if return_cid:
             return response['cid']
+
+        
         if isinstance(response,dict):
             response['file'] = os.path.basename(path)
             response['size'] = self.ipfs.size(response['cid'])
@@ -753,7 +751,8 @@ class EstuaryModule(BaseModule):
             dataset = Dataset.load_from_disk(tmp_path)
             return dataset
             # self.fs.local.rm(tmp_path,  recursive=True)
-        elif in ['activeloop', 'al']:
+        elif mode in ['activeloop', 'al']:
+            raise NotImplementedError
 
 
 
@@ -764,9 +763,8 @@ class EstuaryModule(BaseModule):
 
     def save_dataset(self, dataset=None, mode='🤗', return_type='dict', **kwargs):
         
-        path = 'tmp'
         tmp_path = self.get_temp_path()
-        
+        self.local.makedirs(tmp_path, True)
 
         if mode in ['huggingface', 'hf', '🤗']:
             if dataset == None:
@@ -777,17 +775,15 @@ class EstuaryModule(BaseModule):
                     assert isinstance(v, str), f'{k} is {v} but should be a string'
                     load_dataset_kwargs[k] = v
                 dataset = load_dataset(**load_dataset_kwargs)
-
-                
-                dataset = dataset.save_to_disk(tmp_path)
+            dataset = dataset.save_to_disk(tmp_path)
 
         elif mode == 'activeloop':
             if dataset == None:
-                path =  kwargs.get(k)
+                path =  kwargs.get('path')
             else:
                 raise NotImplementedError
 
-        return self.add_dir(path=path, return_type=return_type)
+        return self.add(path=tmp_path)
 
 
 
@@ -804,6 +800,7 @@ class EstuaryModule(BaseModule):
         cid = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
         self.local.rm(tmp_path)
         return cid
+    
     def get_pickle(self, path):
         return pickle.loads(self.cat(path))
 
@@ -909,15 +906,25 @@ if __name__ == '__main__':
         else:
             raise NotImplemented
 
+    def recursive_file_list(self, path):
+        # output_files = []
+        # for root, dirs, files in  self.local.walk(f'{module.local_tmp_dir}'):
+        #     for f in files:
+        #         output_files.append(os.path.join(root, f))
+        # or 
+        output_files = [f for f in self.local.glob(path+'/**') if self.local.isfile(f)]
+
+        return output_files
 
 
-    kwargs = dict(path='glue', name='cola', split='train')
-    dataset =  load_dataset(**kwargs)
 
-    for dataset_shard in shard_dataset(dataset=dataset, shards=10):
-        with Timer(streamlit=True, prefix='ELAPSED_TIME: {t}') as t:
-            st.write(f'Splitting : {dataset_shard.num_rows} {kwargs}')
-            st.write(module.save_dataset(dataset=dataset_shard,  mode='🤗'))
+    # kwargs = dict(path='glue', name='cola', split='train')
+    # dataset =  load_dataset(**kwargs)
+
+    # for dataset_shard in shard_dataset(dataset=dataset, shards=10):
+    #     with Timer(streamlit=True, prefix='ELAPSED_TIME: {t}') as t:
+    #         st.write(f'Splitting : {dataset_shard.num_rows} {kwargs}')
+    #         st.write(module.save_dataset(dataset=dataset_shard,  mode='🤗'))
 
     # cid = 'bafybeigpsv3mlvxmkpsv6vj42etlk4a65ajlusrkltl3qr7p7vo4xw43jy'
     # st.write(module.info(cid=cid))
