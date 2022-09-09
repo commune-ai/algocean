@@ -1,6 +1,7 @@
 import ray
 from ray.util.queue import Queue
 
+from algocean import BaseModule
 """
 
 Background Actor for Message Brokers Between Quees
@@ -8,7 +9,7 @@ Background Actor for Message Brokers Between Quees
 """
 from algocean.ray.utils import kill_actor, create_actor
 
-class RayObjectServer(object):
+class ObjectServer(BaseModule):
     def __init__(self, cfg):
         self.cache = {}
     def put(self,key,value):

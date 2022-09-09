@@ -4,45 +4,54 @@ from algocean.misc import dict_put,
                      dict_get,
                      dict_has,
                       dict_delete
+
+from algocean import BaseModule
 """
 
 Background Actor for Message Brokers Between Quees
 
 """
 
-class RayQueueServer(object):
+class QueueServer(BaseModule):
 
-    def __init__(self):
+    default_cfg_path = 'ray.serve.queue'
+    def __init__(self,config=None, **kwargs):
+        BaseModule.__init__(self, config=config, **kwargs)
         self.queue = {}
-
-
-
+        
     def delete_topic(self,topic,
                      force=False,
                      grace_period_s=5,
                      verbose=False):
 
-        queue = dict_get(self.queue,keys=topic)
-        if topic in self.queue:
-            qeue.shutdown(force=force,
-                                            grace_period_s=grace_period_s)
+        queue = self.queue.get(topic)
+        if isinstance(queue, Queue) :
+            queue.shutdown(force=force, grace_period_s=grace_period_s)
             if verbose:
                 print(f"{topic} shutdown (force:{force}, grace_period(s): {grace_period_s})")
         else:
             if verbose:
                 print(f"{topic} does not exist" )
         # delete queue topic in dict
-        dict_delete(self.queue, keys=topic)
+        self.queue.pop(topic)
+
+
+    def get_queue(self, topic):
+        return self.queue.get(topic)
+    
+    def topic_exists(self, topic):
+        return isinstance(self.queue.get(topic), Queue)
+
+
 
     def create_topic(self, topic,
                      maxsize=10,
                      actor_options=None,
                      refresh=False,
-                     verbose=False):
+                     verbose=False, **kwargs):
 
-        topic_exists = topic in self.queue
 
-        if topic_exists:
+        if self.topic_exists(topic):
             if refresh:
                 # kill the queue
                 self.delete_topic(topic=topic,force=True)
@@ -55,12 +64,11 @@ class RayQueueServer(object):
                 if verbose:
                     print(f"{topic} Already Exists (maxsize: {maxsize})")
         else:
-            queue = Queue(maxsize=maxsize,
-                                           actor_options=actor_options)
+            queue = Queue(maxsize=maxsize, actor_options=actor_options)
             if verbose:
                 print(f"{topic} Created (maxsize: {maxsize})")
 
-        dict_put(self.__dict__, keys=topic, value=queue)
+        self.queue[topic] = queue
 
         return queue 
 
