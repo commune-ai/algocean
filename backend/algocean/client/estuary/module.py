@@ -13,9 +13,11 @@ sys.path.append(os.getenv('PWD'))
 import requests
 from ipfspy.utils import parse_response
 
+
 from algocean.client.local import LocalModule
 from algocean.client.ipfs import IPFSModule
 from algocean import BaseModule
+from algocean.utils import try_n_times
 
 
 # register_implementation(IPFSFileSystem.protocol, IPFSFileSystem)
@@ -402,6 +404,7 @@ class EstuaryModule(BaseModule):
 
 
     def add_glob(self, path:str, api_key:str=None, return_type='dict'):
+        api_key = self.resolve_api_key(api_key)
         file2cid = {}
         for path in self.local.glob(path):
             #TODO: add asyncio or multi threading for call as it is IO bound
@@ -413,10 +416,17 @@ class EstuaryModule(BaseModule):
             return list(file2cid.values())
         else:
             raise NotImplementedError(f'only list and dict is supported but you did {return_type}')
-    
+    def add(self, path:str, api_key:str=None): 
+        if self.local.isdir(path):
+            return self.add_dir(path=path)
+        elif self.local.isfile(path):
+            return self.add_file(path=path)
+            
+        
+
     add = add_glob
 
-    def add_dir(self, path:str,**kwargs):
+    def add_dir(self, path:str,api_key:str=None, **kwargs):
         
         assert self.local.isdir(path)
         return self.add_glob(path=path, **kwargs)  
@@ -752,7 +762,7 @@ class EstuaryModule(BaseModule):
         'activeloop'
     ]
 
-    def save_dataset(self, dataset=None, mode='🤗', **kwargs):
+    def save_dataset(self, dataset=None, mode='🤗', return_type='dict', **kwargs):
         
         path = 'tmp'
         tmp_path = self.get_temp_path()
@@ -777,13 +787,9 @@ class EstuaryModule(BaseModule):
             else:
                 raise NotImplementedError
 
+        return self.add_dir(path=path, return_type=return_type)
 
 
-
-        cids = self.force_put(lpath=tmp_path, rpath=path, max_trials=10)
-
-        # self.fs.local.rm(tmp_path,  recursive=True)
-        return [self.info(cid['cid']) for cid in  cids]
 
     def put_json(self, data, path='json_placeholder.pkl'):
         tmp_path = self.get_temp_path(path=path)

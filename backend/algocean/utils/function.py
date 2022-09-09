@@ -186,3 +186,14 @@ def get_full_functions(module=None, module_fn_schemas:dict=None):
             filtered_module_fn_schemas[fn_key] = fn_schema
 
     return filtered_module_fn_schemas
+
+
+def try_n_times(fn, max_trials:int=10, args:list=[],kwargs:dict={}):
+    assert isinstance(fn, callable)
+    for t in range(max_trials):
+        try:
+            result = fn(*args, **kwargs)
+            return result
+        except Exception as e:
+            continue
+    raise(e)

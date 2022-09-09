@@ -210,7 +210,9 @@ class ActiveLoopModule(BaseModule):
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(path=)
+   
+                split_state = self.client.estuary.save_dataset(path=self.local_tmp_dir)
+                self.client.estuary.save_dir(path=self.local_tmp_dir)
                 state_path_map[split] = split_state
 
         elif mode == 'ipfs':
@@ -791,7 +793,7 @@ if __name__ == '__main__':
     module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
 
 
-    st.write("Active Loop Train Dataset")
+    st.writ`e("Active Loop Train Dataset")
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
     st.write(module.save_to_disk(replace=True))
