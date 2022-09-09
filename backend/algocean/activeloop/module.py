@@ -794,7 +794,7 @@ if __name__ == '__main__':
     st.write("Active Loop Train Dataset")
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
-    st.write(module.save_to_diskl(replace=True))
+    st.write(module.save_to_disk(replace=True))
     # st.write(len(module.dataset['train']))
     # st.write(module.metadata)
     # st.write(module.load_from_disk()['train'].__dict__)

@@ -389,9 +389,42 @@ class EstuaryModule(BaseModule):
         return self.handle_response(response)
 
     # %% ../nbs/02_estuaryapi.ipynb 20
-    def add_data(self,
-        path_to_file: str, # Path to file you want to upload
-        api_key: str=None # Your Estuary API key
+    
+    def add_files(self, paths:list, api_key:str=None):
+        api_key = self.resolve_api_key(api_key)
+
+        file2cid = {}
+        for path in paths:
+            assert isinstance(path, str)
+            assert self.local.isfile(path_to_file)
+            file2cid[file] = self.local.add_file(path)
+        return file2cid
+
+
+    def add_glob(self, path:str, api_key:str=None, return_type='dict'):
+        file2cid = {}
+        for path in self.local.glob(path):
+            #TODO: add asyncio or multi threading for call as it is IO bound
+            file2cid[path] = self.add_file(path, return_cid= True)
+
+        if return_type == 'dict':
+            return file2cid
+        elif return_type == 'list'
+            return list(file2cid.values())
+        else:
+            raise NotImplementedError(f'only list and dict is supported but you did {return_type}')
+    
+    add = add_glob
+
+    def add_dir(self, path:str,**kwargs):
+        
+        assert self.local.isdir(path)
+        return self.add_glob(path=path, **kwargs)  
+
+    def add_file(self,
+        path: str, # Path to file you want to upload
+        api_key: str=None, # Your Estuary API key
+        return_cid: bool = False
     ):
         "Upload file to Estuary"
         api_key = self.resolve_api_key(api_key)
@@ -402,20 +435,23 @@ class EstuaryModule(BaseModule):
         }
 
         files = {
-            'data': open(path_to_file, 'rb'),
+            'data': open(path, 'rb'),
         }
 
 
         response = requests.post(f'{self.url["post"]}/content/add', headers=headers, files=files)
         response =  self.handle_response(response)
 
+        if cid_only:
+            return response['cid']
         if isinstance(response,dict):
-            response['file'] = os.path.basename(path_to_file)
+            response['file'] = os.path.basename(path)
             response['size'] = self.ipfs.size(response['cid'])
             return response
         else:
             return response
 
+    add_data = add_file
     # %% ../nbs/02_estuaryapi.ipynb 21
     # add CID
     def add_collection_cid(self,
@@ -454,7 +490,7 @@ class EstuaryModule(BaseModule):
     # %% ../nbs/02_estuaryapi.ipynb 22
     # add CAR
     def add_car(self,
-        path_to_file: str, # Path to file to store
+        path: str, # Path to file to store
         api_key: str=None, # Your Estuary API key
     ):
         "Write a Content-Addressable Archive (CAR) file, and make storage deals for its contents."
@@ -466,7 +502,7 @@ class EstuaryModule(BaseModule):
         api_key = self.resolve_api_key(api_key)
 
 
-        with open(path_to_file, 'rb') as f:
+        with open(path, 'rb') as f:
             data = f.read()
 
         response = requests.post(f'{self.url["post"]}/content/add-car', headers=headers, data=data)
@@ -700,13 +736,16 @@ class EstuaryModule(BaseModule):
         # self.fs.local.rm(tmp_path,  recursive=True)
         return model
 
-    def load_dataset(self, path='tmp'):
+    def load_dataset(self, path='tmp', mode='huggingface'):
         tmp_path = self.get_temp_path(path=path)
         self.get(lpath=tmp_path, rpath=path )
-        dataset = Dataset.load_from_disk(tmp_path)
-        # self.fs.local.rm(tmp_path,  recursive=True)
+        if mode in ['huggingface', 'hf', '🤗']:
+            dataset = Dataset.load_from_disk(tmp_path)
+            return dataset
+            # self.fs.local.rm(tmp_path,  recursive=True)
+        elif in ['activeloop', 'al']:
 
-        return dataset
+
 
     supported_dataset_modes = [
         'huggingface'
