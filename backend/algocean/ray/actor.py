@@ -108,11 +108,16 @@ class ActorModule:
         return obj
 
 
+    @staticmethod
+    def get_ray_env(address='auto', namespace='commune', **kwargs)
+        return ray.init(address=address,namespace=commune, **kwargs)
     @classmethod
-    def deploy(cls, config=None, actor=False , override={}, local_var_dict={}):
+    def deploy(cls, config=None, actor=False , override={}, local_var_dict={}, **kwargs):
         """
         deploys process as an actor or as a class given the config (config)
         """
+
+
         config = ActorModule.resolve_config(cls, config=config, local_var_dict=local_var_dict, override=override)
 
         if actor:
@@ -331,3 +336,6 @@ class ActorModule:
     def load_object(module:str, __dict__:dict, **kwargs):
         kwargs = kwargs.get('__dict__', kwargs.get('kwargs', {}))
         return ActorModule.import_object(module)(**kwargs)
+
+
+    
