@@ -124,7 +124,7 @@ def custom_getattr(obj, key):
     
 
 
-class Timer:
+class RayEnv:
     supported_modes = ['second', 'timestamp']
     start_time = None
     
@@ -159,7 +159,7 @@ class Timer:
             'namespace': str
         }
         for k, t in default_key2type.items():
-            kwargs[k] = kwargs.get(k, default_key2value.get(k)):
+            kwargs[k] = kwargs.get(k, default_key2value.get(k))
             assert kwargs.get(k) != None, f"{k} should be not null {kwargs}"
             assert isinstance(kwargs[k], t), f"{k} should be {t}"
         
@@ -182,8 +182,7 @@ class Timer:
             return False
         else:
             self.check_ray_init_kwargs()
-             
-        return bool(len(self.ray_init_kwargs) > 0)
+            return True
 
     def __enter__(self):
         if self.enter_context_gate:
@@ -203,11 +202,3 @@ class Timer:
         else:
             pass
 
-    
-
-
-
-    elapsed = elapsed_time
-    def stop(self):
-        self.end_time = None
-        self.start_time = None

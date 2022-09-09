@@ -10,36 +10,24 @@ Background Actor for Message Brokers Between Quees
 from algocean.ray.utils import kill_actor, create_actor
 
 class ObjectServer(BaseModule):
-    def __init__(self, cfg):
-        self.cache = {}
+    default_cfg_path = 'ray.server.object'
+    cache= {}
+    def __init__(self, config=None):
+        BaseModule.__init__(self, config=config)
     def put(self,key,value):
         self.cache[key] = ray.put(value)
     def get(self, key):
-        return self.cache[key]
+        return self.cache.get(key)
+    def pop(self, key):
+        object_id = self.cache.pop(key)
+        ray
 
-    def list_objects(self):
+    def ls(self):
         return list(self.cache.values())
 
-    def has_object(self, object_key):
-        return bool(object_key in self.objects)
+    def has(self, key):
+        return self.object.get()
 
-    @classmethod
-    def deploy(cls, cfg=None, actor=True):
-        if cfg is None:
-            cfg = cls.load_config()
-
-        if actor: 
-            return create_actor(cls=cls
-                    actor_kwargs={'cfg': cfg},
-                    actor_name=cfg['actor']['name'],
-                    resources=cfg['actor']['resources'],
-                    max_concurrency=cfg['actor']['max_concurrency'],
-                    detached=True,
-                    return_actor_handle=True,
-                    refresh=False)
-
-        else:
-            return cls(cfg=cfg)
 
     
 

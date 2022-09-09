@@ -1,7 +1,8 @@
 import ray
 from algocean.config import ConfigLoader
-from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr
+from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr, RayEnv
 from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer, get_functions
+
 import os
 import numpy as np
 import datetime
@@ -9,6 +10,7 @@ import inspect
 from types import ModuleType
 from importlib import import_module
 class ActorModule: 
+    ray_context = None
     config_loader = ConfigLoader(load_config=False)
     default_cfg_path = None
     def __init__(self, config=None, override={}):
@@ -95,6 +97,8 @@ class ActorModule:
     def get_object(key, prefix = 'algocean', handle_failure= False):
         return get_object(path=key, prefix=prefix, handle_failure=handle_failure)
 
+    import_module_class = get_object
+    
     @staticmethod
     def import_module(key):
         return import_module(key)
@@ -107,16 +111,19 @@ class ActorModule:
         obj = getattr(module, object_name)
         return obj
 
-
     @staticmethod
-    def get_ray_env(address='auto', namespace='commune', **kwargs)
-        return ray.init(address=address,namespace=commune, **kwargs)
+    def ray_initialized():
+        return ray.is_initialized()
+
     @classmethod
     def deploy(cls, config=None, actor=False , override={}, local_var_dict={}, **kwargs):
         """
         deploys process as an actor or as a class given the config (config)
         """
 
+
+
+        ray_context =  cls.get_ray_context(init_kwargs=kwargs.get('ray'))
 
         config = ActorModule.resolve_config(cls, config=config, local_var_dict=local_var_dict, override=override)
 
@@ -133,6 +140,23 @@ class ActorModule:
         else:
             return cls(config=config)
 
+    @staticmethod
+    def get_ray_context(init_kwargs, reinit=True):
+
+        if init_kwargs == None:
+            return None
+        elif isinstance(init_kwargs, dict):
+            for k in ['address', 'namespace']:
+                assert isinstance(init_kwargs.get(k), str), f'{k} is not in args'
+            
+            if ActorModule.ray_initialized() and reinit == True:
+                ray.shutdown()
+            
+            return ray.init(**init_kwargs)
+        else:
+            raise NotImplementedError(f'{init_kwargs} is not supported')
+    
+    
     @classmethod
     def deploy_actor(cls,
                         config,
@@ -158,7 +182,7 @@ class ActorModule:
         return self.getattr(key)
 
     def getattr(self, key):
-        return custom_getattr(obj=self, key=key)
+        return getattr(self, key)
 
     def down(self):
         self.kill_actor(self.config['actor']['name'])
@@ -176,6 +200,10 @@ class ActorModule:
     def get_actor(actor_name):
         return ray.get_actor(actor_name)
 
+
+    @property
+    def ray_context(self):
+        return ray.runtime_context.get_runtime_context()
     @property
     def context(self):
         if self.actor_exists(self.actor_name):
