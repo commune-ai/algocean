@@ -36,7 +36,7 @@ from ocean_lib.structures.file_objects import UrlFile
 
 
 class OceanModule(BaseModule):
-    default_cfg_path = 'ocean.module'
+    default_config_path = 'ocean.module'
     default_wallet_key = 'default'
     wallets = {}
     def __init__(self, config=None):
@@ -88,9 +88,9 @@ class OceanModule(BaseModule):
         if network == None:
             network = 'local'
         self._network = network
-        self.set_ocean(ocean_config=f'./config/{network}.in')
+        self.set_ocean(ocean_config=f'{os.path.dirname(__file__)}/config/{network}.in')
 
-        
+    
 
     
     def set_ocean(self, ocean_config):
@@ -164,6 +164,7 @@ class OceanModule(BaseModule):
         '''
         del self.wallets[key]
         self.ensure_default_wallet()
+    remove_wallet = rm_wallet
 
     def list_wallets(self, return_keys=True):
         '''
@@ -173,6 +174,7 @@ class OceanModule(BaseModule):
             return list(self.wallets.keys())
         else:
             return  [(k,v) for k,v in self.wallets.items()]
+    ls_wallets = list_wallets
 
     @property
     def wallet(self):

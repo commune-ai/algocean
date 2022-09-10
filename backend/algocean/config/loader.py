@@ -68,33 +68,26 @@ class ConfigLoader:
     #         if config_path:
     #             config_path = config_path.group(2)
 
+    supported_filetypes = ['yaml', 'json', 'yml']
     
     def resolve_config_path(self, config_path):
         # find config path
+        file_type = 'yaml'
 
-        if '.yaml' in config_path:
-            config_path = config_path.replace('.yaml', '')
+        if file_type ==  config_path[-len(file_type):]:
+            config_path = config_path.replace(f'.{file_type}', '')
         config_path = config_path.replace(".", "/")
 
         if self.root != config_path[:len(self.root)]:
             config_path =  os.path.join(self.root,config_path)
         
         if os.path.isdir(config_path):
-            file_path_list = glob.glob(f'{config_path}/*')
-        else:
-            file_path_list = glob.glob(f'{config_path}.*')
+            config_path = os.path.join(config_path,'module.yaml')
+
+        if file_type != config_path[-len(file_type):]:
+            config_path = f'{config_path}.{file_type}'
         
-        found_config_path_list = []
-        for file_path in file_path_list:
-            file_types = ['.yaml']
-            if any([file_type == file_path[-len(file_type):]for file_type in file_types]):
-                found_config_path_list += [file_path]
-                break
-        # assert len(found_config_path_list) == 1, f'BRO {len(found_config_path_list)} {config_path}'
-        if len(found_config_path_list)==1:
-            return found_config_path_list[0] 
-        else:
-            return None
+        return config_path
     def get_cfg(self, input, key_path, local_key_path=[]):
         
         """

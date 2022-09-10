@@ -10,7 +10,7 @@ import shlex
 import subprocess
 
 class SubprocessModule(BaseModule):
-    default_cfg_path =  'subprocess.module'
+    default_config_path =  'subprocess.module'
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
 

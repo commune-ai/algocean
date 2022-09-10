@@ -14,7 +14,7 @@ from algocean.utils import *
 
 
 class ObjectServerModule(BaseModule):
-    default_cfg_path = 'ray.server.object'
+    default_config_path = 'ray.server.object'
     cache_dict= {}
     flat_cache_dict = {}
 

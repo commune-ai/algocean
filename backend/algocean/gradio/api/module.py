@@ -32,7 +32,7 @@ class bcolor:
     
 
 class GradioModule(BaseModule):
-    default_cfg_path =  'gradio.api.module'
+    default_config_path =  'gradio.api.module'
 
 
     # without '__reduce__', the instance is unserializable.

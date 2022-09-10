@@ -8,7 +8,7 @@ import ray
 import requests
 
 class RestModule(BaseModule):
-    default_cfg_path = f"client.rest.module"
+    default_config_path = f"client.rest.module"
     def __init__(
         self,
         config=None

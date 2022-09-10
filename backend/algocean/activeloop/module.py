@@ -15,7 +15,7 @@ from copy import deepcopy
 class ActiveLoopModule(BaseModule):
     src:str='hub://activeloop'
     path:Optional[str]=None
-    default_cfg_path = 'activeloop'
+    default_config_path = 'activeloop'
     default_splits = ['train']
     default_token_name = 'token'
 
@@ -810,7 +810,7 @@ if __name__ == '__main__':
     # # st.write(module.features_info)
     # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
     # st.write(module.additional_information())
-    module.create_asset(force_create=True).services[0].__dict__
+    module.create_asset(force_create=True)
 
 
 

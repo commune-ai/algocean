@@ -28,7 +28,7 @@ from algocean.utils import try_n_times
 
 
 class EstuaryModule(BaseModule):
-    default_cfg_path= 'client.estuary.module'
+    default_config_path= 'client.estuary.module'
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)

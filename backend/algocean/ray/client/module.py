@@ -10,7 +10,7 @@ import ray
 
 class ClientModule(BaseModule):
 
-    default_cfg_path = 'ray.client.module'
+    default_config_path = 'ray.client.module'
     def __init__(self, config=None, **kwargs):
         BaseModule.__init__(self, config=config)
         self.config['server'] = kwargs.get('server', self.config.get('server'))

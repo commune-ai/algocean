@@ -55,7 +55,7 @@ def check_kwargs(kwargs:dict, defaults:Union[list, dict], return_bool=False):
 
 
 class DatasetModule(BaseModule, Dataset):
-    default_cfg_path = 'huggingface.dataset.module'
+    default_config_path = 'huggingface.dataset.module'
 
     datanft = None
     default_token_name='token' 

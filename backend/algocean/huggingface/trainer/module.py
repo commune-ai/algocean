@@ -37,7 +37,7 @@ from datasets import load_dataset, Dataset, load_dataset_builder, load_metric
 
 
 class TrainerModule(BaseModule):
-    default_cfg_path = 'huggingface.trainer.module'
+    default_config_path = 'huggingface.trainer.module'
     __file__ = __file__
     datanft = None
     default_token_name='token' 

@@ -10,7 +10,7 @@ from algocean.utils import *
 
 
 class ClientModule(BaseModule):
-    default_cfg_path =  'gradio.client.module'
+    default_config_path =  'gradio.client.module'
     def bro(self, fam='bro', output_example={'bro': True}):
         pass
 

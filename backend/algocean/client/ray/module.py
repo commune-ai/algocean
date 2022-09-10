@@ -9,7 +9,7 @@ import requests
 
 
 class RayModule(BaseModule):
-    default_cfg_path = f"client.ray.module"
+    default_config_path = f"client.ray.module"
     def __init__(
         self,
         config=None

@@ -14,7 +14,7 @@ class ActorModule:
     default_ray_env = {'address': 'auto', 'namespace': 'default'}
     ray_context = None
     config_loader = ConfigLoader(load_config=False)
-    default_cfg_path = None
+    default_config_path = None
     def __init__(self, config=None, override={}):
 
         self.config = self.resolve_config(config=config)
@@ -25,8 +25,8 @@ class ActorModule:
         if config == None:
             config = getattr(self,'config',  None)
         if config == None:
-            assert isinstance(self.default_cfg_path, str)
-            config = self.default_cfg_path
+            assert isinstance(self.default_config_path, str)
+            config = self.default_config_path
 
         
         config = self.load_config(config=config, 
@@ -54,9 +54,13 @@ class ActorModule:
     @classmethod
     def default_cfg(cls, override={}, local_var_dict={}):
 
-        return cls.config_loader.load(path=cls.default_cfg_path, 
+        return cls.config_loader.load(path=cls.default_config_path, 
                                     local_var_dict=local_var_dict, 
                                      override=override)
+
+    default_config = default_cfg
+    config_template = default_cfg
+    _config = default_cfg
 
     @staticmethod
     def get_module(config, actor=False, override={}):

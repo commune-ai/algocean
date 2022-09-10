@@ -28,7 +28,7 @@ import streamlit as st
 
 
 class PinataModule(BaseModule,AsyncIPFSFileSystem):
-    default_cfg_path= 'client.pinata.module'
+    default_config_path= 'client.pinata.module'
     url = 'https://api.pinata.cloud'
 
     def __init__(self, config=None):

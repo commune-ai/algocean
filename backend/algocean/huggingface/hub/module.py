@@ -90,7 +90,7 @@ def cache(path='/tmp/cache.pkl', mode='memory'):
 
 
 class HubModule(BaseModule, HfApi):
-    default_cfg_path = 'huggingface.hub.module'
+    default_config_path = 'huggingface.hub.module'
     datanft = None
     default_token_name='token' 
     last_saved = None

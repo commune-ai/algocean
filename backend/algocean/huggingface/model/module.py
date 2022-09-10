@@ -12,7 +12,7 @@ import ray
 from commune.utils.misc import dict_put
 
 class ModelModule(BaseProcess):
-    default_cfg_path= 'commune.huggingface.base.module'
+    default_config_path= 'commune.huggingface.base.module'
 
     def __init__(self, cfg):
         BaseProcess.__init__(self, cfg=Module)

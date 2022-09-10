@@ -12,7 +12,7 @@ import ray
 from commune.utils.misc import dict_put
 
 class TokenizerModule(BaseProcess):
-    default_cfg_path= 'commune.huggingface.tokenizer.module'
+    default_config_path= 'commune.huggingface.tokenizer.module'
 
     def __init__(self, cfg=None):
         BaseProcess.__init__(self, cfg=cfg)

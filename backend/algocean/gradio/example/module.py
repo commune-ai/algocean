@@ -11,7 +11,7 @@ import socket
 from algocean.utils import SimpleNamespace
 
 class ExampleModule(BaseModule):
-    default_cfg_path =  'gradio.example'
+    default_config_path =  'gradio.example'
     def bro(self, input1=1, inpupt2=10, output_example={'bro': 1}):
         pass
 

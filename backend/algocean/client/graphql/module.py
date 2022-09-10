@@ -4,7 +4,7 @@ from algocean import BaseModule
 import ray
 
 class GraphQLModule(BaseModule):
-    default_cfg_path = "client.graphql.module"
+    default_config_path = "client.graphql.module"
 
     def __init__(self,config,):
         BaseModule.__init__(self, config)
