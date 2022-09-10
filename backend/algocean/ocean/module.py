@@ -773,5 +773,7 @@ if __name__ == '__main__':
     import os
     # OceanModule.st_test()
 
-    # module = OceanModule()
+    module = OceanModule()
+    st.write(module.ocean.config.__dict__)
+    module.create_datanft('bro')
     # module.st_test()

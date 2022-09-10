@@ -47,9 +47,13 @@ class ObjectServerModule(BaseModule):
         assert callable(fn)
         return fn
 
-    def search(self, *args, **kwargs):
-        return {k:self.cache_dict[k]for k in self.search_keys(*args, **kwargs)}
-    
+    def search(self, recursive=True, *args, **kwargs):
+        object_dict =  {k:self.cache_dict[k]for k in self.search_keys(*args, **kwargs)}
+        if recursive:
+            new_object_dict = {}
+            for k,v in object_dict.items():
+                dict_put(input_dict=new_object_dict, keys=k, value=v)
+            return new_object_dict
     def search_keys(self, key=None, filter_fn = None):
             
         if isinstance(key,str):
@@ -63,7 +67,16 @@ class ObjectServerModule(BaseModule):
         return list(filter(filter_fn, list(self.cache_dict.keys())))
 
 
-    def pop(self, key):
+    def pop(self, *args ,**kwargs):
+        keys = self.search(*args, **kwargs)
+
+        pop_dict = {}
+        for k in keys:
+            pop_dict[k] = self.cache_dict.pop(k)
+        
+        if recursive:
+            pop_dict = self.flat2deep
+        return pop_dict
         object_id = dict_delete(input_dict=self.cache_dict, keys=key)
 
     def ls(self, key=''):
@@ -76,10 +89,11 @@ class ObjectServerModule(BaseModule):
         return dict_has(input_dict=self.cache_dict, keys=key)
 
 
-
-
 if __name__ == "__main__":
-    module = ObjectServerModule.deploy(actor={'refresh': False}, ray={'address': 'auto'})
-    st.write(module)
-    st.write(module.put.remote('hey fam', {'whadup'}))
-    st.write(ray.get(module.search.remote()))
+    module = ObjectServerModule.deploy(actor=False, ray={'address': 'auto'})
+    st.write(str(module.__class__).split('.')[-1]==str(module.get_object('ray.server.object.module.ObjectServerModule')).split('.')[-1])
+    # st.write( module.__class__.__file__)
+    ClientModule()
+    st.write(str(module.get_object('ray.server.object.module.ObjectServerModule')))
+    st.write(module.put('hey.fam.whdup', {'whadup.yo': 'fam'}))
+    st.write(module.search())

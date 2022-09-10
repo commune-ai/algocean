@@ -19,7 +19,8 @@ class BaseModule(ActorModule):
     def get_clients(self, config={}):
         client_module_class = self.get_object('client.module.ClientModule')
         # if isinstance(self, client_module_class):
-        #     return 
+        #     return
+
         if isinstance(config, type(None)):
             return 
         elif isinstance(config, dict) :
@@ -36,20 +37,19 @@ class BaseModule(ActorModule):
             config = self.config_loader.load(path=self.default_cfg_path)
         return config
     
-    @staticmethod
-    def get_object(key, prefix = 'algocean', handle_failure= False):
-        return get_object(path=key, prefix=prefix, handle_failure=handle_failure)
+
+    def get_submodules(self, submodule_configs=None):
+        '''
+        input: dictionary of modular configs
+        '''
+        if submodule_configs == None:
+            submodule_configs = self.config.get('submodule',self.config.get('submodules',{}))
+    
+        assert isinstance(submodule_configs, dict)
+        for submodule_name, submodule_config in submodule_configs.items():
+            submodule_class = self.get_object(submodule_config['module'])
+            submodule_instance = submodule_class(config=submodule_config)
+            setattr(self, submodule_name, submodule_instance)
 
 
-    def get_submodules(self):
-        submodule_configs = self.config.get('submodule',self.config.get('submodules'))
-        
-        if submodule_configs != None:
-            assert isinstance(submodule_configs, dict)
-            for submodule_name, submodule_config in submodule_configs.items():
-                submodule_class = self.get_object(submodule_config['module'])
-                submodule_instance = submodule_class(config=submodule_config)
-                setattr(self, submodule_name, submodule_instance)
-    
-    
 

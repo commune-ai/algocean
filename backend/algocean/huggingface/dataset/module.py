@@ -268,11 +268,11 @@ class DatasetModule(BaseModule, Dataset):
         url_files = []
         file_index = 0
         cid2index = {}
-        for split, split_configs in self.state_path_map.items():
+        for split, split_file2cid in self.state_path_map.items():
             
 
-            for split_config in split_configs:
-                cid = split_config['cid']
+            for filename, cid in split_file2cid.items():
+
 
                 if cid not in cid2index:
                     url_files.append(self.algocean.create_files({'hash': cid, 'type': 'ipfs'})[0])
@@ -281,9 +281,13 @@ class DatasetModule(BaseModule, Dataset):
             
 
         return url_files
-   
 
 
+    def hash(self, data:str, algo='keccak'):
+        if algo == 'keccak':
+            return self.algocean.web3.toHex((self.algocean.web3.keccak(text=data)))
+        else:
+            raise NotImplementedError
 
 
     @property
@@ -294,15 +298,11 @@ class DatasetModule(BaseModule, Dataset):
         split_url_files_info = {}
         cid2index = {}
         url_files = deepcopy(self.url_files)
-        for split, split_file_configs in self.state_path_map.items():
+        for split, split_file2cid in self.state_path_map.items():
             split_url_files_info[split] = []
       
-            for file_config in split_file_configs:
+            for filename, cid in split_file2cid.items():
                 
-                cid = file_config['cid']
-                filename = file_config['name']
-                filetype = file_config['type']
-                filesize = file_config['size']
 
 
                 file_index = None
@@ -315,11 +315,9 @@ class DatasetModule(BaseModule, Dataset):
 
                 split_url_files_info[split].append(dict(
                     name=filename ,
-                    type=filetype,
-                    size = filesize,
                     file_index=file_index,
-                    file_hash =self.algocean.web3.toHex((self.algocean.web3.keccak(text=cid)))
-                ))
+                    file_hash = self.hash(cid))
+                )
 
 
 
@@ -327,8 +325,6 @@ class DatasetModule(BaseModule, Dataset):
 
         return split_url_files_info
     
-    
-
 
     
 
@@ -881,8 +877,10 @@ if __name__ == '__main__':
 
     df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
    
-    # module.create_asset()
-    st.write(module.asset.__dict__)
+    st.write(module.my_assets)
+    # st.write(module.asset.__dict__)
+    # st.write(module.ocean.config.__dict__)
+
     # # st.write(df)
     # dataset_list = list(df['id'][:10])
     # for dataset in dataset_list:

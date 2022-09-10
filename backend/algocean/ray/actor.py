@@ -73,7 +73,7 @@ class ActorModule:
 
         if isinstance(config, str):
             # check if object is a path to module, return None if it does not exist
-            module_class = ActorModule.get_object(key=config, handle_failure=True)
+            module_class = ActorModule.get_object(key=config)
 
 
         if isinstance(module_class, type):
@@ -93,11 +93,9 @@ class ActorModule:
         assert isinstance(config, dict)
         assert 'module' in config
 
-
-
     @staticmethod
-    def get_object(key, prefix = 'algocean', handle_failure= False):
-        return get_object(path=key, prefix=prefix, handle_failure=handle_failure)
+    def get_object(path:str, prefix = 'algocean'):
+        return get_object(path=path, prefix=prefix)
 
     import_module_class = get_object
     
@@ -124,10 +122,8 @@ class ActorModule:
         """
 
 
-
-        ray_context =  cls.get_ray_context(init_kwargs=kwargs.get('ray'))
-
         config = ActorModule.resolve_config(cls, config=config, local_var_dict=local_var_dict, override=override)
+        ray_context =  cls.get_ray_context(init_kwargs=kwargs.get('ray', config.get('ray')))
 
         if actor:
             config['actor'] = config.get('actor', {})
@@ -138,17 +134,20 @@ class ActorModule:
             else:
                 raise Exception('Only pass in dict (actor args), or bool (uses config["actor"] as kwargs)')  
             
-            return cls.deploy_actor(config=config, **config['actor'])
+            return cls.deploy_actor(cls_kwargs=dict(config=config), **config['actor'])
         else:
             return cls(config=config)
 
     @staticmethod
     def get_ray_context(init_kwargs, reinit=True):
+        default_ray_env = {'address': 'auto', 'namespace': 'default'}
 
         if init_kwargs == None:
-            return None
-        elif isinstance(init_kwargs, dict):
-            default_ray_env = {'address': 'auto', 'namespace': 'default'}
+            init_kwargs = default_ray_env
+
+            
+        
+        if isinstance(init_kwargs, dict):
 
             for k in ['address', 'namespace']:
                 default_value= default_ray_env.get(k)
@@ -162,10 +161,10 @@ class ActorModule:
         else:
             raise NotImplementedError(f'{init_kwargs} is not supported')
     
-    
     @classmethod
     def deploy_actor(cls,
-                        config,
+                        config=None,
+                        cls_kwargs={},
                         name='actor',
                         detached=True,
                         resources={'num_cpus': 1, 'num_gpus': 0.1},
@@ -173,9 +172,11 @@ class ActorModule:
                         refresh=False,
                         verbose = True, 
                         redundant=False):
+        if isinstance(config, dict):
+            cls_kwargs = {'config': config}
         return create_actor(cls=cls,
                         name=name,
-                        cls_kwargs={'config': config},
+                        cls_kwargs=cls_kwargs,
                         detached=detached,
                         resources=resources,
                         max_concurrency=max_concurrency,

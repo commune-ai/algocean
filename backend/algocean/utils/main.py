@@ -127,7 +127,7 @@ Methods for Getting Abstractions
 
 """
 
-def get_module(path,prefix = 'algocean', handle_failure= False):
+def get_module(path,prefix = 'algocean'):
     '''
     gets the object
     {module_path}.{object_name}
@@ -154,7 +154,17 @@ def get_module(path,prefix = 'algocean', handle_failure= False):
 get_module_file = get_module
 
 
-def get_object(path,prefix = 'algocean', handle_failure= False):
+
+def import_object(key):
+    module_path = '.'.join(key.split('.')[:-1])
+    module = import_module(module_path)
+    object_name = key.split('.')[-1]
+    obj = getattr(module, object_name)
+    return obj
+
+
+
+def get_object(path,prefix = 'algocean'):
     '''
     gets the object
     {module_path}.{object_name}
@@ -166,22 +176,15 @@ def get_object(path,prefix = 'algocean', handle_failure= False):
     if prefix != path[:len(prefix)]:
         path = '.'.join([prefix, path])
 
-    module_path = '.'.join(path.split('.')[:-1])
-    module = import_module(module_path)
     object_name = path.split('.')[-1]
 
-    module_class = None
-
     try:
-        module = import_module(module_path)
-        module_class = getattr(module, object_name)
-
-    except (AttributeError, ModuleNotFoundError) as e:
-        if handle_failure :
-            print(module, module_class, module_path, object_name)
-            return None
-        else:
-            raise e 
+        module_class = import_object(path)
+    except Exception as e:
+        old_path = deepcopy(path)
+        path = '.'.join(path.split('.')[:-1] + ['module', path.split('.')[-1]])
+        print(f'Trying {path} instead of {old_path}')
+        module_class = import_object(path)
 
     return module_class
 
@@ -203,8 +206,6 @@ def try_fn_n_times(fn, kwargs, try_count_limit):
 def list2str(input):
     assert isinstance(input, list)
     return '.'.join(list(map(str, input)))
-
-
 
 
 def string_replace(cfg, old_str, new_str):
@@ -557,9 +558,22 @@ def dict_equal(*args):
 #             linear_dict['.'.join(key_path)] = input
         
 
-def import_object(key):
-    module_path = '.'.join(key.split('.')[:-1])
-    module = import_module(module_path)
-    object_name = key.split('.')[-1]
-    obj = getattr(module, object_name)
-    return obj
+
+
+
+def flat2deep(self, flat_dict:dict):
+    deep_dict = {}
+    assert isinstance(flat_dict, dict)
+    for k,v in flat_dict.items():
+        dict_put(input_dict=deep_dict, keys=k, value=v)
+    
+    return deep_dict
+
+
+def deep2flat(self, deep_dict:dict):
+    assert isinstance(deep_dict, dict)
+    flat_dict = {}
+
+    raise NotImplemented
+    
+    return flat_dict

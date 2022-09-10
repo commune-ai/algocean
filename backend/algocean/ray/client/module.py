@@ -15,7 +15,9 @@ class ClientModule(BaseModule):
         BaseModule.__init__(self, config=config)
         self.config['server'] = kwargs.get('server', self.config.get('server'))
         self.server_module =self.get_actor(self.config['server'])
-        
+        self.parse()
+    
+    def parse(self):
         for fn_key in self.server_module._ray_method_signatures.keys():
 
             def fn(self, fn_key,server, *args, **kwargs):

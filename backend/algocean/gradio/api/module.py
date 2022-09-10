@@ -291,8 +291,9 @@ class GradioModule(BaseModule):
     def meta_launch(self,module:str, port:int):
         module_list = module.get_modules()
         assert args.module in module_list, f'{args.module} is not in {module_list}'
-        command  = f'python algocean/gradio/api/module.py --no-api --module={module}'
+        command  = f'python {__file__} --no-api --module={module}'
         process = self.run_command(command)
+    
     def launch(self, interface:gradio.Interface=None, module:str=None, **kwargs):
         """
             @params:
@@ -359,7 +360,6 @@ class GradioModule(BaseModule):
         
         return parser.parse_args()
 
-    @property
     def run_command(command:str):
 
         process = subprocess.run(shlex.split(command), 
