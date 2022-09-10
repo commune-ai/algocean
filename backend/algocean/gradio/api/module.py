@@ -29,18 +29,6 @@ class bcolor:
 
 
 
-class SubProcessManager:
-    def __init__(self, config=None):
-        self.processes = []
-
-    def submit(self, fn, *args, **kwargs):
-        p = Process(target=fn, args=args, kwargs=kwargs)
-        p.start()
-        self.processes.append(p)
-
-    def shutdown(self, p):
-        pass
-
     
 
 class GradioModule(BaseModule):
@@ -66,7 +54,7 @@ class GradioModule(BaseModule):
         self.port_range = self.config.get('port_range', [7860, 7865])
         
         # self.thread_manager = PriorityThreadPoolExecutor()
-        self.process_manager = ProcessManager()
+        # self.process_manager = self.get_object('cliProcessManager()
 
     @property
     def active_modules(self):
@@ -385,77 +373,82 @@ import argparse
 from fastapi import FastAPI
 import uvicorn
 
+app = FastAPI()
+
+args = GradioModule.argparse()
+
+print(args.api, "FUCK BRO")
+
+
+
+
+@app.get("/")
+async def root():
+    module = GradioModule.get_instance()
+    print(module)
+    return {"message": "GradioFlow MothaFucka"}
+
+
+register = GradioModule.register
+
+
+@app.get("/module/list")
+async def module_list(path_map:bool=False):
+    module = GradioModule.get_instance()
+    module_list = module.get_modules()
+    if path_map:
+        module_path_map = {}
+        for module in module_list:
+            dict_put(module_path_map ,module.split('.')[:-1], module.split('.')[-1])
+        return module_path_map
+    else:
+        return module_list
+
+@app.get("/module/schemas")
+async def module_schemas():
+    module = GradioModule.get_instance()
+    modules = module.get_module_schemas()
+    return modules
+
+
+@app.get("/module/schema")
+async def module_schema(module:str, gradio:bool=True):
+
+
+    if gradio:
+        self = GradioModule.get_instance()
+        module_schema = self.get_gradio_function_schemas(module, return_type='dict')
+    else:
+        module_schema = GradioModule.get_module_function_schema(module)
+    return module_schema
+
+
+@app.get("/module/start")
+async def module_start(module:str=None, ):
+    self = GradioModule.get_instance()
+    port = self.suggest_port()
+    if module == None:
+        module = self.get_modules()[0]
+
+    
+
+    # self.launch(module=module)
+
+    self.process_manager.submit(self.launch, module=module)
+    return module
+
+print(__file__)
 
 
 if __name__ == "__main__":
     
 
-    args = GradioModule.argparse()
-
 
     if args.api:
-        app = FastAPI()
-
-        @app.get("/")
-        async def root():
-            module = GradioModule.get_instance()
-            print(module)
-            return {"message": "GradioFlow MothaFucka"}
-
-
-        register = GradioModule.register
-
-
-        @app.get("/module/list")
-        async def module_list(path_map:bool=False):
-            module = GradioModule.get_instance()
-            module_list = module.get_modules()
-            if path_map:
-                module_path_map = {}
-                for module in module_list:
-                    dict_put(module_path_map ,module.split('.')[:-1], module.split('.')[-1])
-                return module_path_map
-            else:
-                return module_list
-
-        @app.get("/module/schemas")
-        async def module_schemas():
-            module = GradioModule.get_instance()
-            modules = module.get_module_schemas()
-            return modules
-
-
-        @app.get("/module/schema")
-        async def module_schema(module:str, gradio:bool=True):
-
-
-            if gradio:
-                self = GradioModule.get_instance()
-                module_schema = self.get_gradio_function_schemas(module, return_type='dict')
-            else:
-                module_schema = GradioModule.get_module_function_schema(module)
-            return module_schema
-
-
-        @app.get("/module/start")
-        async def module_start(module:str=None, ):
-            self = GradioModule.get_instance()
-            port = self.suggest_port()
-            if module == None:
-                module = self.get_modules()[0]
-
-            
-
-            # self.launch(module=module)
-
-            self.process_manager.submit(self.launch, module=module)
-            return module
-        
-        uvicorn.run("module:app", host="0.0.0.0", port=8000, reload=True, workers=2)
-
+        uvicorn.run(f"module:app", host="0.0.0.0", port=8000, reload=True, workers=2)
     else:
+
         module = GradioModule()
         module_list = module.get_modules()
         assert args.module in module_list, f'{args.module} is not in {module_list}'
         module.launch(module=args.module)
-

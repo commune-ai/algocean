@@ -46,3 +46,5 @@ jupyter:
 python:
 	docker exec -it ocean_backend_1 bash -c "python algocean/${arg}/module.py"
 
+exec:
+	docker exec -it ocean_backend_1 bash -c "${arg}"

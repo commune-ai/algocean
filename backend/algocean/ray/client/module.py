@@ -32,6 +32,5 @@ class ClientModule(BaseModule):
         
 if __name__ == '__main__':
     module = ClientModule.deploy(actor=True)
-
-    st.write(module.get_functions(module))
+    # st.write(module.get_functions(module))
 

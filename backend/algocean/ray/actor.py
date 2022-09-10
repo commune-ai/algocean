@@ -2,7 +2,8 @@ import ray
 from algocean.config import ConfigLoader
 from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr, RayEnv
 from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer, get_functions
-
+import subprocess 
+import shlex
 import os
 import numpy as np
 import datetime
@@ -10,6 +11,7 @@ import inspect
 from types import ModuleType
 from importlib import import_module
 class ActorModule: 
+    default_ray_env = {'address': 'auto', 'namespace': 'default'}
     ray_context = None
     config_loader = ConfigLoader(load_config=False)
     default_cfg_path = None
@@ -146,8 +148,12 @@ class ActorModule:
         if init_kwargs == None:
             return None
         elif isinstance(init_kwargs, dict):
+            default_ray_env = {'address': 'auto', 'namespace': 'default'}
+
             for k in ['address', 'namespace']:
-                assert isinstance(init_kwargs.get(k), str), f'{k} is not in args'
+                default_value= default_ray_env.get(k)
+                init_kwargs[k] = init_kwargs.get(k,default_value)
+                assert isinstance(init_kwargs[k], str), f'{k} is not in args'
             
             if ActorModule.ray_initialized() and reinit == True:
                 ray.shutdown()
@@ -366,4 +372,11 @@ class ActorModule:
         return ActorModule.import_object(module)(**kwargs)
 
 
-    
+    @property
+    def run_command(command:str):
+
+        process = subprocess.run(shlex.split(command), 
+                            stdout=subprocess.PIPE, 
+                            universal_newlines=True)
+        
+        return process

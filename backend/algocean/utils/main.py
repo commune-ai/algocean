@@ -454,10 +454,18 @@ def dict_get(input_dict,keys, default_value=False):
     get keys that are dot seperated (key1.key2.key3) recursively into a dictionary
     """
     if isinstance(keys, str):
+        if keys=='':
+            return input_dict
         keys = keys.split('.')
 
-    key = keys[0]
 
+    assert isinstance(keys, list)
+    if len(keys) == 0:
+        return input_dict
+        
+    assert isinstance(keys[0], str)
+
+    key = keys[0]
     try:
 
         next_object_list = [input_dict[key]]
@@ -466,7 +474,9 @@ def dict_get(input_dict,keys, default_value=False):
         return next_object_list[-1]
     except Exception as e:
         return default_value
-    
+  
+
+
 def dict_put(input_dict,keys, value ):
     """
     insert keys that are dot seperated (key1.key2.key3) recursively into a dictionary

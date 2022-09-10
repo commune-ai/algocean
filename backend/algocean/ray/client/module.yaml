@@ -1,2 +1,3 @@
-module: ray.client.module.ClientModule
+module: ClientModule
+server: 
 client: {}
