@@ -18,7 +18,7 @@ prune_volumes:
 	docker system prune --all --volumes
 
 bash:
-	docker exec -it ${arg} bash
+	docker exec -it ocean_${arg}_1 bash
 build_backend:
 	docker-compose -f "backend/backend.yml" build;
 
@@ -48,3 +48,4 @@ python:
 
 exec:
 	docker exec -it ocean_backend_1 bash -c "${arg}"
+

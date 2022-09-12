@@ -1,4 +1,3 @@
-
 from algocean.utils import get_object
 from algocean.config.loader import ConfigLoader
 from algocean.ray.actor import ActorModule
@@ -11,17 +10,18 @@ class BaseModule(ActorModule):
 
         ActorModule.__init__(self,config=config, override=override)
 
-        if kwargs.get('get_clients') != False:
+        if kwargs.get('get_clients', True) != False:
             self.client = self.get_clients() 
-        if kwargs.get('get_submodules') != False:       
+        if kwargs.get('get_submodules', True) != False:       
             self.get_submodules()
 
 
     def get_clients(self, clients=None):
         if clients == None:
             clients = self.config.get('client', self.config.get('clients'))
-        if self.config.get('module') == 'ClientModule':
-            return
+        
+        
+        print( 'CONFIG', self.config)
         if isinstance(clients, type(None)):
             return
 
@@ -31,6 +31,7 @@ class BaseModule(ActorModule):
         
         config = client_module_class.default_config()
         config['clients'] = clients
+
 
 
 
@@ -63,6 +64,4 @@ class BaseModule(ActorModule):
             submodule_class = self.get_object(submodule_config['module'])
             submodule_instance = submodule_class(config=submodule_config)
             setattr(self, submodule_name, submodule_instance)
-
-
 

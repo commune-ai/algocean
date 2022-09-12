@@ -211,7 +211,7 @@ class ActiveLoopModule(BaseModule):
 
         return state_path_map
 
-
+    
 
     def save(self,mode:str='estuary', replace=False):
 
@@ -480,10 +480,10 @@ class ActiveLoopModule(BaseModule):
         return self.algocean.search(text=f'metadata.author:{self.wallet.address}')
     @property
     def my_assets_info(self):
-        return self.assets2info(self.my_assets)
+        return self.asset2info(self.my_assets)
 
     @staticmethod
-    def assets2info(assets:list): 
+    def asset2info(assets:list): 
         asset_info_list = []
         for a in assets:
             get_map = {
@@ -492,7 +492,11 @@ class ActiveLoopModule(BaseModule):
                 'did': 'did',
                 'chain_id': 'chain_id'
             }
-            asset_info_list.append({k: dict_get(a.__dict__, v) for k,v in get_map.items()})
+            'https://metahub.algovera.ai/asset/'
+            asset_dict = a.__dict__
+            asset_info_dict = {k: dict_get(asset_dict, v) for k,v in get_map.items()}
+            asset_info_dict['url'] = f'https://metahub.algovera.ai/asset/{asset_info_dict["did"]}'
+            asset_info_list.append(asset_info_dict)
         return asset_info_list
 
     @property
@@ -862,7 +866,7 @@ if __name__ == '__main__':
     # st.write(module.download())
     
 
-    st.write(module.my_assets_info)
+    st.write({a['name']: a['url']for a in module.my_assets_info})
     # st.write([a.__dict__ for a in module.my_assets])
     # st.write(module.asset)
 

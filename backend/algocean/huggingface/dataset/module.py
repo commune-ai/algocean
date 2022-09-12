@@ -84,9 +84,8 @@ class DatasetModule(BaseModule, Dataset):
     def set_network(self, *args, **kwargs):
         return self.algocean.set_network(*args, **kwargs)
         
-    @property
-    def set_default_wallet(self, *args, **kwargs):
-        return self.algocean.set_default_wallet(*args, **kwargs)
+    def set_default_wallet(self, key):
+        return self.algocean.set_default_wallet(key)
     
 
 
@@ -214,21 +213,30 @@ class DatasetModule(BaseModule, Dataset):
             state_path_map = self.save()
         return state_path_map
 
+    __file__ = __file__
+    @property
+    def local_tmp_dir(self):
+        return f'/tmp/{self.module_path()}/{self.path}'
 
 
-    def save(self,mode:str='estuary'):
+
+    def save(self,mode:str='estuary', chunks=20, chunk_index = 1 ):
 
         if mode == 'estuary':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                split_state = self.client.estuary.save_dataset(dataset.shard(20,1))
-                state_path_map[split] = split_state
+                split_path = os.path.join(self.local_tmp_dir, split)
+                dataset.shard(chunks,chunk_index).save_to_disk(split_path)
+                split_state = self.client.estuary.add(split_path)
+                state_path_map[split] = {f.replace(split_path+'/',''): cid for f,cid in split_state.items()}
 
         elif mode == 'ipfs':
             state_path_map = {}
             for split, dataset in self.dataset.items():
-                cid = self.client.ipfs.save_dataset(dataset)
-                state_path_map[split] = self.client.ipfs.info(cid)
+                split_path = os.path.join(self.local_tmp_dir, split)
+                dataset.shard(chunks,chunk_index).save_to_disk(split_path)
+                split_state = self.client.ipfs.add(split_path)
+                state_path_map[split] = {f.replace(split_path+'/',''): cid for f,cid in split_state.items()}
 
         elif mode == 'pinata':
             raise NotImplementedError
@@ -241,7 +249,6 @@ class DatasetModule(BaseModule, Dataset):
         self.last_saved = datetime.datetime.utcnow().timestamp()
     
         return state_path_map
-
 
 
 
@@ -500,6 +507,28 @@ class DatasetModule(BaseModule, Dataset):
         return self.algocean.search(text=f'metadata.author:{self.wallet.address}')
 
     @property
+    def my_assets_info(self):
+        return self.asset2info(self.my_assets)
+
+    @staticmethod
+    def asset2info(assets:list): 
+        asset_info_list = []
+        for a in assets:
+            get_map = {
+                'name': 'metadata.name',
+                'organization': 'metadata.additionalInformation.organization',
+                'did': 'did',
+                'chain_id': 'chain_id'
+            }
+            'https://metahub.algovera.ai/asset/'
+            asset_dict = a.__dict__
+            asset_info_dict = {k: dict_get(asset_dict, v) for k,v in get_map.items()}
+            asset_info_dict['url'] = f'https://metahub.algovera.ai/asset/{asset_info_dict["did"]}'
+            asset_info_list.append(asset_info_dict)
+        return asset_info_list
+
+
+    @property
     def asset(self):
         assets =  self.algocean.search(text=f'metadata.name:{self.dataset_name} AND metadata.author:{self.wallet.address}')
         
@@ -555,10 +584,9 @@ class DatasetModule(BaseModule, Dataset):
         return service
 
         
-
-    def balanceOf(self, datatoken):
-        self.aglocean.balanceOf
-    def download(self, service=None, destination='bruh/'):
+    def download(self, service=None, destination='fam'):
+        if destination[-1] != '/':
+            destination += '/'
         
         if service == None:
             service = self.get_service(service)
@@ -567,26 +595,33 @@ class DatasetModule(BaseModule, Dataset):
         if datatoken.balanceOf(self.wallet.address)< self.ocean.to_wei(1):
             self.dispense_tokens()
 
-
-        module.algocean.download_asset(asset=self.asset, service=service,destination=destination )
+        self.algocean.download_asset(asset=self.asset, service=service,destination=destination )
         
+        did_folder = f'datafile.{self.asset.did},0'
+        download_dir = f'{destination}/{did_folder}'
+        download_files = self.client.local.ls(download_dir)
+        splits_info = dict_get(service.__dict__, 'additional_information.info.splits')
+        path2hash = {f:self.hash(os.path.basename(f).split('.')[0]) for f in download_files}
+        path2path = {}
+        for split, split_info in splits_info.items():
+            file_info_list = split_info['file_info']
+            for file_info in file_info_list:
+                for f, h in path2hash.items():
+                    if h == file_info['file_hash']:
+                        new_f = deepcopy(f)
+                        new_f = f.replace(f'/{did_folder}/', '/').replace(os.path.basename(f), file_info['name'] )
+                        path2path[f] = new_f
+        for p1, p2 in path2path.items():
+            self.client.local.cp(p1, p2)
+                 
+        self.client.local.rm(download_dir, recursive=True)
+        return self.load_from_disk(path=destination)
 
-        
-        for split,split_files_info in service.additional_information['file_info'].items():
-            for file_info in split_files_info:
-                file_index = file_info['file_index']
-                file_name = file_info['name']
-                did = self.asset.did
+         
 
-        # /Users/salvatore/Documents/commune/algocean/backend/bruh/datafile.did:op:6871a1482db7ded64e4c91c8dba2e075384a455db169bf72f796f16dc9c2b780,0
-        # og_path = self.client.local.ls(os.path.join(destination, 'datafile.'+did+f',{file_index}'))
-        # new_path = os.path.join(destination, split, file_name )
-        # self.client.local.makedirs(os.path.dirname(new_path), exist_ok=True)
-        # self.client.local.cp(og_path, new_path)
-
-        files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
-                
-            
+    def balanceOf(self, datatoken):
+        self.aglocean.balanceOf
+  
     def create_asset(self, price_mode='free', services=None, force_create = False):
 
         asset = self.asset
@@ -890,17 +925,18 @@ class DatasetModule(BaseModule, Dataset):
         module = DatasetModule(override={'load_dataset': False})
 
         df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
-   
+        # module.set_default_wallet('alice')
+        st.write(module.create_asset())
+        module.download(destination='yo')
 
-        dataset_list = list(df['id'][:2])
-        for dataset in dataset_list:
-            override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
-        
-            try:
-                module = DatasetModule(override=override,)
-                st.write(module.create_asset(force_create=False).__dict__)
-            except ImportError as e:
-                st.write('IMPORT ERROR', dataset)
+        # dataset_list = list(df['id'][:4])
+        # for dataset in dataset_list:
+        #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
+        #     try:
+        #         module = DatasetModule(override=override,)
+        #         st.write(module.create_asset(force_create=False).__dict__)
+        #     except ImportError as e:
+        #         st.write('IMPORT ERROR', dataset)
 
 
 if __name__ == '__main__':

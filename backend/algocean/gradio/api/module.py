@@ -185,12 +185,14 @@ class GradioModule(BaseModule):
         for root, dirs, files in self.client.local.walk('/app/algocean'):
             if all([f in files for f in ['module.py', 'module.yaml']]):
 
+                print(root, files)
+
                 try:
                     
                     cfg = self.config_loader.load(root)   
                     if cfg == None:
                         cfg = {}           
-                except TypeError as e:
+                except Exception as e:
                     cfg = {}
 
 

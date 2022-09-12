@@ -1,4 +1,4 @@
-module: gradio.api.module.GradioModule
+module: GradioModule
 name: GradioModule
 
 client: {}
@@ -6,9 +6,3 @@ client: {}
 num_ports: 10
 port_range: [7865, 7870]
 host: '0.0.0.0'
-
-
-sub_module:
-  config_manager:
-    module: config.manager.ConfigManager
-    actor: False

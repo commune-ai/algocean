@@ -8,7 +8,7 @@ import datasets
 from copy import deepcopy
 from algocean import BaseModule
 class ClientModule(BaseModule):
-    default_config_path = 'client'
+    default_config_path = 'client.module'
     registered_clients = {}
 
     def __init__(self, config=None ):
@@ -39,6 +39,8 @@ class ClientModule(BaseModule):
         self.default_clients = list(self.client_path_dict.keys())
 
     def register_clients(self, clients=None):
+        print(clients, 'FUCKYOU', self.default_clients)
+
         if clients == None:
             # resort to list of default cleitns if none
             clients = self.default_clients
@@ -47,7 +49,7 @@ class ClientModule(BaseModule):
                 clients = self.default_clients
         
 
-        
+
 
         if isinstance(clients, bool):
             if clients == True:
