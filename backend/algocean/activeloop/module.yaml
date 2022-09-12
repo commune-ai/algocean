@@ -1,7 +1,7 @@
 api_key: eyJhbGciOiJIUzUxMiIsImlhdCI6MTY2MjU4Nzc0NSwiZXhwIjoxNjYyNjc0MTM3fQ.eyJpZCI6InZpdm9uYXNnIn0.JElnbJPk-I5KQ0FdDlnUYR64j-5mJs0LxXQ0Vz9XOCXz35tEO9yLh3PRgKHlTDrxD6vLB-r9eVO9YhApr_FGnw
 path: null 
 splits: ['train', 'test']
-sample_ratio: 0.1
+sample_ratio: 0.3
 
 client: {}
 

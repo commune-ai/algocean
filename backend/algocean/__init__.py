@@ -2,29 +2,44 @@
 from algocean.utils import get_object
 from algocean.config.loader import ConfigLoader
 from algocean.ray.actor import ActorModule
+import streamlit as st
+
 class BaseModule(ActorModule):
     client = None
     default_config_path = None
-    def __init__(self, config=None, override={}):
+    def __init__(self, config=None, override={}, **kwargs):
         ActorModule.__init__(self,config=config, override=override)
         self.config_loader = ConfigLoader()
         if config!=None:
             if len(config) == 0:
                 config = None
 
-        self.config = self.get_config(config=config)
-        self.client = self.get_clients(clients=self.config.get('client', self.config.get('clients')))
-        self.get_submodules()
 
-    def get_clients(self, clients={}):
-        if self.config.get('name') == 'ClientModule':
+        self.config = self.get_config(config=config)
+
+
+        if kwargs.get('get_clients') != False:
+            self.client = self.get_clients() 
+        if kwargs.get('get_submodules') != False:       
+            self.get_submodules()
+
+
+    def get_clients(self, clients=None):
+        if clients == None:
+            clients = self.config.get('client', self.config.get('clients'))
+        if self.config.get('module') == 'ClientModule':
             return
+        if isinstance(clients, type(None)):
+            return
+
         client_module_class = self.get_object('client.module.ClientModule')
         # if isinstance(self, client_module_class):
         #     return
         
         config = client_module_class.default_config()
         config['clients'] = clients
+
+
 
         if isinstance(config, dict) :
             return client_module_class(config=config)

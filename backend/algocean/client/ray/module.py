@@ -15,7 +15,7 @@ class RayModule(BaseModule):
         config=None
     ):
 
-        BaseModule.__init__(self, config=config)
+        # BaseModule.__init__(self, config=config)
 
     @property
     def url(self):

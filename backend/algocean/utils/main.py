@@ -577,3 +577,17 @@ def deep2flat(self, deep_dict:dict):
     raise NotImplemented
     
     return flat_dict
+
+def any_get(x:dict, keys:list , default=None):
+    '''
+    return x[k] for any of the list of 
+    keys where k is an element in keys
+    '''
+    
+    for k in keys:
+        assert isinstance(k, str)
+        output = x.get(k, None)
+        if output != None:
+            return output
+
+    return default

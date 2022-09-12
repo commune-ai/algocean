@@ -38,27 +38,18 @@ from ocean_lib.structures.file_objects import UrlFile
 class OceanModule(BaseModule):
     default_config_path = 'ocean.module'
     default_wallet_key = 'default'
+    ocean_configs_folder = f'{os.path.dirname(__file__)}/config'
     wallets = {}
-    def __init__(self, config=None):
-        BaseModule.__init__(self, config=config)
+    def __init__(self, config=None, **kwargs):
+        BaseModule.__init__(self, config=config, **kwargs)
 
-        self.initialize_state()
         if 'ocean' in self.config:
             self.set_ocean(ocean_config=self.config.get('ocean'))
         if 'network' in self.config:
             self.set_network(network=self.config.get('network'))
 
-        self.load_wallets(self.config.get('wallet'))
 
-    
-    def initialize_state(self):
-        # self.datanfts = {}
-        # self.datatokens = {}
-        # self.dataassets = {}
-        pass
-
-
-    def load_wallets(self, wallet_config:dict):
+    def load_wallets(self, wallets=None):
         '''
         Load Private Key variable into your
          wallet when pointing to the private 
@@ -72,36 +63,64 @@ class OceanModule(BaseModule):
         or you can put in the keys manually
          but thats too deep
         '''
+        if wallets == None:
+            wallets = self.config.get('wallets', self.config.get('wallet'))
+        
+        if isinstance(wallets, list):
+            wallets = {f'default{i}':w for w in wallets}
+        elif isinstance(wallets, str):
+            wallets = {f'default{i}':w for w in [wallets]}
+        elif isinstance(wallets, dict):
+            wallets = wallets
+        else:
+            raise NotImplementedError
 
-        for k,pk in wallet_config.items():
-            assert isinstance(pk, str)
-            self.add_wallet(wallet_key=k, private_key=pk)
+        assert isinstance(wallets, dict), f'{wallets} should be a dictionary'
+
+
+        for k,v in wallets.items():
+            assert isinstance(v, str)
+            self.add_wallet(wallet_key=k, private_key=v)
+    
+
+    generate_wallets = load_wallets
+
+
+
 
     @property
     def network(self):
+    
+        if not hasattr(self, '_network'):
+            self._network = self.config['network']
         return self._network
+
+
+    @network.setter
+    def network(self, network:str=None):
+        return self.set_network(network=network)
+
+
     def set_network(self, network:str=None):
         '''
         set the network
-        defaults to local fork
+        defa
+        ults to local fork
         '''
         if network == None:
-            network = 'local'
+            network = self.network
         self._network = network
-        self.set_ocean(ocean_config=f'{os.path.dirname(__file__)}/config/{network}.in')
+        self.set_ocean(ocean_config=f'{self.ocean_configs_folder}/{network}.in')
 
-    
-
-    
     def set_ocean(self, ocean_config):
+        if 'OCEAN_NETWORK_URL' in os.environ:
+            os.environ.pop('OCEAN_NETWORK_URL')
         self.config['ocean'] = self.get_ocean(ocean_config, return_ocean=False)
         self.ocean = Ocean(self.config['ocean'])
         self.web3 = self.ocean.web3
         self.aquarius = self.ocean.assets._aquarius
+        self.load_wallets()
         
-
-
-    
     @staticmethod
     def get_ocean( ocean_config, return_ocean=True):
         if ocean_config == None:
@@ -141,15 +160,12 @@ class OceanModule(BaseModule):
             return wallet
         # fetch the name or the key
         private_key = os.getenv(private_key, private_key)
-
-        existing_wallet_key = self.get_existing_wallet_key(private_key=private_key)
-        # if the key is registered, then we will swtich the old key with the new key
-        if existing_wallet_key == None:
-            self.wallets[wallet_key] = self.generate_wallet(private_key=private_key)
-        else:
-            self.wallets[wallet_key] =  self.wallets.pop(existing_wallet_key)
-        self.ensure_default_wallet()
+        self.wallets[wallet_key] = self.generate_wallet(private_key=private_key)
         return self.wallets[wallet_key]
+
+    def regenerate_wallets(self):
+        for k, wallet in self.wallets.items():
+            self.wallets[k] = self.generate_wallet(private_key=wallet.private_key)
 
     def generate_wallet(self, private_key:str):
         private_key = os.getenv(private_key, private_key)
@@ -163,7 +179,6 @@ class OceanModule(BaseModule):
         remove wallet and all data relating to it
         '''
         del self.wallets[key]
-        self.ensure_default_wallet()
     remove_wallet = rm_wallet
 
     def list_wallets(self, return_keys=True):
@@ -185,11 +200,42 @@ class OceanModule(BaseModule):
         self.default_wallet_key = key
         return self.wallets[self.default_wallet_key]
 
-    def ensure_default_wallet(self):
-        if self.default_wallet_key not in self.wallets:
-            if len(self.wallets) > 0:
-                self.default_wallet_key = list(self.wallets.keys())[0]
 
+    def rename_wallet(self, from_key, to_key):
+        self.wallets[to_key] = self.wallets[from_key]
+        if self.default_wallet_key == from_key:
+            self.default_wallet_key = to_key
+
+    @property
+    def default_wallet_key(self):
+        wallet_keys= self.wallet_keys
+
+        if not hasattr(self, '_default_wallet_key'):
+            self._default_wallet_key = None
+
+        if self._default_wallet_key == None:
+            if len(wallet_keys)>0:
+                self._default_wallet_key  =  wallet_keys[0]
+            else:
+                self._default_wallet_key  = None
+        elif isinstance(self._default_wallet_key, str):
+            self._default_wallet_key = self._default_wallet_key
+        
+        return self._default_wallet_key 
+                
+
+
+    @property
+    def wallet_keys(self):
+        return list(self.wallets.keys())
+
+    @default_wallet_key.setter
+    def default_wallet_key(self, key):
+        assert key in self.wallet_keys, f'{key} is not in {wallet_keys}'
+        self._default_wallet_key = key
+        return self._default_wallet_key
+        
+    
     def get_wallet(self, wallet, return_address=False):
         if wallet == None:
             wallet = self.wallet
@@ -774,8 +820,10 @@ class OceanModule(BaseModule):
 if __name__ == '__main__':
     import os
     # OceanModule.st_test()
-
     module = OceanModule()
-    st.write(module.ocean.config.__dict__)
-    module.create_datanft('bro')
+    # st.write(module.ocean.config.__dict__)
+    module.set_network('local')
+    st.write(module.wallet.web3.provider)
+
+    module.create_datanft('bro', wallet='bob')
     # module.st_test()

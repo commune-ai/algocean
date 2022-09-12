@@ -1,11 +1,12 @@
 
 module: huggingface.dataset.DatasetModule
+network: mumbai
 
 
 dataset: 
   path: "glue"
-  name: "cola"
-  split: [train,validation]
+  # name: "cola"
+  split: [train]
   
 
 # submodules: 

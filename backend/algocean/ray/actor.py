@@ -15,7 +15,7 @@ class ActorModule:
     ray_context = None
     config_loader = ConfigLoader(load_config=False)
     default_config_path = None
-    def __init__(self, config=None, override={}):
+    def __init__(self, config=None, override={}, **kwargs):
 
         self.config = self.resolve_config(config=config)
         self.override_config(override=override)

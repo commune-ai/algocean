@@ -1,6 +1,8 @@
 
 module:  RayModule
-client: {}
+# client: 
+#   block: ['ray']
+
 
 ray:
   address: auto

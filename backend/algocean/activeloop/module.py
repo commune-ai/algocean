@@ -25,32 +25,26 @@ class ActiveLoopModule(BaseModule):
         self.override_config(override=override)
 
         self.algocean = self.get_object('ocean.OceanModule')()
-        self.web3 = self.algocean.web3
-        self.ocean = self.algocean.ocean
         self.hub = hub
+        self.load_state()
 
-        st.write(self.config)
-
-        self.splits = self.config.get('splits', kwargs.get('splits', self.default_splits))
-        self._api_key = self.config.get('api_key', kwargs.get('api_key', None))
-        self.src = self.config.get('src', kwargs.get('src', self.src))
-        self.path = self.config.get('path', kwargs.get('path'))
-        self.load_dataset()
-        # self.config['metadata'] = self.metadata
-        self.config['info'] = self.info
-        self.config['src'] = self.src
+    @property
+    def web3(self):
+        return self.algocean.web3
+    @property
+    def ocean(self):
+        return self.algocean.ocean
+    @property
+    def network(self):
+        return self.algocean.network
+    @property
+    def set_network(self, **kwargs):
+        return self.algocean.set_network(**kwargs)
+        
 
     @property
     def dataset_name(self):
         return self.path
-    @property
-    def api_key(self):
-        return self._api_key
-
-    @api_key.setter
-    def api_key(self, key=None):
-        self._api_key = key
-        return self.api_key
 
     def split_info(self, split='train'):
         return self.split_info[split]
@@ -64,6 +58,17 @@ class ActiveLoopModule(BaseModule):
         
         return split_info
 
+
+    def load_state(self):
+        self.splits = self.config.get('splits',self.default_splits)
+        self.api_key = self.config.get('api_key')
+        self.src = self.config.get('src', self.src)
+        self.path = self.config.get('path')
+
+        self.load_dataset()
+        # self.config['metadata'] = self.metadata
+        self.config['info'] = self.info
+        self.config['src'] = self.src
 
     def load_dataset(self):
 
@@ -147,6 +152,7 @@ class ActiveLoopModule(BaseModule):
         info = {**self.raw_info}
         info['features'] = self.features_info
         info['splits'] = self.splits_info
+        info['description'] = info.get('description', 'No Description Available')
         return info
 
     @property
@@ -180,7 +186,6 @@ class ActiveLoopModule(BaseModule):
 
             #Working - Improvement to resolve - ValueError: dictionary update sequence element #0 has length 10; 2 is required
             if tensor_name == "labels":
-
                 label_distr = np.unique(tensor_object.data()["value"],return_counts=True)
                 metadata[tensor_name].update({"label_distribution": dict(zip(label_distr[0].tolist(), label_distr[1].tolist()))})
 
@@ -205,6 +210,8 @@ class ActiveLoopModule(BaseModule):
         state_path_map = self.config.get('state_path_map')
         if state_path_map == None:
             state_path_map = self.save()
+            self.config['state_path_map'] = state_path_map
+
         return state_path_map
 
 
@@ -680,8 +687,6 @@ class ActiveLoopModule(BaseModule):
     def local_tmp_dir(self):
         return f'/tmp/{self.module_path()}/{self.path}'
 
-
-
     def load_from_disk_config(self, path):
         path = os.path.join(path, 'config.json')
         config = self.client.local.get_json(path=path )
@@ -724,7 +729,6 @@ class ActiveLoopModule(BaseModule):
                     feature_files = sorted([f for f in files if f.startswith(f'{split}-{feature}')])
                     for f in feature_files[:chunk_limit]:
                         tensor = np.load(f)
-                        st.write(tensor.shape)
                         getattr(ds, feature).extend(tensor) 
 
             ds._info = config.get('info', {})
@@ -788,6 +792,33 @@ class ActiveLoopModule(BaseModule):
                     feature_path = os.path.join(split_path,f"{feature}-{chunk_id}.npy")
                     np.save(feature_path, feature_tensor_chunk, allow_pickle=False, fix_imports=True)
 
+
+
+    @staticmethod
+    def streamlit():
+        ActiveLoopModule.demo()
+        
+    @staticmethod
+    def demo():
+        datasets_dict = ActiveLoopModule.datasets('dict')
+        dataset_options = list(datasets_dict.keys())
+        ds2index = {ds:i for i,ds in enumerate(dataset_options)}
+        ds = st.sidebar.selectbox('Select a Dataset',dataset_options, ds2index['mnist'] )
+        ds_splits = datasets_dict[ds]['splits']
+        ds_splits = st.sidebar.multiselect('Select Splits', ds_splits, ds_splits)
+        
+
+        error_datasets =  ['kmnist', 'imagenet', 'coco', 'fashionpedia', 'hockey', 'davis2017', 'gtzan', 'daisee', 'kth', 'gtsrb', 'timit', 'mura', 'svhn', 'lincolnbeet']
+        demo_datasets =  ['hasy', 'cifar100', 'k49', 'mnist', 'stl10', 'cifar10', 'stanford']
+
+        filtered_datasets = []
+        for ds in demo_datasets:
+
+            st.write('DATASET: ',ds)
+            ds_splits = datasets_dict[ds]['splits']
+            module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
+            st.write(module.create_asset(force_create=False))
+
     # def load_from_disk(self):
     #     config = self.load_from_disk_config()
     #     for split in config['splits']:
@@ -796,23 +827,11 @@ if __name__ == '__main__':
     import streamlit as st
     # from metadata import DatasetMetdata
     import os
-    datasets_dict = ActiveLoopModule.datasets('dict')
-    dataset_options = list(datasets_dict.keys())
-    ds2index = {ds:i for i,ds in enumerate(dataset_options)}
-    ds = st.sidebar.selectbox('Select a Dataset',dataset_options, ds2index['mnist'] )
-    ds_splits = datasets_dict[ds]['splits']
-    ds_splits = st.sidebar.multiselect('Select Splits', ds_splits, ds_splits)
-    st.write(ds)
-    module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
+
+    ActiveLoopModule.demo()
 
 
-    st.write("Active Loop Train Dataset")
-    # # st.write(module.features_info)
-    # ds.append('tensor_1': np.ones((1,4)), 'tensor_2': hub.read('image.jpg'))
-    # st.write(module.additional_information())
-    module.create_asset(force_create=True)
-
-
+    # st.write(module.create_asset(force_create=False))
 
 
 

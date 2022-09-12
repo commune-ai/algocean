@@ -1,6 +1,6 @@
 
-module:  RayModule
-url: 
+module:  ClientModule
+
 
 ray:
   address: auto

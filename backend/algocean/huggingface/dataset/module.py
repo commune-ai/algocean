@@ -65,13 +65,28 @@ class DatasetModule(BaseModule, Dataset):
     dataset = {}
     def __init__(self, config:dict=None, override:dict={}):
         BaseModule.__init__(self, config=config, override=override)
-        self.algocean = OceanModule()
-        self.web3 = self.algocean.web3
-        self.ocean = self.algocean.ocean
-        self.override_config(override)
+        
+        self.algocean = OceanModule(override={'network':self.config.get('network')})
         self.hub = self.get_object('huggingface.hub.module.HubModule')()
+        self.override_config(override)
         self.load_state(**self.config.get('dataset'))
 
+
+    @property
+    def web3(self):
+        return self.algocean.web3
+    @property
+    def ocean(self):
+        return self.algocean.ocean
+
+    @property
+    def network(self):
+        return self.algocean.network
+
+    @property
+    def set_network(self, **kwargs):
+        return self.algocean.set_network(**kwargs)
+        
 
     def load_builder(self, path):
         self.dataset_factory = self.load_dataset_factory(path=path)
@@ -454,6 +469,10 @@ class DatasetModule(BaseModule, Dataset):
     @property
     def wallet(self):
         return self.algocean.wallet
+
+    @property
+    def wallets(self):
+        return self.algocean.wallets
 
     @property
     def services(self):
@@ -872,23 +891,30 @@ if __name__ == '__main__':
     import numpy as np
     from algocean.utils import *
 
-       
     module = DatasetModule(override={'load_dataset': False})
 
     df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
    
-    st.write(module.my_assets)
+    # st.write(module.algocean.wallet.web3.provider)
+    # st.write(module.algocean.set_network('local'))
+    # st.write(module.web3.provider)
+    # st.write(module.algocean.set_network('mumbai'))
+    # st.write(module.web3.provider)
+    # st.write(module.save())
+    # st.write(df)
+
     # st.write(module.asset.__dict__)
     # st.write(module.ocean.config.__dict__)
 
-    # # st.write(df)
-    # dataset_list = list(df['id'][:10])
+    st.write(module.my_assets)
+    st.write(module.web3.provider, module.wallet.web3.provider)
+    dataset_list = list(df['id'][:10])
     # for dataset in dataset_list:
     #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
        
     #     try:
     #         module = DatasetModule(override=override,)
-    #         st.write(module.create_asset(force_create=False))
+    #         st.write(module.create_asset(force_create=False).__dict__)
     #     except ImportError as e:
     #         st.write('IMPORT ERROR', dataset)
 
