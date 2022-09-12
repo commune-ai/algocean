@@ -71,22 +71,24 @@ class DatasetModule(BaseModule, Dataset):
         self.override_config(override)
         self.load_state(**self.config.get('dataset'))
 
-
     @property
     def web3(self):
         return self.algocean.web3
     @property
     def ocean(self):
         return self.algocean.ocean
-
     @property
     def network(self):
         return self.algocean.network
-
     @property
-    def set_network(self, **kwargs):
-        return self.algocean.set_network(**kwargs)
+    def set_network(self, *args, **kwargs):
+        return self.algocean.set_network(*args, **kwargs)
         
+    @property
+    def set_default_wallet(self, *args, **kwargs):
+        return self.algocean.set_default_wallet(*args, **kwargs)
+    
+
 
     def load_builder(self, path):
         self.dataset_factory = self.load_dataset_factory(path=path)
@@ -883,48 +885,28 @@ class DatasetModule(BaseModule, Dataset):
         assert len(rows) == 1, len(rows)
         return rows.iloc[0]['task_categories']
     
+    @staticmethod
+    def demo():
+        module = DatasetModule(override={'load_dataset': False})
 
+        df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
+   
+
+        dataset_list = list(df['id'][:2])
+        for dataset in dataset_list:
+            override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
+        
+            try:
+                module = DatasetModule(override=override,)
+                st.write(module.create_asset(force_create=False).__dict__)
+            except ImportError as e:
+                st.write('IMPORT ERROR', dataset)
 
 
 if __name__ == '__main__':
     import streamlit as st
     import numpy as np
     from algocean.utils import *
-
-    module = DatasetModule(override={'load_dataset': False})
-
-    df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
-   
-    # st.write(module.algocean.wallet.web3.provider)
-    # st.write(module.algocean.set_network('local'))
-    # st.write(module.web3.provider)
-    # st.write(module.algocean.set_network('mumbai'))
-    # st.write(module.web3.provider)
-    # st.write(module.save())
-    # st.write(df)
-
-    # st.write(module.asset.__dict__)
-    # st.write(module.ocean.config.__dict__)
-
-    st.write(module.my_assets)
-    st.write(module.web3.provider, module.wallet.web3.provider)
-    dataset_list = list(df['id'][:10])
-    # for dataset in dataset_list:
-    #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
-       
-    #     try:
-    #         module = DatasetModule(override=override,)
-    #         st.write(module.create_asset(force_create=False).__dict__)
-    #     except ImportError as e:
-    #         st.write('IMPORT ERROR', dataset)
+    DatasetModule.demo()
 
 
-    # st.write(module.asset.metadata)
-    
-    # st.write(module.services[0].__dict__)
-    # st.write(module.get_tags(return_type='list'))
-    # st.write(module.get_task())
-    # # module.create_asset(force_create=False)
-    # st.write(module.services[0].__dict__)
-
-    

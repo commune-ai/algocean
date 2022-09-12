@@ -28,6 +28,9 @@ class ActorModule:
             assert isinstance(self.default_config_path, str)
             config = self.default_config_path
 
+        if override == None:
+            override = {}
+
         
         config = self.load_config(config=config, 
                              override=override, 
@@ -353,6 +356,8 @@ class ActorModule:
         return get_module_function_schema(obj, **kwargs)
 
     def override_config(self,override:dict={}):
+        if override == None:
+            override = {}
         assert isinstance(override, dict), type(override)
         for k,v in override.items():
             dict_put(self.config, k, v)

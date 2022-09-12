@@ -64,8 +64,7 @@ class OceanModule(BaseModule):
          but thats too deep
         '''
         if wallets == None:
-            wallets = self.config.get('wallets', self.config.get('wallet'))
-        
+            wallets = self.config.get('wallet', self.config.get('wallets'))
         if isinstance(wallets, list):
             wallets = {f'default{i}':w for w in wallets}
         elif isinstance(wallets, str):
@@ -73,7 +72,7 @@ class OceanModule(BaseModule):
         elif isinstance(wallets, dict):
             wallets = wallets
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f'{wallets} is not a valid input')
 
         assert isinstance(wallets, dict), f'{wallets} should be a dictionary'
 
@@ -334,7 +333,6 @@ class OceanModule(BaseModule):
             while timer.elapsed < timeout:
                 try:
                     time.sleep(0.1)
-                    st.write(timer.elapsed)
                     assets = self.search(text=query_text, return_type='asset')
                     assert len(assets)==1, f'This asset from datanft: {datanft.address} does not exist'
                     assert isinstance(assets[0], Asset), f'The asset is suppose to be an Asset My guy'
@@ -775,6 +773,14 @@ class OceanModule(BaseModule):
 
         return ddo_list
 
+    def hash(self, data:str, algo='keccak'):
+        if algo == 'keccak':
+            return self.web3.toHex((self.web3.keccak(text=data)))
+        else:
+            raise NotImplementedError
+
+    def sign(self, data:str, wallet=None):
+        raise NotImplemented
 
     @staticmethod
     def describe(instance):

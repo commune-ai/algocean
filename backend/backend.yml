@@ -28,6 +28,7 @@ services:
       OCEAN_ARTIFACTS_FOLDER: ${OCEAN_ARTIFACTS_FOLDER}
       ADDRESS_FILE: /ocean-contracts/artifacts/address.json
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
+      
     env_file: 
       - .env
     command: bash -c "chmod +x ./scripts/*; conda init bash;./scripts/startup.sh; conda activate algocean; tail -F anything"

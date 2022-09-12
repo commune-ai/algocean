@@ -8,15 +8,8 @@ class BaseModule(ActorModule):
     client = None
     default_config_path = None
     def __init__(self, config=None, override={}, **kwargs):
+
         ActorModule.__init__(self,config=config, override=override)
-        self.config_loader = ConfigLoader()
-        if config!=None:
-            if len(config) == 0:
-                config = None
-
-
-        self.config = self.get_config(config=config)
-
 
         if kwargs.get('get_clients') != False:
             self.client = self.get_clients() 
@@ -49,6 +42,8 @@ class BaseModule(ActorModule):
             raise NotImplementedError
             
     def get_config(self, config=None):
+        if getattr(self, 'config') != None:
+            assert isinstance(self,dict)
         if config == None:
 
             assert self.default_config_path != None

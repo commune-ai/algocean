@@ -21,10 +21,7 @@ class ActiveLoopModule(BaseModule):
 
     def __init__(self, config=None, override={}, **kwargs):
         BaseModule.__init__(self, config=config,override=override)
-        
-        self.override_config(override=override)
-
-        self.algocean = self.get_object('ocean.OceanModule')()
+        self.algocean = self.get_object('ocean.OceanModule')(override={'network':self.config.get('network')})
         self.hub = hub
         self.load_state()
 
@@ -298,13 +295,8 @@ class ActiveLoopModule(BaseModule):
 
         return url_files
 
-
-    def hash(self, data:str, algo='keccak'):
-        if algo == 'keccak':
-            return self.algocean.web3.toHex((self.algocean.web3.keccak(text=data)))
-        else:
-            raise NotImplementedError
-
+    def hash(self, *args, **kwargs):
+        return self.algocean.hash(*args, **kwargs)
 
     @property
     def split_file_info(self):
@@ -455,6 +447,17 @@ class ActiveLoopModule(BaseModule):
         return self.algocean.wallet
 
     @property
+    def wallets(self):
+        return self.algocean.wallets
+
+    def set_default_wallet(self, *args, **kwargs):
+        return self.algocean.set_default_wallet(*args, **kwargs)
+
+    @property
+    def default_wallet_key(self):
+        return self.algocean.default_wallet_key
+
+    @property
     def services(self):
         if self.asset == None:
             return []
@@ -475,6 +478,22 @@ class ActiveLoopModule(BaseModule):
     @property
     def my_assets(self):
         return self.algocean.search(text=f'metadata.author:{self.wallet.address}')
+    @property
+    def my_assets_info(self):
+        return self.assets2info(self.my_assets)
+
+    @staticmethod
+    def assets2info(assets:list): 
+        asset_info_list = []
+        for a in assets:
+            get_map = {
+                'name': 'metadata.name',
+                'organization': 'metadata.additionalInformation.organization',
+                'did': 'did',
+                'chain_id': 'chain_id'
+            }
+            asset_info_list.append({k: dict_get(a.__dict__, v) for k,v in get_map.items()})
+        return asset_info_list
 
     @property
     def asset(self):
@@ -512,7 +531,9 @@ class ActiveLoopModule(BaseModule):
 
 
         
-    def download(self, service=None, destination='bruh/'):
+    def download(self, service=None, destination='fam'):
+        if destination[-1] != '/':
+            destination += '/'
         
         if service == None:
             service = self.get_service(service)
@@ -521,25 +542,28 @@ class ActiveLoopModule(BaseModule):
         if datatoken.balanceOf(self.wallet.address)< self.ocean.to_wei(1):
             self.dispense_tokens()
 
-
         self.algocean.download_asset(asset=self.asset, service=service,destination=destination )
         
+        did_folder = f'datafile.{self.asset.did},0'
+        download_dir = f'{destination}/{did_folder}'
+        download_files = self.client.local.ls(download_dir)
+        splits_info = dict_get(service.__dict__, 'additional_information.info.splits')
+        path2hash = {f:self.hash(os.path.basename(f).split('.')[0]) for f in download_files}
+        path2path = {}
+        for split, split_info in splits_info.items():
+            file_info_list = split_info['file_info']
+            for file_info in file_info_list:
+                for f, h in path2hash.items():
+                    if h == file_info['file_hash']:
+                        new_f = deepcopy(f)
+                        new_f = f.replace(f'/{did_folder}/', '/').replace(os.path.basename(f), file_info['name'] )
+                        path2path[f] = new_f
+        for p1, p2 in path2path.items():
+            self.client.local.cp(p1, p2)
+                 
+        self.client.local.rm(download_dir, recursive=True)
+        return self.load_from_disk(path=destination)
 
-        
-        for split,split_files_info in service.additional_information['file_info'].items():
-            for file_info in split_files_info:
-                file_index = file_info['file_index']
-                file_name = file_info['name']
-                did = self.asset.did
-
-        # /Users/salvatore/Documents/commune/algocean/backend/bruh/datafile.did:op:6871a1482db7ded64e4c91c8dba2e075384a455db169bf72f796f16dc9c2b780,0
-        # og_path = self.client.local.ls(os.path.join(destination, 'datafile.'+did+f',{file_index}'))
-        # new_path = os.path.join(destination, split, file_name )
-        # self.client.local.makedirs(os.path.dirname(new_path), exist_ok=True)
-        # self.client.local.cp(og_path, new_path)
-
-        files = module.client.local.ls(os.path.join(destination, 'datafile.'+module.asset.did+ f',{0}'))
-                
             
 
     def load(self, path:dict=None, mode:str='ipfs'):
@@ -793,7 +817,6 @@ class ActiveLoopModule(BaseModule):
                     np.save(feature_path, feature_tensor_chunk, allow_pickle=False, fix_imports=True)
 
 
-
     @staticmethod
     def streamlit():
         ActiveLoopModule.demo()
@@ -816,7 +839,7 @@ class ActiveLoopModule(BaseModule):
 
             st.write('DATASET: ',ds)
             ds_splits = datasets_dict[ds]['splits']
-            module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits})
+            module = ActiveLoopModule(override={'path': ds,  'splits': ds_splits, 'network': 'local'})
             st.write(module.create_asset(force_create=False))
 
     # def load_from_disk(self):
@@ -827,20 +850,27 @@ if __name__ == '__main__':
     import streamlit as st
     # from metadata import DatasetMetdata
     import os
-
-    ActiveLoopModule.demo()
-
-
-    # st.write(module.create_asset(force_create=False))
+    from algocean.utils import *
 
 
+    module = ActiveLoopModule(override={'path': 'mnist',  'splits': ['train'], 'network': 'mumbai'})
+    module.set_default_wallet('richard')
+
+    # st.write(module.asset.__dict__)
+    # split = 'train'
+    st.write()
+    # st.write(module.download())
+    
+
+    st.write(module.my_assets_info)
+    # st.write([a.__dict__ for a in module.my_assets])
+    # st.write(module.asset)
 
 
-    # st.write(len(module.dataset['train']))
-    # st.write(module.metadata)
-    # st.write(module.load_from_disk()['train'].__dict__)
-
-    # st.write(module.client.local.glob('/tmp/algocean/activeloop/mnist/**'))
-    # st.write(module.client.local.glob(module.local_tmp_dir+'/train/images-*'))
 
 
+    
+        
+    
+    
+    st.write()
