@@ -29,7 +29,10 @@ if __name__ == "__main__":
     import streamlit as st
     module = ClientModule()
     output_dict = {}
+    
+    st.write(module.client.__dict__)
     module_list  = module.client.rest.get(endpoint='module/list', params={'path_map':False})
+
     st.write(module_list)
     # module_schemas  = module.client.rest.get(endpoint='module/schemas')
     # module_schemas  = module.client.rest.get(endpoint='module/schema')

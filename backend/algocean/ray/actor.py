@@ -16,14 +16,24 @@ class ActorModule:
     config_loader = ConfigLoader(load_config=False)
     default_config_path = None
     def __init__(self, config=None, override={}, **kwargs):
+        print(config, 'LOADED FAM') 
+        
 
         self.config = self.resolve_config(config=config)
+        
         self.override_config(override=override)
         self.start_timestamp = datetime.datetime.utcnow().timestamp()
         
     def resolve_config(self, config, override={}, local_var_dict={}, recursive=True):
         if config == None:
             config = getattr(self,'config',  None)
+        elif (type(config) in  [list, dict]): 
+            if len(config) == 0:
+                assert isinstance(self.default_config_path, str)
+                config = self.default_config_path
+        else:
+            raise NotImplementedError(config)
+
         if config == None:
             assert isinstance(self.default_config_path, str)
             config = self.default_config_path
@@ -31,11 +41,11 @@ class ActorModule:
         if override == None:
             override = {}
 
-        
         config = self.load_config(config=config, 
                              override=override, 
                             local_var_dict=local_var_dict,
                             recursive=True)
+
 
         
 
@@ -122,7 +132,7 @@ class ActorModule:
     def ray_initialized():
         return ray.is_initialized()
 
-    @classmethod
+    @classmethod 
     def deploy(cls, config=None, actor=False , override={}, local_var_dict={}, **kwargs):
         """
         deploys process as an actor or as a class given the config (config)

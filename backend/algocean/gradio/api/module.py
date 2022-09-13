@@ -32,7 +32,7 @@ class bcolor:
     
 
 class GradioModule(BaseModule):
-    default_config_path =  'gradio.api.module'
+    default_config_path =  'gradio.api'
 
 
     # without '__reduce__', the instance is unserializable.
@@ -44,7 +44,8 @@ class GradioModule(BaseModule):
 
     def __init__(self, config=None):
         BaseModule.__init__(self, config=config)
-        print(self.client, 'CLIENTS')
+        print(self.config, 'CONFIGFAM')
+
 
         self.port2module = {} 
         self.module2port = {}
@@ -179,9 +180,9 @@ class GradioModule(BaseModule):
 
 
     def get_modules(self, force_update=True):
-        
         modules = []
         failed_modules = []
+        print(self.client,'CLIENTSFAM')
         for root, dirs, files in self.client.local.walk('/app/algocean'):
             if all([f in files for f in ['module.py', 'module.yaml']]):
 
