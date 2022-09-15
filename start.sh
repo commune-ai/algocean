@@ -176,47 +176,16 @@ show_banner
 COMPOSE_FILES=""
 
 # deploy from barge
-
 COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml"
-
-
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/network_volumes.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
-
-
-# deploy locally from source
-
-# ganahce
-COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
-
-# aquarius
+COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
 COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
 COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
-
-# provider
-COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
-
-
-# run ipfs node for provider and graph
 COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
-
-
-# deploy contracts
-# COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
-
-# COMPOSE_FILES+=" -f ${DIR}/subgraph/docker-compose.yml"
-
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
-# COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
-
-
-
+COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
+COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
+COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
+COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
 
 
 
@@ -231,6 +200,9 @@ while :; do
         #################################################
         --no-ansi)
             DOCKER_COMPOSE_EXTRA_OPTS+=" --no-ansi"
+            ;;
+        --update)
+            export FORCEPULL="true"
             ;;
         --force-pull)
             export FORCEPULL="true"
@@ -269,6 +241,10 @@ while :; do
             COMPOSE_FILES="${COMPOSE_FILES/ -f ${BACKEND_DIR}\/backend.yml/}"
 	        printf $COLOR_Y'Starting without BACKEND...\n\n'$COLOR_RESET
             ;;
+
+        --provider)
+        COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
+        ;;
 
         --with-frontend)
             COMPOSE_FILES="${COMPOSE_FILES/ -f ${DIR}\/frontend/docker-compose.yml/}"
@@ -350,7 +326,6 @@ while :; do
         eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
         shift
-        break
         ;;
 
         --restart-backend)
@@ -377,7 +352,7 @@ while :; do
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
             echo "${PROJECT_NAME}"
-            # eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+            # [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d 
             break

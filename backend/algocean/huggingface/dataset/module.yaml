@@ -1,6 +1,6 @@
 
 module: huggingface.dataset.DatasetModule
-network: local
+network: mumbai
 
 dataset: 
   path: "glue"

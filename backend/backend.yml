@@ -16,17 +16,18 @@ services:
       - 7865-7870:7865-7870
       
     volumes:
-      - ./:/app
+      - ./ipfspy/ipfspy:/app/ipfspy/ipfspy
+      - ./ipfsspec/ipfsspec:/app/ipfsspec/ipfsspec
       - ./ocean.py/ocean_lib:/app/ocean.py/ocean_lib
-      - ~/.ocean:/.ocean
-      - ${OCEAN_ARTIFACTS_FOLDER}:/ocean-contracts/artifacts/
+      - ./algocean:/app/algocean
+      - ${OCEAN_ARTIFACTS_FOLDER}:/.ocean/ocean-contracts/artifacts
     networks:
       backend:
         ipv4_address: 172.15.0.9
 
     environment:
-      OCEAN_ARTIFACTS_FOLDER: ${OCEAN_ARTIFACTS_FOLDER}
-      ADDRESS_FILE: /ocean-contracts/artifacts/address.json
+      OCEAN_ARTIFACTS_FOLDER: /.ocean/ocean-contracts/artifacts"
+      ADDRESS_FILE: /.ocean/ocean-contracts/artifacts/address.json
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
       
     env_file: 

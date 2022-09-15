@@ -925,11 +925,13 @@ class DatasetModule(BaseModule, Dataset):
         module = DatasetModule(override={'load_dataset': False})
 
         df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
-        # module.set_default_wallet('alice')
-        st.write(module.create_asset())
-        module.download(destination='yo')
+        module.set_default_wallet('richard')
+        # st.write(df)
+        # st.write(module.assets())
+        # st.write(module.create_asset(force_create=True))
+        module.download(destination='vince')
 
-        # dataset_list = list(df['id'][:4])
+        # dataset_list = list(df['id'][:20])
         # for dataset in dataset_list:
         #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}
         #     try:

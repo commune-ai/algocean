@@ -6,6 +6,8 @@ start:
 	./start.sh
 up:
 	./start.sh --force-pull
+restart:
+	make down; make up;
 
 backend: 
 	./start.sh --backend; docker exec -it ocean_backend_1;
@@ -28,7 +30,7 @@ kill_all:
 	docker kill $(docker ps -q)
 
 logs:
-	docker logs ${arg} --tail=100 --follow
+	docker logs ocean_${arg}_1 --tail=100 --follow
 
 streamlit:
 	docker exec -it ocean_backend_1 bash -c "streamlit run algocean/${arg}/module.py "
