@@ -211,6 +211,8 @@ class DatasetModule(BaseModule, Dataset):
         state_path_map = self.config.get('state_path_map')
         if state_path_map == None:
             state_path_map = self.save()
+            self.config['state_path_map'] = state_path_map
+
         return state_path_map
 
     __file__ = __file__
@@ -314,8 +316,7 @@ class DatasetModule(BaseModule, Dataset):
             raise NotImplementedError
 
 
-    @property
-    def split_file_info(self):
+    def get_split_file_info(self):
 
         file_index = 0
         url_files = []
@@ -327,8 +328,6 @@ class DatasetModule(BaseModule, Dataset):
       
             for filename, cid in split_file2cid.items():
                 
-
-
                 file_index = None
                 for i in range(len(url_files)):
                     if url_files[i].hash == cid:
@@ -340,6 +339,7 @@ class DatasetModule(BaseModule, Dataset):
                 split_url_files_info[split].append(dict(
                     name=filename ,
                     file_index=file_index,
+                    cid=cid,
                     file_hash = self.hash(cid))
                 )
 
@@ -398,7 +398,6 @@ class DatasetModule(BaseModule, Dataset):
                         timeout = 180000,
                         price_mode = 'free',
                         **kwargs):
-
 
         datanft = self.datanft
         if datanft == None:
@@ -584,7 +583,7 @@ class DatasetModule(BaseModule, Dataset):
         return service
 
         
-    def download(self, service=None, destination='fam'):
+    def download(self, asset=None, service=None, destination='fam'):
         if destination[-1] != '/':
             destination += '/'
         
@@ -594,7 +593,6 @@ class DatasetModule(BaseModule, Dataset):
         
         if datatoken.balanceOf(self.wallet.address)< self.ocean.to_wei(1):
             self.dispense_tokens()
-
         self.algocean.download_asset(asset=self.asset, service=service,destination=destination )
         
         did_folder = f'datafile.{self.asset.did},0'
@@ -756,9 +754,12 @@ class DatasetModule(BaseModule, Dataset):
         info = deepcopy(self.dataset[self.splits[0]].info.__dict__)
         assert 'splits' in info
         split_info = {}
+        split_file_info = self.get_split_file_info()
         for split in self.splits:
+            assert split in split_file_info
             split_info[split] = info['splits'][split].__dict__
-            split_info[split]['file_info'] = self.split_file_info[split]
+            split_info[split]['file_info'] = split_file_info[split]
+        
         
         info['splits'] = split_info    
 
@@ -927,10 +928,13 @@ class DatasetModule(BaseModule, Dataset):
         df = module.list_datasets(filter_fn = 'r["tags"].get("size_categories") == "10K<n<100K"')
         module.set_default_wallet('richard')
         # st.write(df)
-        # st.write(module.assets())
-        # st.write(module.create_asset(force_create=True))
-        module.download(destination='vince')
-
+        # st.write(module.asset.__dict__)
+        # st.write(module.create_asset(force_create=False).__dict__)
+        # st.write(module.asset.services[0].__dict__)
+        # module.download(destination='arshy')
+        did = 'did:op:8d1f0eac0d8de08bb32eb6b9017c683a9f39bd1bb4e2914f80ff4805d01e3a11'
+        asset = module.algocean.get_asset(f'{did}')
+        module.algocean.download_asset(asset, destination='mnist')
         # dataset_list = list(df['id'][:20])
         # for dataset in dataset_list:
         #     override = {'dataset': {"path":dataset, "split":["train"], "load_dataset": True}}

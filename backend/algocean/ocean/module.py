@@ -322,7 +322,11 @@ class OceanModule(BaseModule):
         '''
         get asset from datanft using aquarius
         '''
-
+        if isinstance(did, str):
+            return self.aquarius.get_asset_ddo(did)
+        if isinstance(datanft, str):
+            if datanft.startswith('did:op'):
+                did = datanft
         if isinstance(datanft, Asset):
             return datanft
 

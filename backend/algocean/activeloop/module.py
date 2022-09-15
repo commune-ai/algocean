@@ -23,7 +23,8 @@ class ActiveLoopModule(BaseModule):
         BaseModule.__init__(self, config=config,override=override)
         self.algocean = self.get_object('ocean.OceanModule')(override={'network':self.config.get('network')})
         self.hub = hub
-        self.load_state()
+        if self.config['load_state'] == True:
+            self.load_state()
 
     @property
     def web3(self):
@@ -57,6 +58,7 @@ class ActiveLoopModule(BaseModule):
 
 
     def load_state(self):
+
         self.splits = self.config.get('splits',self.default_splits)
         self.api_key = self.config.get('api_key')
         self.src = self.config.get('src', self.src)
@@ -533,23 +535,39 @@ class ActiveLoopModule(BaseModule):
         cid_hash = module.algocean.web3.toHex((module.algocean.web3.keccak(text=cid)))
         return cid_hash
 
+        
+    def download(self,asset=None, service=None, destination='fam', refresh=False):
+        
+        
+        if self.client.local.exists(destination) and refresh==False:
+            return self.load_from_disk(path=destination)
+
+        if asset == None:
+            asset = self.asset
+
+        if wallet == None:
+            wallet = self.wallet
+
 
         
-    def download(self, service=None, destination='fam'):
         if destination[-1] != '/':
             destination += '/'
         
         if service == None:
-            service = self.get_service(service)
+            service = asset.services[0]
         datatoken = self.algocean.get_datatoken(service.datatoken)
         
         if datatoken.balanceOf(self.wallet.address)< self.ocean.to_wei(1):
             self.dispense_tokens()
 
-        self.algocean.download_asset(asset=self.asset, service=service,destination=destination )
-        
-        did_folder = f'datafile.{self.asset.did},0'
+        did_folder = f'datafile.{asset.did},0'
         download_dir = f'{destination}/{did_folder}'
+
+
+
+        
+        self.algocean.download_asset(asset=asset, service=service,destination=destination )
+        
         download_files = self.client.local.ls(download_dir)
         splits_info = dict_get(service.__dict__, 'additional_information.info.splits')
         path2hash = {f:self.hash(os.path.basename(f).split('.')[0]) for f in download_files}
@@ -601,7 +619,9 @@ class ActiveLoopModule(BaseModule):
         self._splits = value
     
     
-    def get_service(self, service):
+    def get_service(self, service=0, asset=None):
+        if asset != None:
+            services = asset.services
         services = self.services
         if isinstance(service, int):
             service = services[service]
@@ -857,22 +877,37 @@ if __name__ == '__main__':
     from algocean.utils import *
 
 
-    module = ActiveLoopModule(override={'path': 'mnist',  'splits': ['train'], 'network': 'mumbai'})
+    module = ActiveLoopModule(override={'load_state':True, 'path': 'mnist',  'splits': ['train'], 'network': 'mumbai'})
     module.set_default_wallet('richard')
 
     # st.write(module.asset.__dict__)
     # split = 'train'
-    st.write()
-    # st.write(module.download())
-    
+    st.sidebar.write('## My Assets')
+    for asset_module in module.my_assets_info:
+        key  = f"{asset_module['name']} ({asset_module['organization']})"
+        with st.sidebar.expander(key):
+            st.write(asset_module)
 
-    st.write({a['name']: a['url']for a in module.my_assets_info})
+
+    st.write('## Load Dataset Asset')
+
+    with st.form("Load Asset"): 
+        default_did = 'did:op:8d1f0eac0d8de08bb32eb6b9017c683a9f39bd1bb4e2914f80ff4805d01e3a11'
+
+        did = st.text_input('input dataset did', default_did)
+
+        # did = 'did:op:8d1f0eac0d8de08bb32eb6b9017c683a9f39bd1bb4e2914f80ff4805d01e3a11'
+        # st.write([a.__dict__ for a in module.my_assets])
+        submitted = st.form_submit_button("get")
+        if submitted:
+            st.write(module.download(asset=did, destination='mnist')['train'].__dict__)
+
+    # st.write(module.download())
+
     # st.write([a.__dict__ for a in module.my_assets])
     # st.write(module.asset)
 
-
-
-
+  
     
         
     
