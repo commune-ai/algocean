@@ -45,6 +45,7 @@ export WAIT_FOR_C2DIMAGES=${WAIT_FOR_C2DIMAGES:-false}
 
 export PROJECT_NAME="ocean"
 export FORCEPULL="false"
+export FORCEBUILD="false"
 
 # Export User UID and GID
 export LOCAL_USER_ID=$(id -u)
@@ -201,7 +202,11 @@ while :; do
         --no-ansi)
             DOCKER_COMPOSE_EXTRA_OPTS+=" --no-ansi"
             ;;
+        --build)
+            export FORCEBUILD="true"
+            ;;
         --update)
+            export FORCEBUILD="true"
             export FORCEPULL="true"
             ;;
         --force-pull)
@@ -352,7 +357,7 @@ while :; do
             [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
             [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
             echo "${PROJECT_NAME}"
-            # [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+            [ ${FORCEBUILD} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
 
             eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d 
             break

@@ -21,6 +21,13 @@ services:
       - ./ocean.py/ocean_lib:/app/ocean.py/ocean_lib
       - ./algocean:/app/algocean
       - ${OCEAN_ARTIFACTS_FOLDER}:/.ocean/ocean-contracts/artifacts
+      - ${OCEAN_ARTIFACTS_FOLDER}:/app/artifacts
+      - ./contracts:/app/contracts
+      - ./interfaces:/app/interfaces
+      - ./scripts:/app/scripts
+
+
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       backend:
         ipv4_address: 172.15.0.9
@@ -29,6 +36,7 @@ services:
       OCEAN_ARTIFACTS_FOLDER: /.ocean/ocean-contracts/artifacts"
       ADDRESS_FILE: /.ocean/ocean-contracts/artifacts/address.json
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
+  
       
     env_file: 
       - .env
@@ -50,3 +58,4 @@ networks:
       driver: default
       config:
         - subnet: 172.15.0.1/24
+
