@@ -29,6 +29,7 @@ DIR="${DIR/ /\\ }"
 COMPOSE_DIR="${DIR}/barge/compose-files"
 BACKEND_DIR="${DIR}/backend"
 
+
 # Default versions of Aquarius, Provider
 
 export AQUARIUS_VERSION=${AQUARIUS_VERSION:-v4.2.0}
@@ -66,12 +67,14 @@ export NETWORK_RPC_URL="http://"${NETWORK_RPC_HOST}:${NETWORK_RPC_PORT}
 export GANACHE_MNEMONIC=${GANACHE_MNEMONIC:-"taxi music thumb unique chat sand crew more leg another off lamp"}
 
 # Ocean contracts
+
 export PRIVATE_KEY="0x8467415bb2ba7c91084d932276214b11a3dd9bdb2930fefa194b666dd8020b99"
 export OCEAN_HOME="${HOME}/.ocean"
 export CONTRACTS_OWNER_ROLE_ADDRESS="${CONTRACTS_OWNER_ROLE_ADDRESS}"
 export DEPLOY_CONTRACTS=true
 export DEPLOY_SUBGRAPH=true
 export OCEAN_ARTIFACTS_FOLDER="${OCEAN_HOME}/ocean-contracts/artifacts"
+OCEAN_CONTRACTS_FOLDER = 
 mkdir -p ${OCEAN_ARTIFACTS_FOLDER}
 export OCEAN_C2D_FOLDER="${OCEAN_HOME}/ocean-c2d/"
 mkdir -p ${OCEAN_C2D_FOLDER}
@@ -199,6 +202,7 @@ while :; do
         #################################################
         # Disable color
         #################################################
+
         --no-ansi)
             DOCKER_COMPOSE_EXTRA_OPTS+=" --no-ansi"
             ;;
@@ -216,17 +220,12 @@ while :; do
         #################################################
         # Exclude switches
         #################################################
-        --no-provider)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/provider.yml/}"
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/redis.yml/}"
-            
-            printf $COLOR_Y'Starting without Provider...\n\n'$COLOR_RESET
+
+        --network)
+            COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
             ;;
-        --with-registry)
-            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
-            printf $COLOR_Y'Starting with Registry...\n\n'$COLOR_RESET
-            ;;
-        --with-c2d)
+
+        --c2d)
             COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
@@ -238,42 +237,30 @@ while :; do
             printf $COLOR_Y'Starting with RBAC Server...\n\n'$COLOR_RESET
             ;;
 
-        --with-backend)
-	        COMPOSE_FILES+=" -f ${BACKEND_DIR}/backend.yml"
-            printf $COLOR_Y'Starting with RBAC Server...\n\n'$COLOR_RESET
+        --backend)
+	        COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml"
             ;;
-        --no-backend)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${BACKEND_DIR}\/backend.yml/}"
-	        printf $COLOR_Y'Starting without BACKEND...\n\n'$COLOR_RESET
-            ;;
+
 
         --provider)
-        COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose-local.yml"
+            COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
         ;;
 
-        --with-frontend)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${DIR}\/frontend/docker-compose.yml/}"
-	        printf $COLOR_Y'Starting with Frontend...\n\n'$COLOR_RESET
+
+        --light)
             ;;
-        --no-ipfs)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${DIR}\/ipfs/ipfs.yml/}"
-	        printf $COLOR_Y'Starting without IPFS...\n\n'$COLOR_RESET
+        ;;
+
+        --frontend)
+            COMPOSE_FILES+=" -f ${DIR}/frontend/docker-compose.yml"
             ;;
-        --with-thegraph)
-            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/thegraph.yml"
-            printf $COLOR_Y'Starting with TheGraph...\n\n'$COLOR_RESET
+        --aquarius)
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
+            COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
+            COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
             ;;
-        --no-aquarius)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/aquarius.yml/}"
-            printf $COLOR_Y'Starting without Aquarius...\n\n'$COLOR_RESET
-            ;;
-        --no-elasticsearch)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/elasticsearch.yml/}"
-            printf $COLOR_Y'Starting without Elastic search...\n\n'$COLOR_RESET
-            ;;
-        --no-dashboard)
-            COMPOSE_FILES="${COMPOSE_FILES/ -f ${COMPOSE_DIR}\/dashboard.yml/}"
-            printf $COLOR_Y'Starting without Dashboard ...\n\n'$COLOR_RESET
+        --dashboard)
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
             ;;
         --skip-deploy)
             export DEPLOY_CONTRACTS=false
@@ -315,17 +302,6 @@ while :; do
             break
             ;;
 
-        --backend)
-            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
-
-            echo PROJECT_NAME
-
-            export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans
-            shift
-            break
-            ;;
         --build)
         
         eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
@@ -333,16 +309,7 @@ while :; do
         shift
         ;;
 
-        --restart-backend)
-            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
 
-            export COMPOSE_FILES=" -f ${BACKEND_DIR}/backend.yml -f ${COMPOSE_DIR}/network_volumes.yml"          
-            eval docker kill ${PROJECT_NAME}_backend_1; docker rm ${PROJECT_NAME}_backend_1;
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
-            shift
-            break
-            ;;
         --) # End of all options.
             shift
             break

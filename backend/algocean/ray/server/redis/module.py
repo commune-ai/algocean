@@ -1,6 +1,6 @@
 import ray
 from ray.util.queue import Queue
-from algocean import BaseModule
+from commune import BaseModule
 
 """
 
@@ -8,7 +8,7 @@ Background Actor for Message Brokers Between Quees
 
 """
 import ray
-from algocean.ray.utils import kill_actor, create_actor
+from commune.ray.utils import kill_actor, create_actor
 
 class RayRedisServer(BaseModule):
     @staticmethod

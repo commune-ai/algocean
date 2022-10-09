@@ -81,6 +81,9 @@ RUN npm install --save-dev @nomicfoundation/hardhat-toolbox
 COPY hardhat.config.js .
 RUN npx hardhat
 RUN npm install @openzeppelin/contracts
+RUN npm install @uniswap/v3-periphery
+RUN npm install @uniswap/v2-periphery
+
 # RUN npx hardhat compile
 
 

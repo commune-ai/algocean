@@ -1,7 +1,7 @@
 import ray
-from algocean.config import ConfigLoader
-from algocean.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr, RayEnv
-from algocean.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer, get_functions
+from commune.config import ConfigLoader
+from commune.ray.utils import create_actor, actor_exists, kill_actor, custom_getattr, RayEnv
+from commune.utils import dict_put, get_object, dict_get, get_module_file, get_function_defaults, get_function_schema, is_class, Timer, get_functions, check_pid, kill_pid, dict_override, dict_merge, get_parents
 import subprocess 
 import shlex
 import os
@@ -10,6 +10,8 @@ import datetime
 import inspect
 from types import ModuleType
 from importlib import import_module
+from .actor_pool import ActorPool
+from munch import Munch
 class ActorModule: 
     default_ray_env = {'address': 'auto', 'namespace': 'default'}
     ray_context = None
@@ -20,34 +22,46 @@ class ActorModule:
         
 
         self.config = self.resolve_config(config=config)
-        
         self.override_config(override=override)
-        self.start_timestamp = datetime.datetime.utcnow().timestamp()
+        self.start_timestamp =self.current_timestamp
+        self.cache = {}
         
-    def resolve_config(self, config, override={}, local_var_dict={}, recursive=True):
+    @property
+    def current_timestamp(self):
+        return self.get_current_timestamp()
+
+    def current_datetime(self):
+        datetime.datetime.fromtimestamp(self.current_timestamp)
+    
+
+    def start_datetime(self):
+        datetime.datetime.fromtimestamp(self.start_timestamp)
+    
+
+
+    @staticmethod
+    def get_current_timestamp():
+        return  datetime.datetime.utcnow().timestamp()
+        
+    def resolve_config(self, config, override={}, local_var_dict={}, recursive=True, return_munch=False, **kwargs):
         if config == None:
-            config = getattr(self,'config',  None)
+            config = getattr(self,'config',  self.default_config_path)
         elif (type(config) in  [list, dict]): 
             if len(config) == 0:
                 assert isinstance(self.default_config_path, str)
                 config = self.default_config_path
+        elif isinstance(config, str):
+            config = config
         else:
             raise NotImplementedError(config)
-
-        if config == None:
-            assert isinstance(self.default_config_path, str)
-            config = self.default_config_path
-
-        if override == None:
-            override = {}
 
         config = self.load_config(config=config, 
                              override=override, 
                             local_var_dict=local_var_dict,
-                            recursive=True)
-
-
+                            recursive=recursive)
         
+        if return_munch:
+            config = Munch(config)
 
         return config
 
@@ -75,43 +89,18 @@ class ActorModule:
     config_template = default_cfg
     _config = default_cfg
 
-    @staticmethod
-    def get_module(config, actor=False, override={}):
-        """
-        config: path to config or actual config
-        client: client dictionary to avoid child processes from creating new clients
-        """
-        module_class = None
-        # if this is a class return the class
-        if is_class(config):
-            module_class = config
-            return module_class
+    @classmethod
+    def get_module(cls, module:str, **kwargs):
 
-
-        if isinstance(config, str):
-            # check if object is a path to module, return None if it does not exist
-            module_class = ActorModule.get_object(key=config)
-
-
-        if isinstance(module_class, type):
-            
-            config = module_class.default_cfg()
-       
-        else:
-
-            config = ActorModule.load_config(config)
-            ActorModule.check_config(config)
-            module_class = ActorModule.get_object(config['module'])
-
-        return module_class.deploy(config=config, override=override, actor=actor)
+        module_class = cls.get_object(module)
+        return module_class.deploy(**kwargs)
 
     @staticmethod
     def check_config(config):
         assert isinstance(config, dict)
         assert 'module' in config
-
     @staticmethod
-    def get_object(path:str, prefix = 'algocean'):
+    def get_object(path:str, prefix = 'commune'):
         return get_object(path=path, prefix=prefix)
 
     import_module_class = get_object
@@ -132,73 +121,133 @@ class ActorModule:
     def ray_initialized():
         return ray.is_initialized()
 
+    @property
+    def actor_id(self):
+        return self.get_id()
+
+    def get_id(self):
+        return dict_get(self.config, 'actor.id')
+    def get_name(self):
+        return dict_get(self.config, 'actor.name')
+
+    def actor_info(self):
+        return dict_get(self.config, 'actor')
+
+
+    @staticmethod
+    def add_actor_metadata(actor):
+        actor_id = ActorModule.get_actor_id(actor)
+        actor.config_set.remote('actor.id', actor_id)
+
+        actor_name = ray.get(actor.getattr.remote('actor_name'))
+        setattr(actor, 'actor_id', actor_id)
+        setattr(actor, 'actor_name', actor_name)
+        setattr(actor, 'id', actor_id)
+        setattr(actor, 'name', actor_name)
+        return actor
+
     @classmethod 
-    def deploy(cls, config=None, actor=False , override={}, local_var_dict={}, **kwargs):
+    def deploy_actor(cls,name=None, refresh=False,**kwargs):
+        
+        actor_kwargs = dict(
+            refresh=refresh,
+            name=name,
+            **kwargs
+        )
+        return cls.deploy( actor=actor,**kwargs)
+
+    @classmethod 
+    def deploy(cls, actor=False , skip_ray=False, wrap=False,  **kwargs):
         """
         deploys process as an actor or as a class given the config (config)
         """
+        config = kwargs.pop('config', None)
+        config = ActorModule.resolve_config(self=cls,config=config, **kwargs)
+        if cls.ray_initialized():
+            skip_ray = True
 
-
-        config = ActorModule.resolve_config(cls, config=config, local_var_dict=local_var_dict, override=override)
-        ray_context =  cls.get_ray_context(init_kwargs=kwargs.get('ray', config.get('ray')))
-
+        if skip_ray == False:
+            ray_config = config.get('ray', {})
+            ray_context =  cls.get_ray_context(init_kwargs=ray_config)
+        import streamlit as st
+        # st.write(ray_context, ray_config)
         if actor:
-            config['actor'] = config.get('actor', {})
+            actor_config =  config.get('actor', {})
             if isinstance(actor, dict):
-                config['actor'].update(actor)
+                actor_config.update(actor)
             elif isinstance(actor, bool):
                 pass
             else:
                 raise Exception('Only pass in dict (actor args), or bool (uses config["actor"] as kwargs)')  
-            
-            return cls.deploy_actor(cls_kwargs=dict(config=config), **config['actor'])
-        else:
-            return cls(config=config)
+            config['actor'] = actor_config
+            kwargs['config'] = config
+            # import streamlit as st
+            # st.write(actor_config, kwargs)
+            actor = cls.deploy_actor(**actor_config, **kwargs)
 
-    @staticmethod
-    def get_ray_context(init_kwargs, reinit=True):
-        default_ray_env = {'address': 'auto', 'namespace': 'default'}
+            actor_id = cls.get_actor_id(actor)  
+
+            actor =  cls.add_actor_metadata(actor)
+            if wrap:
+                actor = cls.wrap_actor(actor)
+
+            return actor 
+        else:
+            
+            kwargs['config'] = config
+            return cls(**kwargs)
+
+    default_ray_env = {'address': 'auto', 'namespace': 'default'}
+    @classmethod
+    def get_ray_context(cls,init_kwargs=None, reinit=True):
+        
+        if cls.ray_initialized():
+            return
+
 
         if init_kwargs == None:
-            init_kwargs = default_ray_env
+            init_kwargs = cls.default_ray_env
 
             
-        
         if isinstance(init_kwargs, dict):
 
+            
             for k in ['address', 'namespace']:
-                default_value= default_ray_env.get(k)
+                default_value= cls.default_ray_env.get(k)
                 init_kwargs[k] = init_kwargs.get(k,default_value)
                 assert isinstance(init_kwargs[k], str), f'{k} is not in args'
             
             if ActorModule.ray_initialized() and reinit == True:
                 ray.shutdown()
-            
-            return ray.init(**init_kwargs)
+            init_kwargs['include_dashboard'] = True
+            init_kwargs['dashboard_host'] = '172.28.0.2'
+            return ray.init(ignore_reinit_error=True, **init_kwargs)
         else:
             raise NotImplementedError(f'{init_kwargs} is not supported')
     
+
+
     @classmethod
     def deploy_actor(cls,
-                        config=None,
-                        cls_kwargs={},
                         name='actor',
                         detached=True,
-                        resources={'num_cpus': 1, 'num_gpus': 0.1},
-                        max_concurrency=1,
+                        resources={'num_cpus': 0.5, 'num_gpus': 0.0},
+                        max_concurrency=100,
                         refresh=False,
                         verbose = True, 
-                        redundant=False):
-        if isinstance(config, dict):
-            cls_kwargs = {'config': config}
+                        redundant=False, 
+                        return_actor_handle=True,
+                        **kwargs):
+ 
+
         return create_actor(cls=cls,
                         name=name,
-                        cls_kwargs=cls_kwargs,
+                        cls_kwargs=kwargs,
                         detached=detached,
                         resources=resources,
                         max_concurrency=max_concurrency,
                         refresh=refresh,
-                        return_actor_handle=True,
+                        return_actor_handle=return_actor_handle,
                         verbose=verbose,
                         redundant=redundant)
 
@@ -207,6 +256,12 @@ class ActorModule:
 
     def getattr(self, key):
         return getattr(self, key)
+
+    def hasattr(self, key):
+        return hasattr(self, key)
+
+    def setattr(self, key, value):
+        return self.__setattr__(key,value)
 
     def down(self):
         self.kill_actor(self.config['actor']['name'])
@@ -222,8 +277,9 @@ class ActorModule:
 
     @staticmethod
     def get_actor(actor_name):
-        return ray.get_actor(actor_name)
-
+        actor =  ray.get_actor(actor_name)
+        actor = ActorModule.add_actor_metadata(actor)
+        return actor
 
     @property
     def ray_context(self):
@@ -235,8 +291,11 @@ class ActorModule:
 
     @property
     def actor_name(self):
-        return self.config['actor']['name']
+        return self.config.get('actor', {}).get('name')
     
+    @property
+    def actor_config(self):
+        return self.config.get('actor',None)
 
     @property
     def actor_handle(self):
@@ -266,6 +325,10 @@ class ActorModule:
         '''
         attr_obj = getattr(self, from_key)  if hasattr(self, from_key) else None
         setattr(self, to, attr_obj)
+
+
+    def dict_keys(self):
+        return self.__dict__.keys()
 
 
     @staticmethod
@@ -331,9 +394,14 @@ class ActorModule:
     def get_module_filepath(cls):
         return inspect.getfile(cls)
 
+    @property
+    def __file__(self):
+        return inspect.getfile(self)
+
+
     @classmethod
     def get_config_path(cls):
-        path =  cls.get_module_filepath().replace('.py', '.yaml')
+        path =  ActorModule.get_module_filepath().replace('.py', '.yaml')
         assert os.path.exists(path), f'{path} does not exist'
         assert os.path.isfile(path), f'{path} is not a dictionary'
         return path
@@ -365,13 +433,19 @@ class ActorModule:
             obj = cls
         return get_module_function_schema(obj, **kwargs)
 
+    def config_set(self,k,v, **kwargs):
+        return dict_put(self.config, k,v)
+
+    def config_get(self,k, ):
+        return dict_get(self.config, k,v)
+
+
     def override_config(self,override:dict={}):
-        if override == None:
-            override = {}
-        assert isinstance(override, dict), type(override)
-        for k,v in override.items():
-            dict_put(self.config, k, v)
+        self.dict_override(input_dict=self.config, override=override)
     
+    @staticmethod
+    def dict_override(*args, **kwargs):
+        return dict_override(*args,**kwargs)
     
     @staticmethod
     def import_object(path):
@@ -379,12 +453,16 @@ class ActorModule:
         object_name = path.split('.')[-1]
         return getattr(import_module(module), object_name)
 
+
+    @property
+    def module_path(self):
+        return self.get_module_path()
+
+
     @classmethod
-    def module_path(cls, include_root=True):
-        path =  os.path.dirname(cls.__file__).replace(os.getenv('PWD')+'/', '')
-        if include_root == False:
-            path = '/'.join(path.split('/')[1:])
-        return path
+    def get_module_path(cls):
+        return cls.default_config_path.replace('.module', '')
+
 
     @staticmethod
     def load_object(module:str, __dict__:dict, **kwargs):
@@ -392,7 +470,27 @@ class ActorModule:
         return ActorModule.import_object(module)(**kwargs)
 
 
-    @property
+
+    @classmethod
+    def ray_stop(cls):
+        cls.run_command('ray stop')
+
+    @classmethod
+    def ray_start(cls):
+        cls.run_command('ray start --head')
+
+
+    @classmethod
+    def ray_restart(cls):
+        cls.ray_stop()
+        cls.ray_start()
+
+    @classmethod
+    def ray_status(cls):
+        cls.run_command('ray status')
+
+        
+    @staticmethod
     def run_command(command:str):
 
         process = subprocess.run(shlex.split(command), 
@@ -400,3 +498,67 @@ class ActorModule:
                             universal_newlines=True)
         
         return process
+
+
+    def resolve(self, key=None, value=None):
+        if value == None:
+            return getattr(self, key)
+        else:
+            return getattr(self, key)
+
+    @classmethod
+    def create_pool(cls, replicas=3, actor_kwargs_list=[], **kwargs):
+        if actor_list == None:
+            actor_kwargs_list = [kwargs]*replicas
+
+        actors = []
+        for actor_kwargs in actor_kwargs_list:
+            actors.append(cls.deploy(**a_kwargs))
+
+        return ActorPool(actors=actors)
+
+    @staticmethod
+    def check_pid(pid):        
+        return check_pid(pid)
+
+    @staticmethod
+    def kill_pid(pid):        
+        return kill_pid(pid)
+
+
+    @property
+    def file(self):
+        return self.get_module_filepath()
+
+    @property
+    def tmp_dir(self):
+        return f'/tmp/commune/{self.name}'
+
+    _exposable_ = None  # Not necessary, just for pylint
+    class __metaclass__(type):
+        def __new__(cls, name, bases, state):
+            methods = state['_exposed_'] = dict()
+
+            # inherit bases exposed methods
+            for base in bases:
+                methods.update(getattr(base, '_exposed_', {}))
+
+            for name, member in state.items():
+                meta = getattr(member, '__meta__', None)
+                if meta is not None:
+                    print("Found", name, meta)
+                    methods[name] = member
+            return type.__new__(cls, name, bases, state)
+
+    @staticmethod
+    def get_actor_id( actor):
+        assert isinstance(actor, ray.actor.ActorHandle)
+        return actor.__dict__['_ray_actor_id'].hex()
+
+    def get_resources(self):
+        return self.config.get('actor', {}).get('resources', None)
+
+    @classmethod
+    def wrap_actor(cls, actor):
+        wrapper_module_path = 'ray.client.module.ClientModule'
+        return cls.get_module(module=wrapper_module_path, server=actor)
