@@ -26,6 +26,9 @@ services:
       - ./interfaces:/app/interfaces
       - ./scripts:/app/scripts
       - /var/run/docker.sock:/var/run/docker.sock
+      # - ./.bittensor:/root/.bittensor
+      - /tmp/wholetensor:/tmp
+      - /home/ubuntu/efs:/efs
     networks:
       backend:
         ipv4_address: 172.15.0.9

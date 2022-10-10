@@ -1,11 +1,10 @@
-from commune.utils import get_object, dict_any, dict_put, dict_get, dict_has, dict_pop, deep2flat
-from commune.config.loader import ConfigLoader
-from commune.ray.actor import ActorModule
+from algocean.utils import get_object, dict_put, dict_get, dict_has, deep2flat
+from algocean.config.loader import ConfigLoader
+from algocean.ray.actor import ActorModule
 import streamlit as st
 import os
 from .utils import enable_cache, cache
 from munch import Munch
-
 
 class BaseModule(ActorModule):
     client = None
@@ -312,7 +311,7 @@ class BaseModule(ActorModule):
         module_fs = {}
         for k in self.simple2module.keys():
             
-            module_path = '/'.join([os.getenv('PWD'), 'commune',k.replace('.', '/')])
+            module_path = '/'.join([os.getenv('PWD'), 'algocean',k.replace('.', '/')])
             file_list = self.client.local.ls(module_path)
             dict_put(module_fs,k, file_list)
 

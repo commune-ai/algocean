@@ -1,10 +1,10 @@
 import ray
 import os,sys
 sys.path.append(os.getenv('PWD'))
-from commune.ray.queue import Queue
-from commune.utils import dict_put,dict_get,dict_has,dict_delete
+from algocean.ray.queue import Queue
+from algocean.utils import dict_put,dict_get,dict_has,dict_delete
 from copy import deepcopy
-from commune import BaseModule
+from algocean import BaseModule
 """
 
 Background Actor for Message Brokers Between Quees

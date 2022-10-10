@@ -74,7 +74,7 @@ export CONTRACTS_OWNER_ROLE_ADDRESS="${CONTRACTS_OWNER_ROLE_ADDRESS}"
 export DEPLOY_CONTRACTS=true
 export DEPLOY_SUBGRAPH=true
 export OCEAN_ARTIFACTS_FOLDER="${OCEAN_HOME}/ocean-contracts/artifacts"
-OCEAN_CONTRACTS_FOLDER = 
+
 mkdir -p ${OCEAN_ARTIFACTS_FOLDER}
 export OCEAN_C2D_FOLDER="${OCEAN_HOME}/ocean-c2d/"
 mkdir -p ${OCEAN_C2D_FOLDER}
@@ -178,20 +178,7 @@ check_if_owned_by_root
 show_banner
 
 COMPOSE_FILES=""
-
-# deploy from barge
-COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml"
-COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
-COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
-COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
-COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
-COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
-COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
-COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
-COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
-
-
+# COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
 
 DOCKER_COMPOSE_EXTRA_OPTS="${DOCKER_COMPOSE_EXTRA_OPTS:-}"
 
@@ -206,28 +193,20 @@ while :; do
         --no-ansi)
             DOCKER_COMPOSE_EXTRA_OPTS+=" --no-ansi"
             ;;
-        --build)
-            export FORCEBUILD="true"
-            ;;
-        --update)
-            export FORCEBUILD="true"
-            export FORCEPULL="true"
-            ;;
-        --force-pull)
-            export FORCEPULL="true"
-            printf $COLOR_Y'Pulling the latest revision of the used Docker images...\n\n'$COLOR_RESET
-            ;;
+
         #################################################
         # Exclude switches
         #################################################
+        --ganache)
+            COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
+        ;;
 
-        --network)
-            COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
+        --contracts)
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
             ;;
 
         --c2d)
-            COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
-            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/registry.yml"
+            
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/c2d.yml"
 
             printf $COLOR_Y'Starting with C2D...\n\n'$COLOR_RESET
@@ -247,17 +226,23 @@ while :; do
         ;;
 
 
-        --light)
-            ;;
+        --ipfs)
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
+
+
         ;;
+
 
         --frontend)
             COMPOSE_FILES+=" -f ${DIR}/frontend/docker-compose.yml"
+        
             ;;
         --aquarius)
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
-            COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
-            COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+            # COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
+            # COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/elasticsearch.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
             ;;
         --dashboard)
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"
@@ -266,16 +251,10 @@ while :; do
             export DEPLOY_CONTRACTS=false
             printf $COLOR_Y'Ocean contracts will not be deployed, the last deployment (if any) will be intact ...\n\n'$COLOR_RESET
             ;;
-        --skip-subgraph-deploy)
-            export DEPLOY_SUBGRAPH=false
-            printf $COLOR_Y'Ocean subgraph will not be deployed, the last deployment (if any) will be intact ...\n\n'$COLOR_RESET
-            ;;
         #################################################
         # Cleaning switches
         #################################################
         --purge)
-            printf "$COMPOSE_FILES"
-            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
             eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
             docker network rm ${PROJECT_NAME}_default || true;
             docker network rm ${PROJECT_NAME}_backend || true;
@@ -283,24 +262,16 @@ while :; do
             break
             ;;
 
-        --restart)
-            printf "$COMPOSE_FILES"
-            printf $COLOR_R'Doing a deep clean ...\n\n'$COLOR_RESET
-            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
-            docker network rm ${PROJECT_NAME}_default || true;
-            docker network rm ${PROJECT_NAME}_backend || true;
-
-            [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
-            printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
-            [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
-            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
-            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
-            
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up --remove-orphans -d
-           
-           
-            break
-            ;;
+        --down)
+        printf $COLOR_R'Restarting...\n\n'$COLOR_RESET
+        eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
+        shift
+        ;;
+        --update)
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+            shift
+        ;;
 
         --build)
         
@@ -308,26 +279,96 @@ while :; do
 
         shift
         ;;
+        --pull)
+        
+        eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
+
+        shift
+        ;;
+
+        --restart)
+
+            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
+            # docker network rm ${PROJECT_NAME}_default || true;
+            # docker network rm ${PROJECT_NAME}_backend || true;
+
+            [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
+            printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
+            [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
+            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
+            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
+            
+            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up  -d
+           
+            shift
+            break
+            ;;
+
+
+        --all)
+        
+            # backend
+            COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml"
+            # deploy from barge
+            COMPOSE_FILES+=" -f ${DIR}/network/network_volumes.yml"
+
+            COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
+            # contracts
+            # COMPOSE_FILES+=" -f ${DIR}/contracts/docker-compose.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ocean_contracts.yml"
+            # aquarius
+            # COMPOSE_FILES+=" -f  ${DIR}/elasticsearch/elasticsearch.yml"
+            # COMPOSE_FILES+=" -f ${DIR}/aquarius/docker-compose.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/aquarius.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/elasticsearch.yml"
+
+            COMPOSE_FILES+=" -f ${DIR}/ipfs/ipfs.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/provider.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/redis.yml"
+    `
+            # provider
+            # COMPOSE_FILES+=" -f ${DIR}/provider/docker-compose.yml"
+
+            # COMPOSE_FILES+= 
+
+
+            # COMPOSE_FILES+=
+  
+
+ 
+
+            # dashboard
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/dashboard.yml"`
+        
+        ;;
+
 
 
         --) # End of all options.
             shift
             break
             ;;
+
+        --light)
+            COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml" 
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
+            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
+            shift
+            break
+        ;;
+        --up)
+        [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
+        eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up  -d 
+        break
+        ;;
         -?*)
             printf $COLOR_R'WARN: Unknown option (ignored): %s\n'$COLOR_RESET "$1" >&2
             break
             ;;
         *)
-            [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
-            printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
-            [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
-            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
-            echo "${PROJECT_NAME}"
-            [ ${FORCEBUILD} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
-
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d 
-            break
+            # [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
+            # eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME  "$COMPOSE_FILES" up --remove-orphans -d 
+            # break
     esac
     shift
 done

@@ -10,3 +10,6 @@ python:
 
 app:
 	streamlit algocean/${arg}/module.py
+
+jupyter:
+	jupyter-lab --ip=0.0.0.0 --no-browser --allow-root

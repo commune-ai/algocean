@@ -1,4 +1,4 @@
-from commune.utils import dict_any
+from algocean.utils import dict_any
 
 
 

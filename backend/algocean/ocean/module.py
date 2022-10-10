@@ -138,6 +138,7 @@ class OceanModule(BaseModule):
         assert isinstance(ocean_config, Config), 'ocean_config must be type Config'
         if return_ocean:
             return Ocean(ocean_config)
+            
         return ocean_config
 
 
@@ -835,5 +836,8 @@ if __name__ == '__main__':
     module.set_network('local')
     st.write(module.wallet.web3.provider)
 
-    module.create_datanft('bro', wallet='bob')
+    module.create_datanft('bro')
+    st.write(module.wallet.__dict__)
+
+
     # module.st_test()

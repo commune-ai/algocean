@@ -6,10 +6,10 @@ import transformers
 import 
 from typing import Union
 
-from commune.process.base import BaseProcess
+algocean.process.base import BaseProcess
 import torch
 import ray
-from commune.utils.misc import dict_put
+algocean.utils.misc import dict_put
 
 class TokenizerModule(BaseProcess):
     default_config_path= 'commune.huggingface.tokenizer.module'

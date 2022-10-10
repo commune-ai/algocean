@@ -7,11 +7,11 @@ import asyncio
 import multiprocessing
 import torch
 sys.path.append(os.environ['PWD'])
-from commune.config import ConfigLoader
+from algocean.config import ConfigLoader
 import ray
 from ray.util.queue import Queue
 import torch
-from commune.utils import  (RunningMean,
+from algocean.utils import  (RunningMean,
                         chunk,
                         get_object,
                         even_number_split,
@@ -23,7 +23,7 @@ from commune.utils import  (RunningMean,
                         dict_put, dict_has, dict_get, dict_hash
                         )
 
-from commune import BaseModule
+from algocean import BaseModule
 
 
 def cache():

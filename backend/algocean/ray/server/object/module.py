@@ -2,14 +2,14 @@ import ray
 import os, sys
 sys.path.append(os.getenv('PWD'))
 from ray.util.queue import Queue
-from commune import BaseModule
+from algocean import BaseModule
 """
 
 Background Actor for Message Brokers Between Quees
 
 """
-from commune.ray.utils import kill_actor, create_actor
-from commune.utils import *
+from algocean.ray.utils import kill_actor, create_actor
+from algocean.utils import *
 
 
 

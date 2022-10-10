@@ -3,7 +3,7 @@
 import streamlit as st
 import os, sys
 sys.path.append(os.getenv('PWD'))
-from commune import BaseModule
+from algocean import BaseModule
 from functools import partial
 import ray
 
