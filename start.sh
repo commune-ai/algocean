@@ -288,18 +288,11 @@ while :; do
 
         --restart)
 
-            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" down;
+            eval docker-compose --project-name=$PROJECT_NAME "$COMPOSE_FILES" restart;
             # docker network rm ${PROJECT_NAME}_default || true;
             # docker network rm ${PROJECT_NAME}_backend || true;
 
-            [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count
-            printf $COLOR_Y'Starting Ocean V4...\n\n'$COLOR_RESET
-            [ ${DEPLOY_CONTRACTS} = "true" ] && clean_local_contracts
-            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" pull
-            [ ${FORCEPULL} = "true" ] && eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" build
-            
-            eval docker-compose "$DOCKER_COMPOSE_EXTRA_OPTS" --project-name=$PROJECT_NAME "$COMPOSE_FILES" up  -d
-           
+
             shift
             break
             ;;

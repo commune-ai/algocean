@@ -44,3 +44,9 @@
 [submodule "operator-service"]
 	path = operator-service
 	url = https://github.com/commune-ai/operator-service.git
+[submodule "backend/cubit"]
+	path = backend/cubit
+	url = https://github.com/opentensor/cubit.git
+[submodule "backend/bittensor"]
+	path = backend/bittensor
+	url = https://github.com/commune-ai/bittensor.git

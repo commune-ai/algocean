@@ -26,7 +26,8 @@ services:
       - ./interfaces:/app/interfaces
       - ./scripts:/app/scripts
       - /var/run/docker.sock:/var/run/docker.sock
-      # - ./.bittensor:/root/.bittensor
+      - ./Makefile:/app/Makefile
+      - ./.bittensor:/root/.bittensor
       - /tmp/wholetensor:/tmp
       - /home/ubuntu/efs:/efs
     networks:
@@ -43,13 +44,13 @@ services:
       - .env
     command: bash -c "chmod +x ./scripts/*; conda init bash;./scripts/startup.sh; conda activate algocean; tail -F anything"
 
-    # deploy:
-    #   resources:
-    #      reservations:
-    #        devices:
-    #        - driver: nvidia
-    #          count: 'all'
-    #          capabilities: [gpu]
+    deploy:
+      resources:
+         reservations:
+           devices:
+           - driver: nvidia
+             count: 'all'
+             capabilities: [gpu]
 
 
 networks:
