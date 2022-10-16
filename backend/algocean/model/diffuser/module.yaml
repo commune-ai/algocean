@@ -1,0 +1,8 @@
+module: 'DiffuserModule'
+
+hf_token: 
+pipeline:
+  path: 'CompVis/stable-diffusion-v1-4'
+
+huggingface:
+  token: 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

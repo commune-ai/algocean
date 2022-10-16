@@ -81,5 +81,7 @@ RUN npm install @uniswap/v2-periphery
 
 COPY ./scripts .
 
+RUN python3 -m pip install -U accelerate
+RUN python3 -m pip install -U diffusers
 
 
