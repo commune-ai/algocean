@@ -7,8 +7,8 @@ import os
 from typing import Dict, Optional, Union
 
 from enforce_typing import enforce_types
-from eth_self.account.datastructures import SignedMessage
-from eth_self.account.messages import SignableMessage
+from eth_account.datastructures import SignedMessage
+from eth_account.messages import SignableMessage
 from hexbytes.main import HexBytes
 from web3.main import Web3
 
@@ -21,9 +21,9 @@ from ocean_lib.web3_internal.utils import (
 )
 
 logger = logging.getLogger(__name__)
+from eth_account.account import Account
 
-
-class Wallet:
+class AccountModule:
 
     """
     The wallet is responsible for signing transactions and messages by using an self.account's
@@ -53,16 +53,12 @@ class Wallet:
         self,
         web3: Web3,
         private_key: str,
-        block_confirmations: Union[Integer, int] = ,
-        transaction_timeout: Union[Integer, int],
     ) -> None:
         """Initialises Wallet object."""
         assert private_key, "private_key is required."
 
         self.web3 = web3
-
-
-        self.private_key = private_key
+        self.account = Account.from_key(self.private_key)
 
     @property
     @enforce_types
@@ -73,6 +69,9 @@ class Wallet:
     @enforce_types
     def key(self) -> str:
         return self.private_key
+
+
+
 
     @staticmethod
     @enforce_types

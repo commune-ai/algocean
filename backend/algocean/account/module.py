@@ -7,11 +7,12 @@ import os
 from typing import Dict, Optional, Union
 
 from enforce_typing import enforce_types
-from eth_self.account.datastructures import SignedMessage
-from eth_self.account.messages import SignableMessage
+from eth_account.datastructures import SignedMessage
+from eth_account.messages import SignableMessage
 from hexbytes.main import HexBytes
 from web3.main import Web3
 
+from algocean import BaseModule
 from eth_account.messages import encode_defunct
 from ocean_lib.integer import Integer
 from ocean_lib.web3_internal.constants import ENV_MAX_GAS_PRICE, MIN_GAS_PRICE
@@ -23,7 +24,7 @@ from ocean_lib.web3_internal.utils import (
 logger = logging.getLogger(__name__)
 from eth_account.account import Account
 
-class AccountModule:
+class AccountModule(BaseModule):
 
     """
     The AccountModule is responsible for signing transactions and messages by using an self.account's
@@ -47,25 +48,33 @@ class AccountModule:
     """
 
     _last_tx_count = dict()
-
+    ENV_PRIVATE_KEY = 'PRIVATE_KEY'
     @enforce_types
     def __init__(
         self,
-        private_key: str,
+        private_key: str= 'PRIVATE_KEY',
         web3: Web3 = None,
+        **kwargs
     ) -> None:
         """Initialises AccountModule object."""
-        assert private_key, "private_key is required."
+        # assert private_key, "private_key is required."
 
-        self.web3 = web3
-        self.account = Account.from_key(self.private_key)
-        self.private_key = private_key
+
+        self.account = self.set_account(private_key = private_key)
 
     @property
     @enforce_types
     def address(self) -> str:
         return self.account.address
 
+    def private_key(self):
+        return self.account.private_key
+        
+    def set_account(self, private_key=None):
+        private_key = os.getenv(private_key, private_key)
+        assert isinstance(private_key, str), type(private_key)
+        self.account = Account.from_key(private_key)
+        return self.account
 
     def set_web3(self, web3):
         self.web3 = web3
@@ -98,11 +107,6 @@ class AccountModule:
 
         return AccountModule._last_tx_count[address]
 
-    @property
-    def account(self):
-        return self.account.address
-
-
 
     @property
     def address(self):
@@ -123,7 +127,7 @@ class AccountModule:
             )
         else:
             nonce = AccountModule._get_nonce(self.web3, self.address)
-
+        
         if not gas_price:
             gas_price = int(self.web3.eth.gas_price * 1.1)
             gas_price = max(gas_price, MIN_GAS_PRICE)
@@ -181,7 +185,6 @@ class AccountModule:
 
     @staticmethod
     def hash(input, hash_type='keccak',return_type='str',*args,**kwargs):
-        
         
         hash_fn = AccountModule.resolve_hash_function(hash_type)
         hash_output = Web3.keccak(input, *args, **kwargs)

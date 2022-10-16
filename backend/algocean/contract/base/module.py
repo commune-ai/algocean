@@ -5,6 +5,7 @@ import sys
 sys.path.append(os.environ['PWD'])
 from algocean.utils import dict_put, get_object, dict_has
 from algocean import BaseModule
+
 from copy import deepcopy
 
 
@@ -15,6 +16,9 @@ class ContractBaseModule(BaseModule):
     def __init__(self, config=None,  web3=None, **kwargs):
 
         BaseModule.__init__(self, config=config, **kwargs)
+        self.web3 = web3
+
+
         
     @property
     def address(self):
@@ -110,10 +114,16 @@ class ContractBaseModule(BaseModule):
         self.web3 = Web3(Web3.HTTPProvider(url))
         return self.web3
     connect_network = set_network
+
     def set_account(self, private_key):
         private_key = os.getenv(private_key, private_key)
-
-
+        self.account = AccountModule(private_key=private_key)
+        return self.account
+    
+    def compile(self):
+        # compile smart contracts in compile
+        return self.run_command('npx hardhat compile')
+        
     @property
     def network_modes(self):
         return list(self.network_config.keys())
@@ -171,12 +181,17 @@ if __name__ == '__main__':
         
     
 
-    from web3 import Web3
+    if __name__ == '__main__':
+        from algocean.account import AccountModule
+        # os.environ["PRIVATE_KEY"] = "0x8467415bb2ba7c91084d932276214b11a3dd9bdb2930fefa194b666dd8020b99"
+        account = AccountModule(private_key='PRIVATE_KEY')
+        st.write(account.account._key_obj.__dict__)
+
+        # # import yaml
+        # st.write(module.compile())
 
 
-    # import yaml
-    st.write(module.set_network())
-    # st.write(module.client.local.get_yaml(f'{module.root}/web3/data/network-config.yaml'))
-    # st.write(module.get_abi('token/ERC20/ERC20.sol'))
-    # st.write(module.get_abi('dex/sushiswap/ISushiswapFactory.sol'))
+        # st.write(module.client.local.get_yaml(f'{module.root}/web3/data/network-config.yaml'))
+        # st.write(module.get_abi('token/ERC20/ERC20.sol'))
+        # st.write(module.get_abi('dex/sushiswap/ISushiswapFactory.sol'))
 
