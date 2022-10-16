@@ -4,6 +4,7 @@ from fsspec.implementations.local import LocalFileSystem
 from copy import deepcopy
 import json
 import os
+import yaml 
 from typing import *
 import pandas as pd
 import pickle
@@ -20,12 +21,10 @@ class LocalModule(LocalFileSystem):
         ensures a dir_path exists, otherwise, it will create it 
         """
         file_extension = self.get_file_extension(path)
-        if os.path.isfile(path):
+        if os.path.isfile(path) or len(file_extension)>0:
             dir_path = os.path.dirname(path)
         elif os.path.isdir(path):
             dir_path = path
-        elif len(file_extension)>0:
-            dir_path = os.path.dirname(path)
         else:
             dir_path = os.path.dirname(path)
 
@@ -72,6 +71,24 @@ class LocalModule(LocalFileSystem):
     def get_json(self, path, handle_error = False):
         try:
             return json.loads(self.cat(path))
+        except FileNotFoundError as e:
+            if handle_error:
+                return None
+            else:
+                raise e
+
+
+    # def put_yaml(self, path, data):
+    #         # Directly from dictionary
+    #     self.ensure_path(path)
+    #     assert isinstance(data, dict):
+    #     with open(path, 'w') as outfile:
+    #         yaml.dump(data, outfile)
+
+
+    def get_yaml(self, path, handle_error = False):
+        try:
+            return yaml.safe_load(self.cat(path))
         except FileNotFoundError as e:
             if handle_error:
                 return None

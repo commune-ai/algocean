@@ -104,6 +104,29 @@ class ContractBaseModule(BaseModule):
             simple_path = simple_path.replace(self.artifacts_path, '')
             artifacts.append(simple_path)
         return artifacts
+
+    def set_network(self, url='LOCAL_NETWORK_RPC_URL'):
+        url = os.getenv(url, url)
+        self.web3 = Web3(Web3.HTTPProvider(url))
+        return self.web3
+    connect_network = set_network
+    def set_account(self, private_key):
+        private_key = os.getenv(private_key, private_key)
+
+
+    @property
+    def network_modes(self):
+        return list(self.network_config.keys())
+
+    @property
+    def available_networks(self):
+        return ['local', 'ethereum']
+
+    @property
+    def network_config(self):
+        network_config_path = f'{self.root}/web3/data/network-config.yaml'
+        return self.client.local.get_yaml(network_config_path)
+
     @property
     def contracts(self):
         contracts = list(filter(lambda f: f.startswith('contracts'), self.artifacts))
@@ -115,5 +138,45 @@ class ContractBaseModule(BaseModule):
 if __name__ == '__main__':
     import streamlit as st
     module = ContractBaseModule.deploy(actor=False)
-    st.write(module.interfaces)
-    st.write(module.get_abi('dex/sushiswap/ISushiswapFactory.sol'))
+    
+    with st.sidebar.expander('Deploy', True):
+        contract_options =  module.contracts
+        path2idx_contract =  {p:i for i,p in enumerate( module.contracts)}
+        st.selectbox('Select a Contract',  contract_options, path2idx_contract['token/ERC20/ERC20.sol'])
+        
+        
+
+        
+        st.selectbox('Select a Network', module.available_networks, 0)
+    
+    
+    with st.expander('Select Network', True):
+        network_mode_options = module.network_modes
+        selected_network_mode = st.selectbox('Select Mode', network_mode_options, 0)
+        
+        if selected_network_mode == 'live':
+            network2endpoints = {config['name']:config['networks'] for config in module.network_config[selected_network_mode]}
+            selected_network = st.selectbox('Select Network', list(network2endpoints.keys()), 0)
+            endpoint2info = {i['name']:i for i in network2endpoints[selected_network]}  
+            selected_endpoint = st.selectbox('Select Endpoint', list(endpoint2info.keys()) , 0)
+            network_info = endpoint2info[selected_endpoint]
+        elif selected_network_mode == 'development':
+            network2info = {config['name']:config for config in module.network_config[selected_network_mode]}
+            selected_network = st.selectbox('Select Network', list(network2info.keys()), 0)
+            network_info = network2info[selected_network]
+        else:
+            raise NotImplemented
+
+        # st.write(module.run_command("env").stdout)
+        
+    
+
+    from web3 import Web3
+
+
+    # import yaml
+    st.write(module.set_network())
+    # st.write(module.client.local.get_yaml(f'{module.root}/web3/data/network-config.yaml'))
+    # st.write(module.get_abi('token/ERC20/ERC20.sol'))
+    # st.write(module.get_abi('dex/sushiswap/ISushiswapFactory.sol'))
+

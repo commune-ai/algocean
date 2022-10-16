@@ -346,8 +346,7 @@ while :; do
             COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml" 
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
-            shift
-            break
+            # shift
         ;;
         --up)
         [ ${CHECK_ELASTIC_VM_COUNT} = "true" ] && check_max_map_count

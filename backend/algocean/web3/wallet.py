@@ -12,6 +12,7 @@ from eth_self.account.messages import SignableMessage
 from hexbytes.main import HexBytes
 from web3.main import Web3
 
+from eth_account.messages import encode_defunct
 from ocean_lib.integer import Integer
 from ocean_lib.web3_internal.constants import ENV_MAX_GAS_PRICE, MIN_GAS_PRICE
 from ocean_lib.web3_internal.utils import (
@@ -52,24 +53,14 @@ class Wallet:
         self,
         web3: Web3,
         private_key: str,
-        block_confirmations: Union[Integer, int],
+        block_confirmations: Union[Integer, int] = ,
         transaction_timeout: Union[Integer, int],
     ) -> None:
         """Initialises Wallet object."""
         assert private_key, "private_key is required."
 
         self.web3 = web3
-        self.block_confirmations = (
-            block_confirmations
-            if isinstance(block_confirmations, Integer)
-            else Integer(block_confirmations)
-        )
-        self.transaction_timeout = (
-            transaction_timeout
-            if isinstance(transaction_timeout, Integer)
-            else Integer(transaction_timeout)
-        )
-        self._last_tx_count.clear()
+
 
         self.private_key = private_key
 
@@ -109,6 +100,12 @@ class Wallet:
     def account(self):
         return self.web3.eth.self.account.from_key(self.private_key)
 
+
+
+    @property
+    def address(self):
+        return self.account.address
+
     @enforce_types
     def sign_tx(
         self,
@@ -123,7 +120,7 @@ class Wallet:
                 f"Signing transaction using a fixed nonce {fixed_nonce}, tx params are: {tx}"
             )
         else:
-            nonce = Wallet._get_nonce(self.web3, self.account.address)
+            nonce = Wallet._get_nonce(self.web3, self.address)
 
         if not gas_price:
             gas_price = int(self.web3.eth.gas_price * 1.1)
@@ -145,9 +142,15 @@ class Wallet:
         return signed_tx.rawTransaction
 
     @enforce_types
-    def sign(self, msg_hash: SignableMessage) -> SignedMessage:
+    def sign(self, msg_hash: Union[SignableMessage,str]) -> SignedMessage:
         """Sign a transaction."""
-        
+        if isinstance(msg_hash, str):
+            msg_hash = encode_defunct(msg_hash)
+        elif isinstance(msg_hash, SignableMessage):
+            pass
+        else:
+            raise NotImplemented
+            
         return self.account.sign_message(msg_hash)
 
     @property
@@ -176,6 +179,7 @@ class Wallet:
 
     @staticmethod
     def hash(input, hash_type='keccak',return_type='str',*args,**kwargs):
+        
         
         hash_fn = Wallet.resolve_hash_function(hash_type)
         hash_output = Web3.keccak(input, *args, **kwargs)

@@ -11,7 +11,7 @@ class BaseModule(ActorModule):
     default_config_path = None
     client_module_class_path = 'client.manager.module.ClientModule'
     # assumes BaseModule is .../{src}/base/module.py
-    root_path = '/'.join(__file__.split('/'))
+    root_path = '/'.join(__file__.split('/')[:-2])
     root = root_path
     tmp_dirname = root_path.split('/')[-1]
     tmp_dirname = __file__.split('/')[-3]
@@ -340,7 +340,7 @@ class BaseModule(ActorModule):
 
 
 
-    root_dir = '/app/commune'
+    root_dir = root_path
     @property
     def full_module_list(self):
         modules = []

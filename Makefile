@@ -1,11 +1,11 @@
 down:
-	./start.sh --purge
+	./start.sh --light
 stop:
-	./start.sh --purge
+
 start:
-	./start.sh
+	./start.sh --light --up
 up:
-	./start.sh --force-pull
+	make start
 restart:
 	make down; make up;
 
