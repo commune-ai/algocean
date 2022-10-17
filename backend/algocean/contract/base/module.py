@@ -2,11 +2,12 @@
 
 import os
 import sys
+from copy import deepcopy
 sys.path.append(os.environ['PWD'])
 from algocean.utils import dict_put, get_object, dict_has
 from algocean import BaseModule
 
-from copy import deepcopy
+
 
 
 class ContractBaseModule(BaseModule):

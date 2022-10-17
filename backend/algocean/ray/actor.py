@@ -193,7 +193,7 @@ class ActorModule:
                 actor = cls.deploy_actor(**actor_config, **kwargs)
                 actor_id = cls.get_actor_id(actor)  
                 actor =  cls.add_actor_metadata(actor)
-            except ray.exeptions.RayActorError:
+            except ray.exceptions.RayActorError:
                 actor_config['refresh'] = True
                 config['actor'] = actor_config
                 kwargs['config'] = config

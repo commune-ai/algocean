@@ -1,8 +1,14 @@
 module: 'DiffuserModule'
 
-hf_token: 
 pipeline:
-  path: 'CompVis/stable-diffusion-v1-4'
+  path: CompVis/stable-diffusion-v1-4
+  revision: fp16
+  enable_attention_slicing: True
 
-huggingface:
-  token: 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
+schedular:
+  beta_start: 0.00085
+  beta_end: 0.012
+  beta_schedule: scaled_linear
+  
+
+hf_token: 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
