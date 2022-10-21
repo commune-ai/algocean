@@ -86,16 +86,12 @@ class DatasetModule(BaseModule, Dataset):
         
     def set_default_wallet(self, key):
         return self.algocean.set_default_wallet(key)
-    
-
 
     def load_builder(self, path):
         self.dataset_factory = self.load_dataset_factory(path=path)
-        self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path)
-               
+        self.dataset_builder = self.load_dataset_builder(factory_module_path=self.dataset_factory.module_path) 
 
     def list_datasets(self, filter_fn=None, *args, **kwargs):
-        
         kwargs['return_type'] = 'pandas'  
         df = self.hub.list_datasets(filter_fn=filter_fn, *args, **kwargs)
         return df    
