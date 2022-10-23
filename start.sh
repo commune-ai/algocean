@@ -53,6 +53,7 @@ export LOCAL_USER_ID=$(id -u)
 export LOCAL_GROUP_ID=$(id -g)
 
 
+
 # Specify the ethereum default RPC container provider
 if [ ${IP} = "localhost" ]; then
     export NETWORK_RPC_HOST="172.15.0.3"
@@ -61,11 +62,17 @@ else
 fi
 export NETWORK_RPC_PORT="8545"
 export NETWORK_RPC_URL="http://"${NETWORK_RPC_HOST}:${NETWORK_RPC_PORT}
+export GANACHE_PORT="8545"
+export GANACHE_HOST="172.15.0.3"
+export GANACHE_URL="http://"${GANACHE_HOST}:${GANACHE_PORT}
 
 # export NETWORK_RPC_URL='https://polygon-mumbai.g.alchemy.com/v2/YtTw29fEGWDXcMKpljSM63DbOrgXgJRx'
 # Use this seed on ganache to always create the same wallets
 export GANACHE_MNEMONIC=${GANACHE_MNEMONIC:-"taxi music thumb unique chat sand crew more leg another off lamp"}
-
+export WEB3_INFURA_PROJECT_ID="4b1e6d019d6644de887db1255319eff8"
+export WEB3_INFURA_URL=" https://mainnet.infura.io/v3/${WEB3_INFURA_PROJECT_ID}"
+export WEB3_ALCHEMY_PROJECT_ID="RrtpZjiUVoViiDEaYxhN9o6m1CSIZvlL"
+export WEB3_ALCHEMY_URL="https://eth-mainnet.g.alchemy.com/v2/${WEB3_INFURA_PROJECT_ID}"
 # Ocean contracts
 
 export PRIVATE_KEY="0x8467415bb2ba7c91084d932276214b11a3dd9bdb2930fefa194b666dd8020b99"
@@ -344,7 +351,7 @@ while :; do
 
         --light)
             COMPOSE_FILES+=" -f ${DIR}/backend/backend.yml" 
-            COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ganache.yml"
+            COMPOSE_FILES+=" -f ${DIR}/ganache/docker-compose.yml"
             COMPOSE_FILES+=" -f ${COMPOSE_DIR}/ipfs.yml"
             # shift
         ;;

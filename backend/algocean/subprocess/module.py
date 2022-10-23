@@ -15,7 +15,7 @@ class SubprocessModule(BaseModule):
         BaseModule.__init__(self, config=config)
 
 
-    def submit(command):
+    def submit(self, command):
         return self.run_command(command)
     
     @staticmethod

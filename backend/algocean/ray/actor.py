@@ -511,13 +511,16 @@ class ActorModule:
 
         
     @staticmethod
-    def run_command(command:str):
+    def run_command(command:str, pretty_logs=True):
 
         process = subprocess.run(shlex.split(command), 
                             stdout=subprocess.PIPE, 
                             universal_newlines=True)
-        
+        if pretty_logs:
+            return '\n'.join(process.stdout.split('\n'))
         return process
+
+    
 
 
     def resolve(self, key=None, value=None):
@@ -640,3 +643,20 @@ class ActorModule:
     def virtual_memory():
         virtual_memory = psutil.virtual_memory()
         return {k:getattr(virtual_memory,k) for k in ['available', 'percent', 'used', 'shared', 'free', 'total', 'cached']}
+
+
+
+    @staticmethod
+    def kill_port(port):
+        import signal
+        port = 8545
+        process = subprocess.Popen(["lsof", "-i", ":{0}".format(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        for process in str(stdout.decode("utf-8")).split("\n")[1:]:
+            # st.write(process)       
+            data = [x for x in process.split(" ") if x != '']
+
+            if (len(data) <= 1):
+                continue
+
+            os.kill(int(data[1]), signal.SIGKILL)

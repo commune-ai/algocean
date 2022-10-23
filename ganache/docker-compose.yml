@@ -1,10 +1,27 @@
-version: '3'
+
+version: "3.9"
 services:
   ganache:
-    image: trufflesuite/ganache-cli:latest
+    cpu_count: 4
+    build:
+      context: ./
+      dockerfile: Dockerfile
     ports:
-      - 8545:8545
+      - ${GANACHE_PORT}:${GANACHE_PORT}
     networks:
       backend:
-        ipv4_address: 172.15.0.3
-    entrypoint: ["node", "/app/ganache-core.docker.cli.js", "--db", "./ganache_cache","--chainId","0x2324","--networkId","0x2324","--gasLimit","10000000000","--gasPrice","1","---hardfork","istanbul","--mnemonic","${GANACHE_MNEMONIC}", "-e", "1000000"]
+        ipv4_address: ${GANACHE_HOST}
+
+    environment:
+      OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
+      MNEMONIC: ${GANACHE_MNEMONIC}
+      WEB3_INFURA_PROJECT_ID: ${WEB3_INFURA_PROJECT_ID}
+      WEB3_INFURA_URL: ${WEB3_INFURA_URL}
+      WEB3_ALCHEMY_PROJECT_ID: ${WEB3_ALCHEMY_PROJECT_ID}
+      WEB3_ALCHEMY_URL: ${WEB3_ALCHEMY_URL}
+      PRIVATE_KEY: ${PRIVATE_KEY}
+      
+
+    restart: always
+    command: bash -c "./scripts/setup.sh"
+

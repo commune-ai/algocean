@@ -85,3 +85,5 @@ RUN python3 -m pip install -U accelerate
 RUN python3 -m pip install -U diffusers
 
 
+ADD ./brownie /app/brownie
+RUN python3 -m pip install -e ./brownie

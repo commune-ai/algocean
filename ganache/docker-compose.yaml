@@ -1,0 +1,11 @@
+
+version: "3.9"
+services:
+  ganache:
+    container_name: ganache
+    ports: 
+      - ${GANACHE_PORT}:${GANACHE_PORT}
+    restart: always
+    env_file: 
+      - .env
+    command: bash -c "./scripts/setup.sh"

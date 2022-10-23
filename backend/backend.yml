@@ -39,6 +39,7 @@ services:
       ADDRESS_FILE: /.ocean/ocean-contracts/artifacts/address.json
       OCEAN_NETWORK_URL: ${NETWORK_RPC_URL}
       LOCAL_NETWORK_RPC_URL: ${NETWORK_RPC_URL}
+      GANACHE_URL: ${GANACHE_URL}
       PRIVATE_KEY: ${PRIVATE_KEY}
     env_file: 
       - .env
